@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPM 계산기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .text-area {
+            width: 100%;
+            min-height: 300px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .text-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            gap: 20px;
+        }
+
+        .info-box {
+            flex: 1;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .start-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .start-btn.stop {
+            background: #e74c3c;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .wpm-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .level-display {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .level-description {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .timer {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .instructions {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📖 WPM 계산기</h1>
+        
+        <div class="instructions">
+            💡 텍스트를 입력하거나 붙여넣으면 자동으로 단어 수가 계산됩니다.<br>
+            스페이스바 또는 시작 버튼을 눌러 타이머를 시작하세요!
+        </div>
+
+        <textarea class="text-area" id="textInput" placeholder="여기에 읽고자 하는 글을 붙여넣으세요..."></textarea>
+
+        <div class="info-section">
+            <div class="info-box">
+                <div class="info-label">단어 수</div>
+                <div class="info-value" id="wordCount">0</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">예상 시간</div>
+                <div class="info-value" id="estimatedTime">0초</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">진행 시간</div>
+                <div class="info-value" id="timer">0초</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="start-btn" id="startBtn">시작</button>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="wpm-display" id="wpmResult">0 WPM</div>
+            <div class="level-display" id="levelResult">읽기 수준</div>
+            <div class="level-description" id="levelDescription"></div>
+        </div>
+    </div>
+
+    <script>
+        let startTime = null;
+        let isRunning = false;
+        let timerInterval = null;
+
+        const textInput = document.getElementById('textInput');
+        const wordCount = document.getElementById('wordCount');
+        const estimatedTime = document.getElementById('estimatedTime');
+        const timer = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const resultSection = document.getElementById('resultSection');
+        const wpmResult = document.getElementById('wpmResult');
+        const levelResult = document.getElementById('levelResult');
+        const levelDescription = document.getElementById('levelDescription');
+
+        // 단어 수 계산
+        function countWords(text) {
+            return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+        }
+
+        // 텍스트 변경 시 단어 수 업데이트
+        textInput.addEventListener('input', () => {
+            const words = countWords(textInput.value);
+            wordCount.textContent = words;
+            estimatedTime.textContent = Math.round(words / 200 * 60) + '초'; // 평균 200 WPM 기준
+        });
+
+        // 타이머 시작/정지
+        function toggleTimer() {
+            if (!isRunning) {
+                if (countWords(textInput.value) === 0) {
+                    alert('먼저 읽을 텍스트를 입력해주세요!');
+                    return;
+                }
+                
+                startTime = Date.now();
+                isRunning = true;
+                startBtn.textContent = '멈춤';
+                startBtn.classList.add('stop');
+                resultSection.style.display = 'none';
+                
+                timerInterval = setInterval(() => {
+                    const elapsed = Math.round((Date.now() - startTime) / 1000);
+                    timer.textContent = elapsed + '초';
+                }, 100);
+            } else {
+                clearInterval(timerInterval);
+                isRunning = false;
+                startBtn.textContent = '시작';
+                startBtn.classList.remove('stop');
+                
+                const elapsedSeconds = (Date.now() - startTime) / 1000;
+                const words = countWords(textInput.value);
+                const wpm = Math.round(words / elapsedSeconds * 60);
+                
+                displayResult(wpm);
+            }
+        }
+
+        // 결과 표시
+        function displayResult(wpm) {
+            wpmResult.textContent = wpm + ' WPM';
+            
+            let level, description;
+            if (wpm < 100) {
+                level = '초급자';
+                description = '기초적인 읽기 수준입니다. 천천히 읽으며 이해하는 것에 집중하세요.';
+            } else if (wpm < 200) {
+                level = '중급자';
+                description = '평균적인 읽기 속도입니다. 더 빠르게 읽기 위해 연습을 계속하세요.';
+            } else if (wpm < 300) {
+                level = '고급자';
+                description = '뛰어난 읽기 속도입니다! 복잡한 내용도 빠르게 이해하고 있습니다.';
+            } else {
+                level = '전문가';
+                description = '매우 빠른 읽기 속도입니다. 스피드 리딩 기술을 보유하고 계시네요!';
+            }
+            
+            levelResult.textContent = level;
+            levelDescription.textContent = description;
+            resultSection.style.display = 'block';
+        }
+
+        // 버튼 클릭 이벤트
+        startBtn.addEventListener('click', toggleTimer);
+
+        // 스페이스바 이벤트
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+                e.preventDefault();
+                toggleTimer();
+            }
+        });
+
+        // 텍스트 영역에서 스페이스바 방지
+        textInput.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && e.target === textInput) {
+                // 텍스트 입력 중에는 스페이스바가 정상 작동
+            }
+        });
+    </script>
+</body>
+</html>
