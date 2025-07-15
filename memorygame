@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>호계중 3과 숙어 메모리 게임</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5438331242074070"
+     crossorigin="anonymous"></script>
+  <style>
+    /* 전역 및 기본 레이아웃 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: sans-serif;
+      width: 100vw;
+      min-height: 100vh;
+      /* 화면이 잘릴 경우 스크롤할 수 있도록 */
+      overflow-y: auto;
+      background: #eee;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* 플레이어 수 선택 오버레이 */
+    #playerSelectOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      color: #fff;
+    }
+    #playerSelectOverlay select,
+    #playerSelectOverlay button {
+      font-size: 16px;
+      padding: 10px 15px;
+      margin: 10px;
+    }
+    
+    #playerSelectOverlay .mode-selection {
+      margin: 15px 0;
+      text-align: center;
+    }
+    
+    #playerSelectOverlay .mode-selection label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    #playerSelectOverlay .team-selection {
+      margin: 15px 0;
+      text-align: center;
+    }
+    
+    #playerSelectOverlay .team-selection label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    /*************************************************************************
+     * 팀 영역 (한 줄로 표시)
+     *************************************************************************/
+    #teamsArea {
+      /* 상단 공간 최소화 */
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 5px 0;
+      padding: 5px 0;
+      background: #f0f0f0;
+    }
+    .team-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .team-circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: bold;
+      font-size: 12px;
+      margin: 0 3px;
+      padding: 5px;
+      white-space: pre-line;
+    }
+    
+    /*************************************************************************
+     * 게임 보드 영역
+     *************************************************************************/
+    #board-wrapper {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      position: relative;
+      padding: 5px;
+    }
+    #game-board {
+      display: grid;
+      /* 4열이 기본, 가로 공간을 최대로 활용 */
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      padding: 5px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      width: 95%;
+      max-width: 1200px; /* 큰 화면에서는 최대 1200px까지 */
+    }
+    #message {
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    /* 카드 스타일 (aspect-ratio로 가로/세로 비율 고정) */
+    .card {
+      width: 100%;
+      aspect-ratio: 4 / 1; /* 가로:세로 = 2:1 */
+      perspective: 800px;
+      cursor: pointer;
+    }
+    .card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    /* flipped 클래스가 있으면 뒷면(번호)이 보임 */
+    .flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 1.2em; /* 조금 줄인 폰트 크기 */
+      padding: 5px;
+    }
+    .card-front {
+      background: #fff;
+      color: #000;
+      border: 2px solid #ccc;
+    }
+    .card-back {
+      background: #0d6efd;
+      color: #fff;
+      transform: rotateY(180deg);
+    }
+    .matched {
+      visibility: hidden;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .blink {
+      animation: blink 0.5s ease-in-out infinite;
+    }
+    
+    /* 화면이 더 작아질 경우 추가 조정(폰트, 팀 크기) */
+    @media (max-width: 800px) {
+      #message {
+        font-size: 14px;
+      }
+      .team-circle {
+        width: 45px;
+        height: 45px;
+        font-size: 10px;
+      }
+      .card-face {
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 플레이어 수 선택 오버레이 -->
+  <div id="playerSelectOverlay">
+    <h2>플레이어 수를 선택하세요</h2>
+    <select id="playerCount">
+      <option value="1">1명</option>
+      <option value="2">2명</option>
+      <option value="3">3명</option>
+      <option value="4">4명</option>
+      <option value="5">5명</option>
+      <option value="6" selected>6명</option>
+    </select>
+    <div class="mode-selection">
+      <label>게임 모드를 선택하세요</label>
+      <select id="gameMode">
+        <option value="winner">이긴 팀이 계속하기</option>
+        <option value="rotation">팀당 한 번씩 돌아가기</option>
+      </select>
+    </div>
+    <div class="team-selection">
+      <label>시작 팀을 선택하세요</label>
+      <select id="startingTeam">
+        <option value="0">팀 1</option>
+        <option value="1">팀 2</option>
+        <option value="2">팀 3</option>
+        <option value="3">팀 4</option>
+        <option value="4">팀 5</option>
+        <option value="5">팀 6</option>
+      </select>
+    </div>
+    <button id="startButton">게임 시작</button>
+  </div>
+
+  <!-- 팀 영역 (항상 한 줄로) -->
+  <div id="teamsArea"></div>
+
+  <!-- 게임 보드 영역 -->
+  <div id="board-wrapper">
+    <div id="message"></div>
+    <div id="game-board"></div>
+  </div>
+
+  <script>
+    /**************************************************************************
+     * 전역 변수 및 기본 데이터
+     **************************************************************************/
+    let teams = [];           // 플레이어(팀) 배열 (동적으로 생성)
+    let currentTeamIndex = 0; // 현재 턴인 팀 인덱스
+    let gameMode = 'winner';  // 게임 모드 ('winner' 또는 'rotation')
+    let remainingTeams = [];  // 아직 턴이 남은 팀들 (rotation 모드용)
+    const defaultColors = ["red", "orange", "yellow", "green", "blue", "purple"];
+    
+    // 카드 데이터 (각 쌍은 같은 id 사용)
+    const cardData = [
+      { id: 1, text: "It's raining cats and dogs." },
+      { id: 1, text: "비가 많이 오고 있어." },
+      { id: 2, text: "You're pulling my leg." },
+      { id: 2, text: "너는 나를 놀리고 있어." },
+      { id: 3, text: "We pigged out." },
+      { id: 3, text: "우리는 과식했어." },
+      { id: 4, text: "Don't make a long face." },
+      { id: 4, text: "슬퍼하지 마." },
+      { id: 5, text: "It's not my cup of tea." },
+      { id: 5, text: "그건 내 취향이 아니야." },
+      { id: 6, text: "I'm in hot water." },
+      { id: 6, text: "곤란한 상황이야." },
+      { id: 7, text: "I feel under the weather." },
+      { id: 7, text: "몸이 안 좋아." },
+      { id: 8, text: "He and I see eye to eye." },
+      { id: 8, text: "그와 나는 의견이 같아." },
+      { id: 9, text: "I'll keep my fingers crossed for you." },
+      { id: 9, text: "행운을 빌게." },
+      { id: 10, text: "It's a piece of cake." },
+      { id: 10, text: "정말 쉬운 일이야." },
+      { id: 11, text: "I'll keep in touch." },
+      { id: 11, text: "계속 연락할게." },
+      { id: 12, text: "This juice is on me." },
+      { id: 12, text: "내가 주스 값 낼게." },
+    ];
+
+    const totalPairs = cardData.length / 2;
+    let matchedCount = 0; // 맞춘 카드 쌍 수
+
+    let firstCard = null;  // 첫 번째로 뒤집은 카드
+    let secondCard = null; // 두 번째로 뒤집은 카드
+    let lockBoard = false; // 클릭 잠금 상태
+
+    /**************************************************************************
+     * 팀 UI 동적 생성 (항상 한 줄)
+     **************************************************************************/
+    function generateTeamsUI() {
+      const teamsArea = document.getElementById("teamsArea");
+      teamsArea.innerHTML = "";
+      
+      const row = document.createElement("div");
+      row.classList.add("team-row");
+      
+      teams.forEach((team, i) => {
+        const teamDiv = document.createElement("div");
+        teamDiv.classList.add("team-circle");
+        teamDiv.id = "team" + i;
+        teamDiv.textContent = team.name + "\n" + team.score + "점";
+        
+        // 현재 팀은 지정 색상, 아니면 회색
+        teamDiv.style.backgroundColor = (i === currentTeamIndex) ? team.color : "#aaa";
+        teamDiv.style.color = (i === currentTeamIndex) ? "#fff" : "#000";
+        
+        row.appendChild(teamDiv);
+      });
+
+      teamsArea.appendChild(row);
+    }
+
+    /**************************************************************************
+     * 팀 디스플레이 업데이트
+     **************************************************************************/
+    function updateTeamsDisplay() {
+      generateTeamsUI();
+    }
+
+    /**************************************************************************
+     * 턴 교체 함수
+     **************************************************************************/
+    function nextTeamTurn() {
+      if (gameMode === 'winner') {
+        // 이긴 팀이 계속하는 모드
+        // 현재 팀이 이긴 경우 턴을 유지
+        if (firstCard && secondCard && firstCard.cardInfo.id === secondCard.cardInfo.id) {
+          return;
+        }
+        // 다음 팀으로 넘어갈 때 시작 팀부터 순서대로
+        currentTeamIndex = (currentTeamIndex + 1) % teams.length;
+      } else {
+        // 팀당 한 번씩 돌아가는 모드
+        if (remainingTeams.length === 0) {
+          // 모든 팀이 한 번씩 했으면 다시 초기화
+          remainingTeams = [...teams];
+        }
+        // 현재 팀이 이긴 경우 턴을 유지
+        if (firstCard && secondCard && firstCard.cardInfo.id === secondCard.cardInfo.id) {
+          return;
+        }
+        // 다음 팀 선택 (시작 팀부터 순서대로)
+        const currentTeam = remainingTeams.shift();
+        currentTeamIndex = teams.indexOf(currentTeam);
+      }
+      updateTeamsDisplay();
+    }
+
+    /**************************************************************************
+     * 카드 섞기 (Fisher–Yates)
+     **************************************************************************/
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    /**************************************************************************
+     * 게임 보드 생성
+     **************************************************************************/
+    function createBoard() {
+      const gameBoard = document.getElementById("game-board");
+      gameBoard.innerHTML = "";
+      const shuffledCards = shuffle([...cardData]);
+      shuffledCards.forEach((cardInfo, index) => {
+        const card = document.createElement("div");
+        card.classList.add("card", "flipped"); // 초기 상태: 뒷면(번호) 보임
+
+        const cardInner = document.createElement("div");
+        cardInner.classList.add("card-inner");
+
+        const cardFront = document.createElement("div");
+        cardFront.classList.add("card-face", "card-front");
+        cardFront.textContent = cardInfo.text;
+
+        const cardBack = document.createElement("div");
+        cardBack.classList.add("card-face", "card-back");
+        cardBack.textContent = index + 1;
+
+        cardInner.appendChild(cardFront);
+        cardInner.appendChild(cardBack);
+        card.appendChild(cardInner);
+
+        // 클릭 이벤트
+        card.addEventListener("click", () => flipCard(card, cardInfo));
+        gameBoard.appendChild(card);
+      });
+    }
+
+    /**************************************************************************
+     * 카드 뒤집기 로직
+     **************************************************************************/
+    function flipCard(card, cardInfo) {
+      if (lockBoard) return;
+      if (!card.classList.contains("flipped")) return;
+      
+      card.classList.remove("flipped");
+
+      if (!firstCard) {
+        firstCard = card;
+        firstCard.cardInfo = cardInfo;
+      } else {
+        secondCard = card;
+        secondCard.cardInfo = cardInfo;
+        checkForMatch();
+      }
+    }
+
+    /**************************************************************************
+     * 매칭 성공 시 애니메이션
+     **************************************************************************/
+    function animateMatch() {
+      firstCard.classList.add("blink");
+      secondCard.classList.add("blink");
+      setTimeout(() => {
+        firstCard.classList.remove("blink");
+        secondCard.classList.remove("blink");
+        firstCard.classList.add("matched");
+        secondCard.classList.add("matched");
+        resetBoard();
+      }, 3000);
+    }
+
+    /**************************************************************************
+     * 매칭 판정
+     **************************************************************************/
+    function checkForMatch() {
+      lockBoard = true;
+      const isMatch = firstCard.cardInfo.id === secondCard.cardInfo.id;
+      if (isMatch) {
+        teams[currentTeamIndex].score++;
+        updateTeamsDisplay();
+        animateMatch();
+        matchedCount++;
+        if (matchedCount === totalPairs) {
+          // 승자 찾기
+          const maxScore = Math.max(...teams.map(team => team.score));
+          const winners = teams.filter(team => team.score === maxScore);
+          let message = "승자는 ";
+          if (winners.length === 1) {
+            message += winners[0].name + "입니다!";
+          } else {
+            message += winners.map(team => team.name).join(", ") + "입니다!";
+          }
+          document.getElementById("message").textContent = message;
+        }
+      } else {
+        setTimeout(() => {
+          firstCard.classList.add("flipped");
+          secondCard.classList.add("flipped");
+          resetBoard();
+          nextTeamTurn();
+        }, 3000);
+      }
+    }
+
+    /**************************************************************************
+     * 게임 보드 상태 초기화
+     **************************************************************************/
+    function resetBoard() {
+      [firstCard, secondCard] = [null, null];
+      lockBoard = false;
+    }
+
+    /**************************************************************************
+     * 게임 시작 함수
+     **************************************************************************/
+    function startGame() {
+      const playerCount = parseInt(document.getElementById("playerCount").value);
+      gameMode = document.getElementById("gameMode").value;
+      teams = [];
+      for (let i = 0; i < playerCount; i++) {
+        teams.push({
+          name: "팀 " + (i + 1),
+          color: defaultColors[i],
+          score: 0
+        });
+      }
+      currentTeamIndex = parseInt(document.getElementById("startingTeam").value);
+      // rotation 모드를 위한 초기화 - 시작 팀부터 순서대로 배열 재정렬
+      remainingTeams = [...teams];
+      // 시작 팀을 첫 번째로 오도록 재정렬
+      const startTeam = remainingTeams.splice(currentTeamIndex, 1)[0];
+      remainingTeams.unshift(startTeam);
+      matchedCount = 0;
+      updateTeamsDisplay();
+      document.getElementById("playerSelectOverlay").style.display = "none";
+      createBoard();
+    }
+
+    /**************************************************************************
+     * 플레이어 수 변경 시 시작 팀 선택 옵션 업데이트
+     **************************************************************************/
+    function updateStartingTeamOptions() {
+      const playerCount = parseInt(document.getElementById("playerCount").value);
+      const startingTeamSelect = document.getElementById("startingTeam");
+      startingTeamSelect.innerHTML = "";
+      
+      for (let i = 0; i < playerCount; i++) {
+        const option = document.createElement("option");
+        option.value = i;
+        option.textContent = "팀 " + (i + 1);
+        startingTeamSelect.appendChild(option);
+      }
+    }
+    
+    /**************************************************************************
+     * 이벤트 리스너
+     **************************************************************************/
+    document.getElementById("startButton").addEventListener("click", startGame);
+    document.getElementById("playerCount").addEventListener("change", updateStartingTeamOptions);
+    // 초기 시작 팀 옵션 설정
+    updateStartingTeamOptions();
+  </script>
+</body>
+</html>
