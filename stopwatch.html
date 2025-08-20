@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stopwatch</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            /* Make the background transparent to blend with Notion */
+            background-color: transparent;
+            /* Flexbox to center the content */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            font-family: 'Inter', sans-serif;
+            color: #1f2937; /* A dark gray for good contrast */
+        }
+        .container {
+            /* Using Tailwind classes for a modern look */
+        }
+        .time-display {
+            font-family: 'monospace', 'Courier New', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #3b82f6; /* A clear blue color */
+        }
+        .control-btn {
+            @apply px-6 py-2 m-1 font-semibold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-transparent flex justify-center items-center min-h-screen">
+
+<div id="app" class="container flex flex-col items-center p-6 bg-white bg-opacity-80 rounded-3xl shadow-2xl backdrop-blur-sm border border-gray-200">
+    <div class="time-display mb-4 text-center" id="time-display">00:00:00</div>
+    <div class="flex flex-wrap justify-center">
+        <button id="start-btn" class="control-btn bg-green-500 text-white hover:bg-green-600 focus:ring-green-500">시작</button>
+        <button id="stop-btn" class="control-btn bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 hidden">정지</button>
+        <button id="reset-btn" class="control-btn bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-500">초기화</button>
+    </div>
+</div>
+
+<script>
+    // Get HTML elements
+    const timeDisplay = document.getElementById('time-display');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    // Initialize variables
+    let startTime;
+    let elapsedTime = 0;
+    let timerInterval;
+
+    // Function to format the time (HH:MM:SS)
+    function formatTime(ms) {
+        let totalSeconds = Math.floor(ms / 1000);
+        let hours = Math.floor(totalSeconds / 3600);
+        let minutes = Math.floor((totalSeconds % 3600) / 60);
+        let seconds = totalSeconds % 60;
+
+        // Add leading zeros if necessary
+        const pad = (num) => num.toString().padStart(2, '0');
+        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    // Function to start the stopwatch
+    function startTimer() {
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(() => {
+            elapsedTime = Date.now() - startTime;
+            timeDisplay.textContent = formatTime(elapsedTime);
+        }, 1000); // Update every second
+        
+        // Toggle button visibility
+        startBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
+    }
+
+    // Function to stop the stopwatch
+    function stopTimer() {
+        clearInterval(timerInterval);
+
+        // Toggle button visibility
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+    }
+
+    // Function to reset the stopwatch
+    function resetTimer() {
+        clearInterval(timerInterval);
+        elapsedTime = 0;
+        timeDisplay.textContent = '00:00:00';
+        
+        // Ensure start button is visible and stop button is hidden
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+    }
+
+    // Event Listeners for buttons
+    startBtn.addEventListener('click', startTimer);
+    stopBtn.addEventListener('click', stopTimer);
+    resetBtn.addEventListener('click', resetTimer);
+
+</script>
+
+</body>
+</html>
+
