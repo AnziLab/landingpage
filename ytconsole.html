@@ -24,14 +24,26 @@
             @apply text-2xl font-bold mb-4 text-center text-gray-800;
         }
         .link-input {
-            @apply w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors;
+            @apply w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors;
         }
         .control-btn {
             @apply px-4 py-2 m-1 font-semibold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2;
             cursor: pointer;
         }
         #player-container {
-            @apply mt-4 w-full aspect-video rounded-xl overflow-hidden;
+            @apply mt-4 w-full aspect-video rounded-xl overflow-hidden shadow-inner;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+        }
+        #player-placeholder-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #6b7280;
         }
         .controls-grid {
             @apply grid grid-cols-2 gap-4 mt-4 w-full;
@@ -45,6 +57,15 @@
         .error-message {
             @apply text-red-500 text-sm mt-2 text-center;
         }
+        .video-mode-btn, .audio-mode-btn {
+            @apply px-4 py-2 m-1 font-semibold rounded-lg shadow-md transition-colors;
+        }
+        .video-mode-btn.active {
+            @apply bg-indigo-500 text-white;
+        }
+        .audio-mode-btn.active {
+            @apply bg-indigo-500 text-white;
+        }
     </style>
 </head>
 <body>
@@ -53,21 +74,31 @@
     <div class="title">유튜브 콘솔 플레이어</div>
     
     <!-- Link Input -->
-    <div class="w-full mb-4">
-        <input type="text" id="youtube-link" class="link-input" placeholder="여기에 유튜브 링크를 붙여넣으세요">
-        <p id="error-message" class="error-message hidden">유효하지 않은 유튜브 링크입니다.</p>
+    <div class="w-full flex space-x-2 mb-4">
+        <input type="text" id="youtube-link" class="link-input flex-grow" placeholder="여기에 유튜브 링크를 붙여넣으세요">
+        <button id="load-btn" class="control-btn bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500 flex-shrink-0">불러오기</button>
     </div>
-    
-    <!-- Load Button -->
-    <div class="w-full text-center mb-4">
-        <button id="load-btn" class="control-btn bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500">불러오기</button>
-    </div>
+    <p id="error-message" class="error-message hidden">유효하지 않은 유튜브 링크입니다.</p>
 
     <!-- YouTube Player Container -->
-    <div id="player-container" class="hidden"></div>
+    <div id="player-container">
+        <div id="player-placeholder-content">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M10 16.5l6-4.5-6-4.5v9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>유튜브 링크를 붙여넣고<br>불러오기 버튼을 눌러주세요</p>
+        </div>
+        <div id="youtube-player" class="w-full aspect-video hidden"></div>
+    </div>
 
     <!-- Controls Section -->
     <div id="controls-section" class="controls-grid hidden">
+        <!-- Mode Toggle -->
+        <div class="col-span-2 flex justify-center space-x-2">
+            <button id="video-mode-btn" class="video-mode-btn bg-gray-300 text-gray-800">영상 보기</button>
+            <button id="audio-mode-btn" class="audio-mode-btn bg-gray-300 text-gray-800">음성만 듣기</button>
+        </div>
+        
         <!-- Playback Speed Control -->
         <div class="col-span-2 flex flex-col items-center">
             <label for="speed-slider" class="text-sm font-semibold mb-2">재생 속도:</label>
@@ -82,10 +113,15 @@
         <!-- Loop Control -->
         <div class="col-span-2 flex flex-col items-center">
             <label class="text-sm font-semibold mb-2">구간 반복:</label>
-            <div class="loop-input-group">
+            <div class="loop-input-group mb-2">
                 <input type="number" id="loop-start" class="loop-input" placeholder="시작 (초)">
+                <button id="set-start-btn" class="control-btn bg-gray-200 text-gray-800 hover:bg-gray-300">현재</button>
                 <input type="number" id="loop-end" class="loop-input" placeholder="끝 (초)">
+                <button id="set-end-btn" class="control-btn bg-gray-200 text-gray-800 hover:bg-gray-300">현재</button>
+            </div>
+            <div class="flex justify-center space-x-2">
                 <button id="loop-btn" class="control-btn bg-purple-500 text-white hover:bg-purple-600 focus:ring-purple-500">반복 시작</button>
+                <button id="loop-reset-btn" class="control-btn bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-500">구간 초기화</button>
             </div>
         </div>
     </div>
@@ -102,12 +138,19 @@
     const youtubeLinkInput = document.getElementById('youtube-link');
     const loadBtn = document.getElementById('load-btn');
     const playerContainer = document.getElementById('player-container');
+    const youtubePlayer = document.getElementById('youtube-player');
+    const playerPlaceholder = document.getElementById('player-placeholder-content');
     const controlsSection = document.getElementById('controls-section');
     const speedSlider = document.getElementById('speed-slider');
     const speedValueDisplay = document.getElementById('speed-value');
     const loopStartInput = document.getElementById('loop-start');
     const loopEndInput = document.getElementById('loop-end');
     const loopBtn = document.getElementById('loop-btn');
+    const setStartBtn = document.getElementById('set-start-btn');
+    const setEndBtn = document.getElementById('set-end-btn');
+    const loopResetBtn = document.getElementById('loop-reset-btn');
+    const videoModeBtn = document.getElementById('video-mode-btn');
+    const audioModeBtn = document.getElementById('audio-mode-btn');
     const errorMessage = document.getElementById('error-message');
 
     // YouTube Player object and loop variables
@@ -115,6 +158,7 @@
     let videoId = null;
     let loopInterval = null;
     let isLooping = false;
+    let isAudioMode = false;
 
     // This function will be called when the API is ready
     function onYouTubeIframeAPIReady() {
@@ -136,9 +180,13 @@
             player.destroy();
             player = null;
         }
+        
+        // Hide placeholder and show player
+        playerPlaceholder.classList.add('hidden');
+        youtubePlayer.classList.remove('hidden');
 
         // Create the new player instance
-        player = new YT.Player('player-container', {
+        player = new YT.Player('youtube-player', {
             videoId: id,
             playerVars: {
                 'controls': 1,
@@ -156,9 +204,14 @@
 
     // When the player is ready
     function onPlayerReady(event) {
-        playerContainer.classList.remove('hidden');
         controlsSection.classList.remove('hidden');
         event.target.playVideo();
+        // Set initial mode
+        if (isAudioMode) {
+            setAudioMode();
+        } else {
+            setVideoMode();
+        }
     }
 
     // When the player's state changes
@@ -194,7 +247,7 @@
         if (player) {
             player.setPlaybackRate(newRate);
         }
-        speedValueDisplay.textContent = `${newRate.toFixed(2)}x`; // Display with two decimal places
+        speedValueDisplay.textContent = `${newRate.toFixed(2)}x`;
     });
 
     // Function to start the loop
@@ -204,7 +257,6 @@
         const start = parseFloat(loopStartInput.value);
         const end = parseFloat(loopEndInput.value);
 
-        // Simple validation
         if (isNaN(start) || isNaN(end) || start < 0 || end <= start) {
             console.error("Invalid loop times.");
             return;
@@ -220,7 +272,7 @@
             if (player.getCurrentTime() >= end) {
                 player.seekTo(start, true);
             }
-        }, 500); // Check every 0.5 seconds
+        }, 500);
     }
 
     // Function to stop the loop
@@ -241,6 +293,51 @@
             startLoop();
         }
     });
+    
+    // Handle 'Set Start Time' button click
+    setStartBtn.addEventListener('click', () => {
+        if (player) {
+            loopStartInput.value = player.getCurrentTime().toFixed(1);
+        }
+    });
+    
+    // Handle 'Set End Time' button click
+    setEndBtn.addEventListener('click', () => {
+        if (player) {
+            loopEndInput.value = player.getCurrentTime().toFixed(1);
+        }
+    });
+    
+    // Handle 'Reset Loop' button click
+    loopResetBtn.addEventListener('click', () => {
+        stopLoop();
+        loopStartInput.value = '';
+        loopEndInput.value = '';
+    });
+    
+    // Function to set video mode
+    function setVideoMode() {
+        isAudioMode = false;
+        playerContainer.style.height = 'auto'; // Revert to auto for video aspect ratio
+        youtubePlayer.classList.remove('hidden');
+        playerPlaceholder.classList.add('hidden');
+        videoModeBtn.classList.add('active');
+        audioModeBtn.classList.remove('active');
+    }
+    
+    // Function to set audio mode
+    function setAudioMode() {
+        isAudioMode = true;
+        playerContainer.style.height = '12rem'; // Fixed height for audio mode
+        youtubePlayer.classList.add('hidden');
+        playerPlaceholder.classList.remove('hidden');
+        videoModeBtn.classList.remove('active');
+        audioModeBtn.classList.add('active');
+    }
+    
+    // Handle mode buttons
+    videoModeBtn.addEventListener('click', setVideoMode);
+    audioModeBtn.addEventListener('click', setAudioMode);
 
 </script>
 
