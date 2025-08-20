@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Speed Player</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            /* Make the background transparent to blend with Notion */
+            background-color: transparent;
+            font-family: 'Inter', sans-serif;
+            color: #1f2937;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        .container {
+            @apply flex flex-col items-center p-6 bg-white bg-opacity-80 rounded-3xl shadow-2xl backdrop-blur-sm border border-gray-200 w-full max-w-sm;
+        }
+        .title {
+            @apply text-2xl font-bold mb-4 text-center text-gray-800;
+        }
+        .file-upload-label {
+            @apply flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-400 rounded-lg cursor-pointer bg-gray-100 transition-colors hover:bg-gray-200 mb-4;
+        }
+        .file-upload-input {
+            display: none;
+        }
+        .control-btn {
+            @apply px-4 py-2 m-1 font-semibold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            cursor: pointer;
+        }
+        .speed-slider-container {
+            @apply w-full flex items-center mt-4;
+        }
+        .speed-value {
+            @apply w-16 text-right font-mono text-lg;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="title">오디오 속도 조절 플레이어</div>
+
+    <!-- File Upload Section -->
+    <label for="audio-file" class="file-upload-label">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h10a4 4 0 014 4v5a4 4 0 01-4 4h-2m-4-6v6m0 0l-3-3m3 3l3-3" />
+        </svg>
+        <p class="text-sm text-gray-500 mt-2">파일을 업로드하거나 여기로 드래그하세요</p>
+        <p class="text-xs text-gray-400" id="file-name">선택된 파일 없음</p>
+    </label>
+    <input type="file" id="audio-file" class="file-upload-input" accept="audio/*">
+
+    <!-- Audio Player Element (hidden by default) -->
+    <audio id="audio-player" class="w-full hidden" controls></audio>
+    
+    <div id="controls" class="w-full hidden">
+        <!-- Playback Controls -->
+        <div class="flex justify-center mb-4">
+            <button id="play-btn" class="control-btn bg-green-500 text-white hover:bg-green-600 focus:ring-green-500">재생</button>
+            <button id="pause-btn" class="control-btn bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 hidden">일시정지</button>
+        </div>
+
+        <!-- Speed Slider -->
+        <div class="speed-slider-container">
+            <label for="speed-slider" class="text-sm font-semibold mr-2">재생 속도:</label>
+            <input type="range" id="speed-slider" min="0.5" max="2.0" value="1.0" step="0.1" class="w-full">
+            <span id="speed-value" class="speed-value ml-2">1.0x</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Get HTML elements
+    const audioFile = document.getElementById('audio-file');
+    const fileNameDisplay = document.getElementById('file-name');
+    const audioPlayer = document.getElementById('audio-player');
+    const controlsContainer = document.getElementById('controls');
+    const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValueDisplay = document.getElementById('speed-value');
+
+    // Handle file selection
+    audioFile.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('audio/')) {
+            // Display the file name
+            fileNameDisplay.textContent = file.name;
+
+            // Create a URL for the selected file and set it as the audio source
+            const fileURL = URL.createObjectURL(file);
+            audioPlayer.src = fileURL;
+
+            // Show controls and play the audio
+            controlsContainer.classList.remove('hidden');
+            audioPlayer.classList.remove('hidden');
+            playBtn.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+            audioPlayer.play();
+            
+            // Reset speed slider to default
+            speedSlider.value = 1.0;
+            speedValueDisplay.textContent = '1.0x';
+
+        } else {
+            alert('유효한 오디오 파일을 선택해주세요.');
+            // Reset the UI
+            fileNameDisplay.textContent = '선택된 파일 없음';
+            controlsContainer.classList.add('hidden');
+            audioPlayer.classList.add('hidden');
+        }
+    });
+
+    // Play button click event
+    playBtn.addEventListener('click', () => {
+        audioPlayer.play();
+    });
+
+    // Pause button click event
+    pauseBtn.addEventListener('click', () => {
+        audioPlayer.pause();
+    });
+
+    // Update button visibility based on audio state
+    audioPlayer.addEventListener('play', () => {
+        playBtn.classList.add('hidden');
+        pauseBtn.classList.remove('hidden');
+    });
+
+    audioPlayer.addEventListener('pause', () => {
+        playBtn.classList.remove('hidden');
+        pauseBtn.classList.add('hidden');
+    });
+
+    audioPlayer.addEventListener('ended', () => {
+        playBtn.classList.remove('hidden');
+        pauseBtn.classList.add('hidden');
+    });
+
+    // Handle playback speed change
+    speedSlider.addEventListener('input', () => {
+        audioPlayer.playbackRate = speedSlider.value;
+        speedValueDisplay.textContent = `${speedSlider.value}x`;
+    });
+</script>
+
+</body>
+</html>
+
