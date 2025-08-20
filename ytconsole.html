@@ -3,343 +3,579 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Console Player</title>
-    <!-- Tailwind CSS CDN -->
+    <title>YouTube Embed Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --surface: rgba(255, 255, 255, 0.95);
+            --glass: rgba(255, 255, 255, 0.1);
+        }
+
         body {
-            background-color: transparent;
             font-family: 'Inter', sans-serif;
-            color: #1f2937;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 2rem 1rem;
-            min-height: 100vh;
+            background: #f8fafc;
+            margin: 0;
+            padding: 12px;
         }
-        .container {
-            @apply flex flex-col items-center p-6 bg-white bg-opacity-80 rounded-3xl shadow-2xl backdrop-blur-sm border border-gray-200 w-full max-w-lg;
+
+        .embed-container {
+            background: var(--surface);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            max-width: 100%;
         }
-        .title {
-            @apply text-2xl font-bold mb-4 text-center text-gray-800;
+
+        .input-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            background: white;
         }
-        .link-input {
-            @apply w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors;
+
+        .input-field {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            outline: none;
         }
-        .control-btn {
-            @apply px-4 py-2 m-1 font-semibold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2;
+
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn-load {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 500;
+            font-size: 14px;
             cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
         }
-        #player-container {
-            @apply mt-4 w-full aspect-video rounded-xl overflow-hidden shadow-inner;
-            background-color: #f3f4f6;
+
+        .btn-load:hover {
+            background: var(--primary-dark);
+        }
+
+        .main-content {
             display: flex;
-            justify-content: center;
+            gap: 16px;
+            padding: 20px;
+            align-items: flex-start;
+        }
+
+        .player-section {
+            flex: 2;
+            min-width: 400px;
+        }
+
+        .controls-section {
+            flex: 1;
+            min-width: 280px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .player-container {
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            aspect-ratio: 16/9;
+            position: relative;
+        }
+
+        .player-placeholder {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            display: flex;
             align-items: center;
+            justify-content: center;
             flex-direction: column;
+            color: #64748b;
+            font-weight: 500;
+            height: 100%;
+            font-size: 14px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn-mode {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
             text-align: center;
         }
-        #player-placeholder-content {
+
+        .btn-mode.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin: 10px 0;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            outline: none;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .speed-display {
+            background: var(--primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 11px;
+            text-align: center;
+            min-width: 40px;
+        }
+
+        .loop-inputs {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: #6b7280;
+            gap: 8px;
+            margin-bottom: 12px;
         }
-        .controls-grid {
-            @apply grid grid-cols-2 gap-4 mt-4 w-full;
-        }
-        .loop-input-group {
-            @apply flex items-center justify-between space-x-2;
-        }
+
         .loop-input {
-            @apply w-1/2 p-1 text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 12px;
         }
+
+        .loop-input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .btn-small {
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-small:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .btn-small.primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-small.primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .loop-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .audio-mode-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 10;
+            font-size: 14px;
+        }
+
         .error-message {
-            @apply text-red-500 text-sm mt-2 text-center;
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 8px;
+            border: 1px solid #fecaca;
         }
-        .video-mode-btn, .audio-mode-btn {
-            @apply px-4 py-2 m-1 font-semibold rounded-lg shadow-md transition-colors;
-        }
-        .video-mode-btn.active {
-            @apply bg-indigo-500 text-white;
-        }
-        .audio-mode-btn.active {
-            @apply bg-indigo-500 text-white;
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .player-section {
+                min-width: auto;
+            }
+            
+            .controls-section {
+                min-width: auto;
+            }
         }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="title">유튜브 콘솔 플레이어</div>
-    
-    <!-- Link Input -->
-    <div class="w-full flex space-x-2 mb-4">
-        <input type="text" id="youtube-link" class="link-input flex-grow" placeholder="여기에 유튜브 링크를 붙여넣으세요">
-        <button id="load-btn" class="control-btn bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500 flex-shrink-0">불러오기</button>
-    </div>
-    <p id="error-message" class="error-message hidden">유효하지 않은 유튜브 링크입니다.</p>
-
-    <!-- YouTube Player Container -->
-    <div id="player-container">
-        <div id="player-placeholder-content">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M10 16.5l6-4.5-6-4.5v9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p>유튜브 링크를 붙여넣고<br>불러오기 버튼을 눌러주세요</p>
-        </div>
-        <div id="youtube-player" class="w-full aspect-video hidden"></div>
-    </div>
-
-    <!-- Controls Section -->
-    <div id="controls-section" class="controls-grid hidden">
-        <!-- Mode Toggle -->
-        <div class="col-span-2 flex justify-center space-x-2">
-            <button id="video-mode-btn" class="video-mode-btn bg-gray-300 text-gray-800">영상 보기</button>
-            <button id="audio-mode-btn" class="audio-mode-btn bg-gray-300 text-gray-800">음성만 듣기</button>
-        </div>
-        
-        <!-- Playback Speed Control -->
-        <div class="col-span-2 flex flex-col items-center">
-            <label for="speed-slider" class="text-sm font-semibold mb-2">재생 속도:</label>
-            <div class="w-full flex items-center space-x-2">
-                <span class="text-sm text-gray-600">0.5x</span>
-                <input type="range" id="speed-slider" min="0.5" max="2.0" value="1.0" step="0.05" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                <span id="speed-value" class="w-12 text-right font-mono text-sm">1.00x</span>
-                <span class="text-sm text-gray-600">2.0x</span>
+    <div class="embed-container">
+        <!-- URL Input -->
+        <div class="input-section">
+            <div class="flex gap-3">
+                <input 
+                    type="text" 
+                    id="youtube-link" 
+                    class="input-field flex-1" 
+                    placeholder="YouTube URL"
+                >
+                <button id="load-btn" class="btn-load">재생</button>
+            </div>
+            <div id="error-message" class="error-message hidden">
+                올바른 YouTube URL을 입력해주세요.
             </div>
         </div>
 
-        <!-- Loop Control -->
-        <div class="col-span-2 flex flex-col items-center">
-            <label class="text-sm font-semibold mb-2">구간 반복:</label>
-            <div class="loop-input-group mb-2">
-                <input type="number" id="loop-start" class="loop-input" placeholder="시작 (초)">
-                <button id="set-start-btn" class="control-btn bg-gray-200 text-gray-800 hover:bg-gray-300">현재</button>
-                <input type="number" id="loop-end" class="loop-input" placeholder="끝 (초)">
-                <button id="set-end-btn" class="control-btn bg-gray-200 text-gray-800 hover:bg-gray-300">현재</button>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Player Section -->
+            <div class="player-section">
+                <div id="player-container" class="player-container">
+                    <div id="player-placeholder" class="player-placeholder">
+                        <svg class="w-12 h-12 mb-2 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <p>YouTube URL을 입력하세요</p>
+                    </div>
+                    <div id="youtube-player" class="w-full h-full hidden"></div>
+                    <div id="audio-overlay" class="audio-mode-overlay hidden">
+                        🎵 음성 모드
+                    </div>
+                </div>
             </div>
-            <div class="flex justify-center space-x-2">
-                <button id="loop-btn" class="control-btn bg-purple-500 text-white hover:bg-purple-600 focus:ring-purple-500">반복 시작</button>
-                <button id="loop-reset-btn" class="control-btn bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-500">구간 초기화</button>
+
+            <!-- Controls Section -->
+            <div id="controls-section" class="controls-section hidden">
+                <!-- Mode Toggle -->
+                <div class="control-group">
+                    <div class="mode-toggle">
+                        <button id="video-mode-btn" class="btn-mode active">영상</button>
+                        <button id="audio-mode-btn" class="btn-mode">음성</button>
+                    </div>
+                </div>
+
+                <!-- Speed Control -->
+                <div class="control-group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="control-label">재생 속도</span>
+                        <div id="speed-value" class="speed-display">1.00x</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500">0.5x</span>
+                        <div class="slider-container flex-1">
+                            <input 
+                                type="range" 
+                                id="speed-slider" 
+                                min="0.5" 
+                                max="2.0" 
+                                value="1.0" 
+                                step="0.05" 
+                                class="slider"
+                            >
+                        </div>
+                        <span class="text-xs text-gray-500">2.0x</span>
+                    </div>
+                </div>
+
+                <!-- Loop Control -->
+                <div class="control-group">
+                    <span class="control-label">구간 반복</span>
+                    
+                    <div class="loop-inputs">
+                        <input type="number" id="loop-start" class="loop-input" placeholder="시작(초)">
+                        <button id="set-start-btn" class="btn-small">현재</button>
+                        <input type="number" id="loop-end" class="loop-input" placeholder="끝(초)">
+                        <button id="set-end-btn" class="btn-small">현재</button>
+                    </div>
+
+                    <div class="loop-controls">
+                        <button id="loop-btn" class="btn-small primary flex-1">반복 시작</button>
+                        <button id="loop-reset-btn" class="btn-small">초기화</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    // YouTube IFrame Player API를 비동기적으로 로드합니다.
-    var tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    var firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    <script>
+        // YouTube IFrame Player API 로드
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-    // Get HTML elements
-    const youtubeLinkInput = document.getElementById('youtube-link');
-    const loadBtn = document.getElementById('load-btn');
-    const playerContainer = document.getElementById('player-container');
-    const youtubePlayer = document.getElementById('youtube-player');
-    const playerPlaceholder = document.getElementById('player-placeholder-content');
-    const controlsSection = document.getElementById('controls-section');
-    const speedSlider = document.getElementById('speed-slider');
-    const speedValueDisplay = document.getElementById('speed-value');
-    const loopStartInput = document.getElementById('loop-start');
-    const loopEndInput = document.getElementById('loop-end');
-    const loopBtn = document.getElementById('loop-btn');
-    const setStartBtn = document.getElementById('set-start-btn');
-    const setEndBtn = document.getElementById('set-end-btn');
-    const loopResetBtn = document.getElementById('loop-reset-btn');
-    const videoModeBtn = document.getElementById('video-mode-btn');
-    const audioModeBtn = document.getElementById('audio-mode-btn');
-    const errorMessage = document.getElementById('error-message');
+        // DOM 요소들
+        const youtubeLinkInput = document.getElementById('youtube-link');
+        const loadBtn = document.getElementById('load-btn');
+        const youtubePlayerDiv = document.getElementById('youtube-player');
+        const playerPlaceholder = document.getElementById('player-placeholder');
+        const audioOverlay = document.getElementById('audio-overlay');
+        const controlsSection = document.getElementById('controls-section');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValueDisplay = document.getElementById('speed-value');
+        const loopStartInput = document.getElementById('loop-start');
+        const loopEndInput = document.getElementById('loop-end');
+        const loopBtn = document.getElementById('loop-btn');
+        const setStartBtn = document.getElementById('set-start-btn');
+        const setEndBtn = document.getElementById('set-end-btn');
+        const loopResetBtn = document.getElementById('loop-reset-btn');
+        const videoModeBtn = document.getElementById('video-mode-btn');
+        const audioModeBtn = document.getElementById('audio-mode-btn');
+        const errorMessage = document.getElementById('error-message');
 
-    // YouTube Player object and loop variables
-    let player;
-    let videoId = null;
-    let loopInterval = null;
-    let isLooping = false;
-    let isAudioMode = false;
+        // 전역 변수들
+        let player;
+        let videoId = null;
+        let loopInterval = null;
+        let isLooping = false;
+        let isAudioMode = false;
 
-    // This function will be called when the API is ready
-    function onYouTubeIframeAPIReady() {
-        console.log("YouTube IFrame API is ready.");
-    }
-
-    // Function to extract video ID from a YouTube URL
-    function extractVideoId(url) {
-        if (!url) return null;
-        let regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-        let match = url.match(regExp);
-        return (match && match[1].length === 11) ? match[1] : null;
-    }
-
-    // Function to create and load the player
-    function createPlayer(id) {
-        // Destroy existing player if it exists
-        if (player) {
-            player.destroy();
-            player = null;
+        function onYouTubeIframeAPIReady() {
+            console.log("YouTube IFrame API is ready.");
         }
-        
-        // Hide placeholder and show player
-        playerPlaceholder.classList.add('hidden');
-        youtubePlayer.classList.remove('hidden');
 
-        // Create the new player instance
-        player = new YT.Player('youtube-player', {
-            videoId: id,
-            playerVars: {
-                'controls': 1,
-                'modestbranding': 1,
-                'rel': 0,
-                'iv_load_policy': 3,
-                'showinfo': 0,
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
+        function extractVideoId(url) {
+            if (!url) return null;
+            const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(regExp);
+            return (match && match[1].length === 11) ? match[1] : null;
+        }
+
+        function createPlayer(id) {
+            if (player) {
+                player.destroy();
+                player = null;
+            }
+            
+            playerPlaceholder.classList.add('hidden');
+            youtubePlayerDiv.classList.remove('hidden');
+
+            player = new YT.Player('youtube-player', {
+                videoId: id,
+                playerVars: {
+                    'controls': 1,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'iv_load_policy': 3,
+                    'showinfo': 0,
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            controlsSection.classList.remove('hidden');
+            event.target.playVideo();
+            
+            if (isAudioMode) {
+                setAudioMode();
+            } else {
+                setVideoMode();
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            // 플레이어 상태 변화 처리
+        }
+
+        loadBtn.addEventListener('click', () => {
+            const url = youtubeLinkInput.value.trim();
+            const newVideoId = extractVideoId(url);
+
+            if (!newVideoId) {
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+            
+            errorMessage.classList.add('hidden');
+            videoId = newVideoId;
+            createPlayer(videoId);
+            
+            speedSlider.value = 1.0;
+            speedValueDisplay.textContent = '1.00x';
+            loopStartInput.value = '';
+            loopEndInput.value = '';
+            stopLoop();
+        });
+
+        speedSlider.addEventListener('input', () => {
+            const newRate = parseFloat(speedSlider.value);
+            if (player && player.setPlaybackRate) {
+                player.setPlaybackRate(newRate);
+            }
+            speedValueDisplay.textContent = `${newRate.toFixed(2)}x`;
+        });
+
+        function startLoop() {
+            if (!player || isLooping) return;
+
+            const start = parseFloat(loopStartInput.value);
+            const end = parseFloat(loopEndInput.value);
+
+            if (isNaN(start) || isNaN(end) || start < 0 || end <= start) {
+                return;
+            }
+
+            isLooping = true;
+            player.seekTo(start, true);
+            loopBtn.textContent = '반복 중지';
+            loopBtn.style.background = '#6b7280';
+
+            loopInterval = setInterval(() => {
+                if (player && player.getCurrentTime && player.getCurrentTime() >= end) {
+                    player.seekTo(start, true);
+                }
+            }, 500);
+        }
+
+        function stopLoop() {
+            if (!isLooping) return;
+            clearInterval(loopInterval);
+            isLooping = false;
+            loopBtn.textContent = '반복 시작';
+            loopBtn.style.background = 'var(--primary)';
+        }
+
+        loopBtn.addEventListener('click', () => {
+            if (isLooping) {
+                stopLoop();
+            } else {
+                startLoop();
             }
         });
-    }
 
-    // When the player is ready
-    function onPlayerReady(event) {
-        controlsSection.classList.remove('hidden');
-        event.target.playVideo();
-        // Set initial mode
-        if (isAudioMode) {
-            setAudioMode();
-        } else {
-            setVideoMode();
-        }
-    }
-
-    // When the player's state changes
-    function onPlayerStateChange(event) {
-        // Here we can handle events like play, pause, end
-    }
-
-    // Handle 'Load' button click
-    loadBtn.addEventListener('click', () => {
-        const url = youtubeLinkInput.value;
-        const newVideoId = extractVideoId(url);
-
-        if (!newVideoId) {
-            errorMessage.classList.remove('hidden');
-            return;
-        }
-        
-        errorMessage.classList.add('hidden');
-        videoId = newVideoId;
-        createPlayer(videoId);
-        
-        // Reset controls and loop
-        speedSlider.value = 1.0;
-        speedValueDisplay.textContent = '1.00x';
-        loopStartInput.value = '';
-        loopEndInput.value = '';
-        stopLoop();
-    });
-
-    // Handle playback speed slider change
-    speedSlider.addEventListener('input', () => {
-        const newRate = parseFloat(speedSlider.value);
-        if (player) {
-            player.setPlaybackRate(newRate);
-        }
-        speedValueDisplay.textContent = `${newRate.toFixed(2)}x`;
-    });
-
-    // Function to start the loop
-    function startLoop() {
-        if (!player || isLooping) return;
-
-        const start = parseFloat(loopStartInput.value);
-        const end = parseFloat(loopEndInput.value);
-
-        if (isNaN(start) || isNaN(end) || start < 0 || end <= start) {
-            console.error("Invalid loop times.");
-            return;
-        }
-
-        isLooping = true;
-        player.seekTo(start, true);
-        loopBtn.textContent = '반복 중지';
-        loopBtn.classList.add('bg-gray-500', 'hover:bg-gray-600', 'focus:ring-gray-500');
-        loopBtn.classList.remove('bg-purple-500', 'hover:bg-purple-600', 'focus:ring-purple-500');
-
-        loopInterval = setInterval(() => {
-            if (player.getCurrentTime() >= end) {
-                player.seekTo(start, true);
+        setStartBtn.addEventListener('click', () => {
+            if (player && player.getCurrentTime) {
+                loopStartInput.value = player.getCurrentTime().toFixed(1);
             }
-        }, 500);
-    }
+        });
 
-    // Function to stop the loop
-    function stopLoop() {
-        if (!isLooping) return;
-        clearInterval(loopInterval);
-        isLooping = false;
-        loopBtn.textContent = '반복 시작';
-        loopBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600', 'focus:ring-gray-500');
-        loopBtn.classList.add('bg-purple-500', 'hover:bg-purple-600', 'focus:ring-purple-500');
-    }
+        setEndBtn.addEventListener('click', () => {
+            if (player && player.getCurrentTime) {
+                loopEndInput.value = player.getCurrentTime().toFixed(1);
+            }
+        });
 
-    // Handle loop button click
-    loopBtn.addEventListener('click', () => {
-        if (isLooping) {
+        loopResetBtn.addEventListener('click', () => {
             stopLoop();
-        } else {
-            startLoop();
-        }
-    });
-    
-    // Handle 'Set Start Time' button click
-    setStartBtn.addEventListener('click', () => {
-        if (player) {
-            loopStartInput.value = player.getCurrentTime().toFixed(1);
-        }
-    });
-    
-    // Handle 'Set End Time' button click
-    setEndBtn.addEventListener('click', () => {
-        if (player) {
-            loopEndInput.value = player.getCurrentTime().toFixed(1);
-        }
-    });
-    
-    // Handle 'Reset Loop' button click
-    loopResetBtn.addEventListener('click', () => {
-        stopLoop();
-        loopStartInput.value = '';
-        loopEndInput.value = '';
-    });
-    
-    // Function to set video mode
-    function setVideoMode() {
-        isAudioMode = false;
-        playerContainer.style.height = 'auto'; // Revert to auto for video aspect ratio
-        youtubePlayer.classList.remove('hidden');
-        playerPlaceholder.classList.add('hidden');
-        videoModeBtn.classList.add('active');
-        audioModeBtn.classList.remove('active');
-    }
-    
-    // Function to set audio mode
-    function setAudioMode() {
-        isAudioMode = true;
-        playerContainer.style.height = '12rem'; // Fixed height for audio mode
-        youtubePlayer.classList.add('hidden');
-        playerPlaceholder.classList.remove('hidden');
-        videoModeBtn.classList.remove('active');
-        audioModeBtn.classList.add('active');
-    }
-    
-    // Handle mode buttons
-    videoModeBtn.addEventListener('click', setVideoMode);
-    audioModeBtn.addEventListener('click', setAudioMode);
+            loopStartInput.value = '';
+            loopEndInput.value = '';
+        });
 
-</script>
+        function setVideoMode() {
+            isAudioMode = false;
+            audioOverlay.classList.add('hidden');
+            youtubePlayerDiv.style.display = 'block';
+            
+            videoModeBtn.classList.add('active');
+            audioModeBtn.classList.remove('active');
+        }
 
+        function setAudioMode() {
+            isAudioMode = true;
+            audioOverlay.classList.remove('hidden');
+            
+            videoModeBtn.classList.remove('active');
+            audioModeBtn.classList.add('active');
+        }
+
+        videoModeBtn.addEventListener('click', setVideoMode);
+        audioModeBtn.addEventListener('click', setAudioMode);
+
+        youtubeLinkInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadBtn.click();
+            }
+        });
+    </script>
 </body>
 </html>
