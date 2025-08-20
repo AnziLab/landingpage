@@ -1,0 +1,1054 @@
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+							<style>
+								body {
+									background-color: white; /* Ensure the iframe has a white background */
+								}
+
+								
+    :root {
+      --accent: #6366f1; /* indigo-500/600-ish */
+      --accent-strong: #4f46e5;
+      --track: #e5e7eb; /* gray-200 */
+      --thumb: #ffffff;
+      --thumb-border: rgba(99,102,241,.6);
+    }
+
+    /* Page background and base layout */
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.15), transparent 60%),
+        radial-gradient(1000px 700px at 110% 20%, rgba(16,185,129,0.12), transparent 60%),
+        linear-gradient(180deg, #fafafa, #f5f7fb);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: #111827;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 12px;
+    }
+
+    /* Smooth shadow/glass look */
+    .glass {
+      backdrop-filter: saturate(180%) blur(10px);
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow:
+          0 10px 30px rgba(17,24,39,0.1),
+          inset 0 1px 0 rgba(255,255,255,0.4);
+    }
+
+    /* Audio-only overlay */
+    #audio-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(24,24,27,0.35), rgba(24,24,27,0.35));
+      color: #f8fafc;
+      z-index: 2;
+    }
+    #audio-overlay .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 9999px;
+      background: rgba(99,102,241,0.25);
+      border: 1px solid rgba(99,102,241,0.35);
+    }
+
+    /* Range slider styling + smoothness */
+    .smooth-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 10px;
+      width: 100%;
+      background: var(--track);
+      border-radius: 9999px;
+      outline: none;
+      transition: background 160ms ease;
+    }
+    .smooth-range::-webkit-slider-runnable-track {
+      height: 10px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 0%, var(--track) 0%, var(--track) 100%);
+    }
+    .smooth-range::-moz-range-track {
+      height: 10px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 0%, var(--track) 0%, var(--track) 100%);
+    }
+    .smooth-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--thumb);
+      border: 2px solid var(--thumb-border);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      transform: translateY(-6px);
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .smooth-range:active::-webkit-slider-thumb {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      border-color: var(--accent);
+    }
+    .smooth-range::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--thumb);
+      border: 2px solid var(--thumb-border);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .smooth-range:active::-moz-range-thumb {
+      transform: scale(1.03);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      border-color: var(--accent);
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .smooth-range,
+      .smooth-range::-webkit-slider-thumb,
+      .smooth-range::-moz-range-thumb { transition: none; }
+    }
+  
+
+							</style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YouTube Console Player</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --accent: #6366f1; /* indigo-500/600-ish */
+      --accent-strong: #4f46e5;
+      --track: #e5e7eb; /* gray-200 */
+      --thumb: #ffffff;
+      --thumb-border: rgba(99,102,241,.6);
+    }
+
+    /* Page background and base layout */
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.15), transparent 60%),
+        radial-gradient(1000px 700px at 110% 20%, rgba(16,185,129,0.12), transparent 60%),
+        linear-gradient(180deg, #fafafa, #f5f7fb);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: #111827;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 12px;
+    }
+
+    /* Smooth shadow/glass look */
+    .glass {
+      backdrop-filter: saturate(180%) blur(10px);
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow:
+          0 10px 30px rgba(17,24,39,0.1),
+          inset 0 1px 0 rgba(255,255,255,0.4);
+    }
+
+    /* Audio-only overlay */
+    #audio-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(24,24,27,0.35), rgba(24,24,27,0.35));
+      color: #f8fafc;
+      z-index: 2;
+    }
+    #audio-overlay .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 9999px;
+      background: rgba(99,102,241,0.25);
+      border: 1px solid rgba(99,102,241,0.35);
+    }
+
+    /* Range slider styling + smoothness */
+    .smooth-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 10px;
+      width: 100%;
+      background: var(--track);
+      border-radius: 9999px;
+      outline: none;
+      transition: background 160ms ease;
+    }
+    .smooth-range::-webkit-slider-runnable-track {
+      height: 10px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 0%, var(--track) 0%, var(--track) 100%);
+    }
+    .smooth-range::-moz-range-track {
+      height: 10px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 0%, var(--track) 0%, var(--track) 100%);
+    }
+    .smooth-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--thumb);
+      border: 2px solid var(--thumb-border);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      transform: translateY(-6px);
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .smooth-range:active::-webkit-slider-thumb {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      border-color: var(--accent);
+    }
+    .smooth-range::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--thumb);
+      border: 2px solid var(--thumb-border);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .smooth-range:active::-moz-range-thumb {
+      transform: scale(1.03);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      border-color: var(--accent);
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .smooth-range,
+      .smooth-range::-webkit-slider-thumb,
+      .smooth-range::-moz-range-thumb { transition: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="w-full max-w-2xl glass rounded-3xl p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900">유튜브 콘솔 플레이어</h1>
+    </div>
+
+    <!-- Link bar (minimal, intuitive) -->
+    <div class="w-full flex gap-2 mb-4">
+      <div class="flex-1 relative">
+        <input
+          id="youtube-link"
+          type="text"
+          inputmode="url"
+          placeholder="https://youtu.be/ 또는 youtube.com 링크"
+          class="w-full h-12 pl-4 pr-12 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-200 outline-none text-[15px] placeholder:text-gray-400"
+        />
+        <button
+          id="clear-input"
+          title="지우기"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+          aria-label="입력 지우기"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6.225 4.811A.75.75 0 0 1 7.28 4.75l4.22 4.22 4.22-4.22a.75.75 0 1 1 1.06 1.06l-4.22 4.22 4.22 4.22a.75.75 0 1 1-1.06 1.06L11.5 12.09l-4.22 4.22a.75.75 0 1 1-1.06-1.06l4.22-4.22-4.22-4.22a.75.75 0 0 1 .005-1.085z"/>
+          </svg>
+        </button>
+      </div>
+      <button
+        id="load-btn"
+        class="h-12 px-5 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 shadow-sm hover:shadow transition"
+      >
+        불러오기
+      </button>
+    </div>
+
+    <p id="error-message" class="hidden text-sm text-red-600 mb-3">유효하지 않은 유튜브 링크입니다.</p>
+
+    <!-- Player -->
+    <div id="player-wrap" class="relative">
+      <!-- Audio overlay (for audio-only mode) -->
+      <div id="audio-overlay" class="rounded-2xl"></div>
+
+      <div id="player-container" class="relative w-full aspect-video rounded-2xl overflow-hidden bg-gray-100 border border-gray-200">
+        <!-- placeholder -->
+        <div id="placeholder" class="absolute inset-0 flex items-center justify-center text-gray-400">
+          <div class="flex flex-col items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 mb-2" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 16.5l6-4.5-6-4.5v9z"></path>
+              <path fill-rule="evenodd" d="M12 2.25a9.75 9.75 0 1 0 0 19.5 9.75 9.75 0 0 0 0-19.5Zm0 1.5a8.25 8.25 0 1 1 0 16.5 8.25 8.25 0 0 1 0-16.5Z" clip-rule="evenodd"/>
+            </svg>
+            <span class="text-sm">링크를 입력하고 불러오기를 누르세요</span>
+          </div>
+        </div>
+
+        <div id="youtube-player" class="w-full h-full"></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls-section" class="hidden mt-5">
+      <!-- Mode -->
+      <div class="flex justify-center gap-2 mb-4">
+        <button id="video-mode-btn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm">영상 보기</button>
+        <button id="audio-mode-btn" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold">음성만 듣기</button>
+      </div>
+
+      <!-- Speed -->
+      <div class="w-full mb-5">
+        <div class="flex items-center justify-between mb-2">
+          <label for="speed-slider" class="text-sm font-semibold">재생 속도</label>
+          <span id="speed-value" class="text-sm font-mono tabular-nums">1.00x</span>
+        </div>
+        <input id="speed-slider" type="range" class="smooth-range" min="0" max="4" step="1" value="2" />
+        <div class="flex justify-between text-xs text-gray-500 mt-1 px-0.5">
+          <span id="rate-min">-</span>
+          <span id="rate-mid">-</span>
+          <span id="rate-max">-</span>
+        </div>
+      </div>
+
+      <!-- Loop -->
+      <div class="w-full">
+        <div class="text-sm font-semibold mb-2">구간 반복</div>
+
+        <div class="flex items-center gap-2 mb-2">
+          <div class="flex-1 flex items-center gap-2">
+            <input id="loop-start" type="number" inputmode="decimal" step="0.1" placeholder="시작(초)" class="w-full p-2 rounded-lg border border-gray-300 focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 outline-none text-sm" />
+            <button id="set-start-btn" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm">현재</button>
+          </div>
+          <div class="flex-1 flex items-center gap-2">
+            <input id="loop-end" type="number" inputmode="decimal" step="0.1" placeholder="끝(초)" class="w-full p-2 rounded-lg border border-gray-300 focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 outline-none text-sm" />
+            <button id="set-end-btn" class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm">현재</button>
+          </div>
+        </div>
+
+        <div class="flex justify-center gap-2">
+          <button id="loop-btn" class="px-4 py-2 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700">반복 시작</button>
+          <button id="loop-reset-btn" class="px-4 py-2 rounded-lg bg-gray-600 text-white font-semibold hover:bg-gray-700">구간 초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube IFrame API -->
+  <script>
+    // 1) Load YT API dynamically
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+
+    // 2) State
+    let player = null;
+    let availableRates = [0.5, 1, 1.5, 2]; // fallback
+    let isAudioOnly = false;
+
+    let loopStart = null;
+    let loopEnd = null;
+    let loopTimer = null;
+    let isLooping = false;
+
+    // 3) UI elements
+    const linkInput = document.getElementById('youtube-link');
+    const clearBtn = document.getElementById('clear-input');
+    const loadBtn = document.getElementById('load-btn');
+    const errorMsg = document.getElementById('error-message');
+
+    const placeholder = document.getElementById('placeholder');
+    const controlsSection = document.getElementById('controls-section');
+    const audioOverlay = document.getElementById('audio-overlay');
+
+    const videoBtn = document.getElementById('video-mode-btn');
+    const audioBtn = document.getElementById('audio-mode-btn');
+
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValue = document.getElementById('speed-value');
+    const rateMin = document.getElementById('rate-min');
+    const rateMid = document.getElementById('rate-mid');
+    const rateMax = document.getElementById('rate-max');
+
+    const loopStartInput = document.getElementById('loop-start');
+    const loopEndInput = document.getElementById('loop-end');
+    const setStartBtn = document.getElementById('set-start-btn');
+    const setEndBtn = document.getElementById('set-end-btn');
+    const loopBtn = document.getElementById('loop-btn');
+    const loopResetBtn = document.getElementById('loop-reset-btn');
+
+    function formatRate(v) {
+      return (Math.round(v * 100) / 100).toFixed(2) + 'x';
+    }
+
+    function updateRangeFill(slider) {
+      const min = parseFloat(slider.min);
+      const max = parseFloat(slider.max);
+      const val = parseFloat(slider.value);
+      const percent = ((val - min) / (max - min)) * 100;
+      const fill = `linear-gradient(90deg, var(--accent) ${percent}%, var(--track) ${percent}%)`;
+      slider.style.background = fill;
+    }
+
+    // 4) YT API ready
+    window.onYouTubeIframeAPIReady = function() {
+      // waiting until user loads a video
+    };
+
+    function onPlayerReady() {
+      try {
+        const rates = player.getAvailablePlaybackRates();
+        if (Array.isArray(rates) && rates.length) {
+          availableRates = rates;
+        }
+      } catch (e) {}
+
+      // Setup speed slider based on available rates using index steps (prevents jerky feel)
+      speedSlider.min = 0;
+      speedSlider.max = String(availableRates.length - 1);
+      const defaultIndex = Math.max(0, availableRates.indexOf(1));
+      speedSlider.value = String(defaultIndex);
+      speedValue.textContent = formatRate(availableRates[defaultIndex]);
+
+      rateMin.textContent = availableRates[0] ? availableRates[0] + 'x' : '-';
+      rateMax.textContent = availableRates[availableRates.length - 1] ? availableRates[availableRates.length - 1] + 'x' : '-';
+      rateMid.textContent = availableRates[Math.floor(availableRates.length / 2)] ? availableRates[Math.floor(availableRates.length / 2)] + 'x' : '-';
+
+      updateRangeFill(speedSlider);
+    }
+
+    function onPlayerStateChange(e) {
+      // Loop check handled by interval; nothing special here.
+    }
+
+    // 5) Load or create player
+    function loadVideoById(videoId) {
+      errorMsg.classList.add('hidden');
+      placeholder.classList.add('hidden');
+      controlsSection.classList.remove('hidden');
+
+      if (player) {
+        player.loadVideoById(videoId);
+      } else {
+        player = new YT.Player('youtube-player', {
+          videoId,
+          playerVars: {
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1
+          },
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+      setVideoMode(); // default to video mode when loading a new one
+    }
+
+    // 6) Helpers
+    function parseYouTubeId(url) {
+      try {
+        const u = new URL(url.trim());
+        if (u.hostname === 'youtu.be') {
+          const id = u.pathname.slice(1);
+          return id || null;
+        }
+        if (/youtube\.com$|youtube-nocookie\.com$/.test(u.hostname)) {
+          const v = u.searchParams.get('v');
+          if (v) return v;
+          // /embed/VIDEOID
+          const parts = u.pathname.split('/').filter(Boolean);
+          const idxEmbed = parts.indexOf('embed');
+          const idxShorts = parts.indexOf('shorts');
+          if (idxEmbed !== -1 && parts[idxEmbed+1]) return parts[idxEmbed+1];
+          if (idxShorts !== -1 && parts[idxShorts+1]) return parts[idxShorts+1];
+        }
+      } catch (e) {
+        // not a URL, maybe raw id
+        const raw = url.trim();
+        if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+      }
+      return null;
+    }
+
+    function shake(el) {
+      el.classList.add('ring-2','ring-red-400');
+      el.animate(
+        [{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],
+        {duration: 180, iterations: 1}
+      );
+      setTimeout(() => el.classList.remove('ring-2','ring-red-400'), 300);
+    }
+
+    // 7) Mode toggles
+    function setVideoMode() {
+      isAudioOnly = false;
+      audioOverlay.style.display = 'none';
+      const iframe = document.querySelector('#youtube-player iframe');
+      if (iframe) iframe.style.opacity = '1';
+      videoBtn.className = "px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm";
+      audioBtn.className = "px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold";
+    }
+    function setAudioMode() {
+      isAudioOnly = true;
+
+      // Build overlay UI (once)
+      if (!audioOverlay.innerHTML) {
+        audioOverlay.innerHTML = `
+          <div class="flex flex-col items-center gap-3">
+            <div class="badge text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 10v4a1 1 0 0 0 1 1h3l3.293 3.293A1 1 0 0 0 12 18.586V5.414a1 1 0 0 0-1.707-.707L7 8H4a1 1 0 0 0-1 1z"/>
+                <path d="M16.5 12a4.5 4.5 0 0 0-2.25-3.894v7.788A4.5 4.5 0 0 0 16.5 12z"/>
+                <path d="M14.25 4.5v2.063A6.75 6.75 0 0 1 21 12a6.75 6.75 0 0 1-6.75 5.437V19.5A9 9 0 0 0 23.25 12 9 9 0 0 0 14.25 4.5z"/>
+              </svg>
+              <span>오디오 모드</span>
+            </div>
+            <div class="text-xs text-gray-100/90">영상은 숨기고 음성만 재생합니다</div>
+          </div>
+        `;
+      }
+      audioOverlay.style.display = 'flex';
+
+      const iframe = document.querySelector('#youtube-player iframe');
+      if (iframe) iframe.style.opacity = '0';
+
+      videoBtn.className = "px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold";
+      audioBtn.className = "px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm";
+    }
+
+    // 8) Loop controls
+    function startLoop() {
+      if (loopTimer) clearInterval(loopTimer);
+      if (loopStart == null || loopEnd == null || isNaN(loopStart) || isNaN(loopEnd) || loopEnd <= loopStart) {
+        errorMsg.textContent = '구간 반복: 시작/끝 값을 올바르게 설정하세요.';
+        errorMsg.classList.remove('hidden');
+        shake(loopStartInput);
+        shake(loopEndInput);
+        return;
+      }
+      errorMsg.classList.add('hidden');
+      isLooping = true;
+      loopBtn.textContent = '반복 중지';
+      loopBtn.classList.remove('bg-purple-600','hover:bg-purple-700');
+      loopBtn.classList.add('bg-purple-700','hover:bg-purple-800');
+
+      // If current time out of range, jump to start
+      try {
+        const t = player.getCurrentTime();
+        if (t < loopStart || t > loopEnd) {
+          player.seekTo(loopStart, true);
+        }
+      } catch (e) {}
+
+      loopTimer = setInterval(() => {
+        if (!player || !isLooping) return;
+        try {
+          const t = player.getCurrentTime();
+          if (t >= loopEnd - 0.08) {
+            player.seekTo(loopStart, true);
+          }
+        } catch (e) {}
+      }, 120);
+    }
+
+    function stopLoop() {
+      isLooping = false;
+      if (loopTimer) {
+        clearInterval(loopTimer);
+        loopTimer = null;
+      }
+      loopBtn.textContent = '반복 시작';
+      loopBtn.classList.add('bg-purple-600','hover:bg-purple-700');
+      loopBtn.classList.remove('bg-purple-700','hover:bg-purple-800');
+    }
+
+    function resetLoop() {
+      stopLoop();
+      loopStart = null;
+      loopEnd = null;
+      loopStartInput.value = '';
+      loopEndInput.value = '';
+    }
+
+    // 9) Events
+    loadBtn.addEventListener('click', () => {
+      const id = parseYouTubeId(linkInput.value);
+      if (!id) {
+        errorMsg.textContent = '유효하지 않은 유튜브 링크입니다.';
+        errorMsg.classList.remove('hidden');
+        shake(linkInput);
+        return;
+      }
+      errorMsg.classList.add('hidden');
+      loadVideoById(id);
+    });
+
+    linkInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadBtn.click();
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      linkInput.value = '';
+      linkInput.focus();
+    });
+
+    videoBtn.addEventListener('click', () => setVideoMode());
+    audioBtn.addEventListener('click', () => setAudioMode());
+
+    // Speed slider: update value while sliding, apply on pointerup/change
+    let sliding = false;
+    speedSlider.addEventListener('input', () => {
+      const idx = parseInt(speedSlider.value, 10) || 0;
+      const rate = availableRates[Math.min(Math.max(idx, 0), availableRates.length - 1)];
+      speedValue.textContent = formatRate(rate);
+      updateRangeFill(speedSlider);
+      // do not setPlaybackRate on every input to avoid jerkiness
+    });
+
+    const commitRate = () => {
+      const idx = parseInt(speedSlider.value, 10) || 0;
+      const rate = availableRates[Math.min(Math.max(idx, 0), availableRates.length - 1)];
+      try { player && player.setPlaybackRate(rate); } catch (e) {}
+    };
+    speedSlider.addEventListener('change', commitRate);
+    speedSlider.addEventListener('pointerdown', () => { sliding = true; });
+    window.addEventListener('pointerup', () => {
+      if (sliding) {
+        sliding = false;
+        commitRate();
+      }
+    });
+
+    // Loop buttons
+    setStartBtn.addEventListener('click', () => {
+      try {
+        const t = player.getCurrentTime();
+        loopStart = Math.max(0, Math.round(t * 10) / 10);
+        loopStartInput.value = loopStart;
+      } catch (e) {}
+    });
+    setEndBtn.addEventListener('click', () => {
+      try {
+        const t = player.getCurrentTime();
+        loopEnd = Math.max(0, Math.round(t * 10) / 10);
+        loopEndInput.value = loopEnd;
+      } catch (e) {}
+    });
+
+    loopStartInput.addEventListener('input', () => {
+      const v = parseFloat(loopStartInput.value);
+      loopStart = isNaN(v) ? null : v;
+    });
+    loopEndInput.addEventListener('input', () => {
+      const v = parseFloat(loopEndInput.value);
+      loopEnd = isNaN(v) ? null : v;
+    });
+
+    loopBtn.addEventListener('click', () => {
+      if (isLooping) stopLoop(); else startLoop();
+    });
+    loopResetBtn.addEventListener('click', resetLoop);
+
+    // Initialize overlay hidden content label (for accessibility)
+    (function initOverlay() {
+      audioOverlay.innerHTML = `
+        <div class="flex flex-col items-center gap-3">
+          <div class="badge text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 10v4a1 1 0 0 0 1 1h3l3.293 3.293A1 1 0 0 0 12 18.586V5.414a1 1 0 0 0-1.707-.707L7 8H4a1 1 0 0 0-1 1z"/>
+              <path d="M16.5 12a4.5 4.5 0 0 0-2.25-3.894v7.788A4.5 4.5 0 0 0 16.5 12z"/>
+              <path d="M14.25 4.5v2.063A6.75 6.75 0 0 1 21 12a6.75 6.75 0 0 1-6.75 5.437V19.5A9 9 0 0 0 23.25 12 9 9 0 0 0 14.25 4.5z"/>
+            </svg>
+            <span>오디오 모드</span>
+          </div>
+          <div class="text-xs text-gray-100/90">영상은 숨기고 음성만 재생합니다</div>
+        </div>
+      `;
+      audioOverlay.style.display = 'none';
+    })();
+
+    // Improve initial slider background
+    updateRangeFill(speedSlider);
+  </script>
+</body>
+</html>
+
+
+
+							<script>
+                            	
+    // 1) Load YT API dynamically
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+
+    // 2) State
+    let player = null;
+    let availableRates = [0.5, 1, 1.5, 2]; // fallback
+    let isAudioOnly = false;
+
+    let loopStart = null;
+    let loopEnd = null;
+    let loopTimer = null;
+    let isLooping = false;
+
+    // 3) UI elements
+    const linkInput = document.getElementById('youtube-link');
+    const clearBtn = document.getElementById('clear-input');
+    const loadBtn = document.getElementById('load-btn');
+    const errorMsg = document.getElementById('error-message');
+
+    const placeholder = document.getElementById('placeholder');
+    const controlsSection = document.getElementById('controls-section');
+    const audioOverlay = document.getElementById('audio-overlay');
+
+    const videoBtn = document.getElementById('video-mode-btn');
+    const audioBtn = document.getElementById('audio-mode-btn');
+
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValue = document.getElementById('speed-value');
+    const rateMin = document.getElementById('rate-min');
+    const rateMid = document.getElementById('rate-mid');
+    const rateMax = document.getElementById('rate-max');
+
+    const loopStartInput = document.getElementById('loop-start');
+    const loopEndInput = document.getElementById('loop-end');
+    const setStartBtn = document.getElementById('set-start-btn');
+    const setEndBtn = document.getElementById('set-end-btn');
+    const loopBtn = document.getElementById('loop-btn');
+    const loopResetBtn = document.getElementById('loop-reset-btn');
+
+    function formatRate(v) {
+      return (Math.round(v * 100) / 100).toFixed(2) + 'x';
+    }
+
+    function updateRangeFill(slider) {
+      const min = parseFloat(slider.min);
+      const max = parseFloat(slider.max);
+      const val = parseFloat(slider.value);
+      const percent = ((val - min) / (max - min)) * 100;
+      const fill = `linear-gradient(90deg, var(--accent) ${percent}%, var(--track) ${percent}%)`;
+      slider.style.background = fill;
+    }
+
+    // 4) YT API ready
+    window.onYouTubeIframeAPIReady = function() {
+      // waiting until user loads a video
+    };
+
+    function onPlayerReady() {
+      try {
+        const rates = player.getAvailablePlaybackRates();
+        if (Array.isArray(rates) && rates.length) {
+          availableRates = rates;
+        }
+      } catch (e) {}
+
+      // Setup speed slider based on available rates using index steps (prevents jerky feel)
+      speedSlider.min = 0;
+      speedSlider.max = String(availableRates.length - 1);
+      const defaultIndex = Math.max(0, availableRates.indexOf(1));
+      speedSlider.value = String(defaultIndex);
+      speedValue.textContent = formatRate(availableRates[defaultIndex]);
+
+      rateMin.textContent = availableRates[0] ? availableRates[0] + 'x' : '-';
+      rateMax.textContent = availableRates[availableRates.length - 1] ? availableRates[availableRates.length - 1] + 'x' : '-';
+      rateMid.textContent = availableRates[Math.floor(availableRates.length / 2)] ? availableRates[Math.floor(availableRates.length / 2)] + 'x' : '-';
+
+      updateRangeFill(speedSlider);
+    }
+
+    function onPlayerStateChange(e) {
+      // Loop check handled by interval; nothing special here.
+    }
+
+    // 5) Load or create player
+    function loadVideoById(videoId) {
+      errorMsg.classList.add('hidden');
+      placeholder.classList.add('hidden');
+      controlsSection.classList.remove('hidden');
+
+      if (player) {
+        player.loadVideoById(videoId);
+      } else {
+        player = new YT.Player('youtube-player', {
+          videoId,
+          playerVars: {
+            playsinline: 1,
+            rel: 0,
+            modestbranding: 1
+          },
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+      setVideoMode(); // default to video mode when loading a new one
+    }
+
+    // 6) Helpers
+    function parseYouTubeId(url) {
+      try {
+        const u = new URL(url.trim());
+        if (u.hostname === 'youtu.be') {
+          const id = u.pathname.slice(1);
+          return id || null;
+        }
+        if (/youtube\.com$|youtube-nocookie\.com$/.test(u.hostname)) {
+          const v = u.searchParams.get('v');
+          if (v) return v;
+          // /embed/VIDEOID
+          const parts = u.pathname.split('/').filter(Boolean);
+          const idxEmbed = parts.indexOf('embed');
+          const idxShorts = parts.indexOf('shorts');
+          if (idxEmbed !== -1 && parts[idxEmbed+1]) return parts[idxEmbed+1];
+          if (idxShorts !== -1 && parts[idxShorts+1]) return parts[idxShorts+1];
+        }
+      } catch (e) {
+        // not a URL, maybe raw id
+        const raw = url.trim();
+        if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+      }
+      return null;
+    }
+
+    function shake(el) {
+      el.classList.add('ring-2','ring-red-400');
+      el.animate(
+        [{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],
+        {duration: 180, iterations: 1}
+      );
+      setTimeout(() => el.classList.remove('ring-2','ring-red-400'), 300);
+    }
+
+    // 7) Mode toggles
+    function setVideoMode() {
+      isAudioOnly = false;
+      audioOverlay.style.display = 'none';
+      const iframe = document.querySelector('#youtube-player iframe');
+      if (iframe) iframe.style.opacity = '1';
+      videoBtn.className = "px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm";
+      audioBtn.className = "px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold";
+    }
+    function setAudioMode() {
+      isAudioOnly = true;
+
+      // Build overlay UI (once)
+      if (!audioOverlay.innerHTML) {
+        audioOverlay.innerHTML = `
+          <div class="flex flex-col items-center gap-3">
+            <div class="badge text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 10v4a1 1 0 0 0 1 1h3l3.293 3.293A1 1 0 0 0 12 18.586V5.414a1 1 0 0 0-1.707-.707L7 8H4a1 1 0 0 0-1 1z"/>
+                <path d="M16.5 12a4.5 4.5 0 0 0-2.25-3.894v7.788A4.5 4.5 0 0 0 16.5 12z"/>
+                <path d="M14.25 4.5v2.063A6.75 6.75 0 0 1 21 12a6.75 6.75 0 0 1-6.75 5.437V19.5A9 9 0 0 0 23.25 12 9 9 0 0 0 14.25 4.5z"/>
+              </svg>
+              <span>오디오 모드</span>
+            </div>
+            <div class="text-xs text-gray-100/90">영상은 숨기고 음성만 재생합니다</div>
+          </div>
+        `;
+      }
+      audioOverlay.style.display = 'flex';
+
+      const iframe = document.querySelector('#youtube-player iframe');
+      if (iframe) iframe.style.opacity = '0';
+
+      videoBtn.className = "px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-semibold";
+      audioBtn.className = "px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm";
+    }
+
+    // 8) Loop controls
+    function startLoop() {
+      if (loopTimer) clearInterval(loopTimer);
+      if (loopStart == null || loopEnd == null || isNaN(loopStart) || isNaN(loopEnd) || loopEnd <= loopStart) {
+        errorMsg.textContent = '구간 반복: 시작/끝 값을 올바르게 설정하세요.';
+        errorMsg.classList.remove('hidden');
+        shake(loopStartInput);
+        shake(loopEndInput);
+        return;
+      }
+      errorMsg.classList.add('hidden');
+      isLooping = true;
+      loopBtn.textContent = '반복 중지';
+      loopBtn.classList.remove('bg-purple-600','hover:bg-purple-700');
+      loopBtn.classList.add('bg-purple-700','hover:bg-purple-800');
+
+      // If current time out of range, jump to start
+      try {
+        const t = player.getCurrentTime();
+        if (t < loopStart || t > loopEnd) {
+          player.seekTo(loopStart, true);
+        }
+      } catch (e) {}
+
+      loopTimer = setInterval(() => {
+        if (!player || !isLooping) return;
+        try {
+          const t = player.getCurrentTime();
+          if (t >= loopEnd - 0.08) {
+            player.seekTo(loopStart, true);
+          }
+        } catch (e) {}
+      }, 120);
+    }
+
+    function stopLoop() {
+      isLooping = false;
+      if (loopTimer) {
+        clearInterval(loopTimer);
+        loopTimer = null;
+      }
+      loopBtn.textContent = '반복 시작';
+      loopBtn.classList.add('bg-purple-600','hover:bg-purple-700');
+      loopBtn.classList.remove('bg-purple-700','hover:bg-purple-800');
+    }
+
+    function resetLoop() {
+      stopLoop();
+      loopStart = null;
+      loopEnd = null;
+      loopStartInput.value = '';
+      loopEndInput.value = '';
+    }
+
+    // 9) Events
+    loadBtn.addEventListener('click', () => {
+      const id = parseYouTubeId(linkInput.value);
+      if (!id) {
+        errorMsg.textContent = '유효하지 않은 유튜브 링크입니다.';
+        errorMsg.classList.remove('hidden');
+        shake(linkInput);
+        return;
+      }
+      errorMsg.classList.add('hidden');
+      loadVideoById(id);
+    });
+
+    linkInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadBtn.click();
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      linkInput.value = '';
+      linkInput.focus();
+    });
+
+    videoBtn.addEventListener('click', () => setVideoMode());
+    audioBtn.addEventListener('click', () => setAudioMode());
+
+    // Speed slider: update value while sliding, apply on pointerup/change
+    let sliding = false;
+    speedSlider.addEventListener('input', () => {
+      const idx = parseInt(speedSlider.value, 10) || 0;
+      const rate = availableRates[Math.min(Math.max(idx, 0), availableRates.length - 1)];
+      speedValue.textContent = formatRate(rate);
+      updateRangeFill(speedSlider);
+      // do not setPlaybackRate on every input to avoid jerkiness
+    });
+
+    const commitRate = () => {
+      const idx = parseInt(speedSlider.value, 10) || 0;
+      const rate = availableRates[Math.min(Math.max(idx, 0), availableRates.length - 1)];
+      try { player && player.setPlaybackRate(rate); } catch (e) {}
+    };
+    speedSlider.addEventListener('change', commitRate);
+    speedSlider.addEventListener('pointerdown', () => { sliding = true; });
+    window.addEventListener('pointerup', () => {
+      if (sliding) {
+        sliding = false;
+        commitRate();
+      }
+    });
+
+    // Loop buttons
+    setStartBtn.addEventListener('click', () => {
+      try {
+        const t = player.getCurrentTime();
+        loopStart = Math.max(0, Math.round(t * 10) / 10);
+        loopStartInput.value = loopStart;
+      } catch (e) {}
+    });
+    setEndBtn.addEventListener('click', () => {
+      try {
+        const t = player.getCurrentTime();
+        loopEnd = Math.max(0, Math.round(t * 10) / 10);
+        loopEndInput.value = loopEnd;
+      } catch (e) {}
+    });
+
+    loopStartInput.addEventListener('input', () => {
+      const v = parseFloat(loopStartInput.value);
+      loopStart = isNaN(v) ? null : v;
+    });
+    loopEndInput.addEventListener('input', () => {
+      const v = parseFloat(loopEndInput.value);
+      loopEnd = isNaN(v) ? null : v;
+    });
+
+    loopBtn.addEventListener('click', () => {
+      if (isLooping) stopLoop(); else startLoop();
+    });
+    loopResetBtn.addEventListener('click', resetLoop);
+
+    // Initialize overlay hidden content label (for accessibility)
+    (function initOverlay() {
+      audioOverlay.innerHTML = `
+        <div class="flex flex-col items-center gap-3">
+          <div class="badge text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 10v4a1 1 0 0 0 1 1h3l3.293 3.293A1 1 0 0 0 12 18.586V5.414a1 1 0 0 0-1.707-.707L7 8H4a1 1 0 0 0-1 1z"/>
+              <path d="M16.5 12a4.5 4.5 0 0 0-2.25-3.894v7.788A4.5 4.5 0 0 0 16.5 12z"/>
+              <path d="M14.25 4.5v2.063A6.75 6.75 0 0 1 21 12a6.75 6.75 0 0 1-6.75 5.437V19.5A9 9 0 0 0 23.25 12 9 9 0 0 0 14.25 4.5z"/>
+            </svg>
+            <span>오디오 모드</span>
+          </div>
+          <div class="text-xs text-gray-100/90">영상은 숨기고 음성만 재생합니다</div>
+        </div>
+      `;
+      audioOverlay.style.display = 'none';
+    })();
+
+    // Improve initial slider background
+    updateRangeFill(speedSlider);
+  
+
+							</script>
+                        </body>
+                        </html>
+                    
