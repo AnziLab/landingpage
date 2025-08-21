@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guitar Scale Practice App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .app-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .fretboard-container {
+            position: relative;
+            background-color: #4a2c16;
+            border-radius: 0.75rem;
+            padding: 1.5rem 1rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .string {
+            height: 4px;
+            background-color: #c0c0c0;
+            border-radius: 2px;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .fret {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            background-color: #a0a0a0;
+            z-index: 10;
+        }
+        .fret-marker {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background-color: #2c3e50;
+            border-radius: 50%;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .fret-marker.double {
+            width: 40px;
+            height: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .fret-marker.double::before, .fret-marker.double::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background-color: #2c3e50;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .scale-note {
+            width: 32px;
+            height: 32px;
+            background-color: #3498db;
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            position: absolute;
+            z-index: 20;
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .scale-note:hover {
+            transform: scale(1.1);
+        }
+        .metronome-dot {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .metronome-dot.active {
+            background-color: #34d399;
+        }
+        .metronome-dot.silent {
+            background-color: #ef4444;
+        }
+        .control-group {
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.75rem;
+        }
+        .section-heading {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+<div class="app-container">
+    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">기타 스케일 연습기</h1>
+
+    <!-- Controls -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Scale Controls -->
+        <div class="control-group">
+            <h2 class="text-xl font-semibold mb-4 section-heading">스케일 설정</h2>
+            <div class="flex flex-col space-y-4">
+                <div class="flex items-center space-x-2">
+                    <label for="key-center" class="text-gray-600 w-1/4">키:</label>
+                    <select id="key-center" class="flex-1 p-2 rounded-lg border border-gray-300">
+                        <option value="C">C</option>
+                        <option value="C#">C#</option>
+                        <option value="D">D</option>
+                        <option value="D#">D#</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F#</option>
+                        <option value="G">G</option>
+                        <option value="G#">G#</option>
+                        <option value="A">A</option>
+                        <option value="A#">A#</option>
+                        <option value="B">B</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="scale-type" class="text-gray-600 w-1/4">스케일:</label>
+                    <select id="scale-type" class="flex-1 p-2 rounded-lg border border-gray-300">
+                        <option value="major">Major (Ionian)</option>
+                        <option value="dorian">Dorian</option>
+                        <option value="phrygian">Phrygian</option>
+                        <option value="lydian">Lydian</option>
+                        <option value="mixolydian">Mixolydian</option>
+                        <option value="aeolian">Aeolian (Natural Minor)</option>
+                        <option value="locrian">Locrian</option>
+                        <option value="whole-tone">Whole Tone</option>
+                        <option value="mixolydian-b9b13">Mixolydian b9b13</option>
+                        <option value="harmonic-minor">Harmonic Minor</option>
+                        <option value="bebop-dominant">Bebop Dominant</option>
+                    </select>
+                </div>
+                <button id="show-scale-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">스케일 표시</button>
+            </div>
+        </div>
+
+        <!-- Metronome Controls -->
+        <div class="control-group">
+            <h2 class="text-xl font-semibold mb-4 section-heading">메트로놈</h2>
+            <div class="flex flex-col space-y-4">
+                <div class="flex items-center space-x-2">
+                    <label for="bpm-metronome" class="text-gray-600 w-1/4">BPM:</label>
+                    <input type="number" id="bpm-metronome" value="60" min="1" max="300" class="flex-1 p-2 rounded-lg border border-gray-300">
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="time-signature" class="text-gray-600 w-1/4">박자표:</label>
+                    <select id="time-signature" class="flex-1 p-2 rounded-lg border border-gray-300">
+                        <option value="4/4">4/4</option>
+                        <option value="3/4">3/4</option>
+                        <option value="2/4">2/4</option>
+                        <option value="2/2">2/2</option>
+                        <option value="6/8">6/8</option>
+                        <option value="5/4">5/4</option>
+                    </select>
+                </div>
+                <div>
+                    <h3 class="text-md font-semibold mb-2">박자 세분화</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="subdivision-btn border border-gray-300 py-1 px-3 rounded-md transition-colors" data-subdivision="quarter">
+                            <span class="inline-block w-4 h-4 bg-gray-500 rounded-full"></span>
+                        </button>
+                        <button class="subdivision-btn border border-gray-300 py-1 px-3 rounded-md transition-colors" data-subdivision="eighths">
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                        </button>
+                        <button class="subdivision-btn border border-gray-300 py-1 px-3 rounded-md transition-colors" data-subdivision="triplet">
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                        </button>
+                        <button class="subdivision-btn border border-gray-300 py-1 px-3 rounded-md transition-colors" data-subdivision="triplet-rest">
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                        </button>
+                        <button class="subdivision-btn border border-gray-300 py-1 px-3 rounded-md transition-colors" data-subdivision="sixteenths">
+                            <span class="inline-block w-2 h-2 bg-gray-500 rounded-full mr-0.5"></span>
+                            <span class="inline-block w-2 h-2 bg-gray-500 rounded-full mr-0.5"></span>
+                            <span class="inline-block w-2 h-2 bg-gray-500 rounded-full mr-0.5"></span>
+                            <span class="inline-block w-2 h-2 bg-gray-500 rounded-full"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex justify-center items-center space-x-4">
+                    <button id="metronome-play-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">재생</button>
+                    <button id="metronome-stop-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">정지</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chord Progression Controls -->
+        <div class="control-group">
+            <h2 class="text-xl font-semibold mb-4 section-heading">코드 진행</h2>
+            <div class="flex flex-col space-y-4">
+                <div class="flex items-center space-x-2">
+                    <label for="chord-bpm" class="text-gray-600 w-1/4">BPM:</label>
+                    <input type="number" id="chord-bpm" value="60" min="1" max="300" class="flex-1 p-2 rounded-lg border border-gray-300">
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="chord-time-signature" class="text-gray-600 w-1/4">박자표:</label>
+                    <select id="chord-time-signature" class="flex-1 p-2 rounded-lg border border-gray-300">
+                        <option value="4/4">4/4</option>
+                        <option value="3/4">3/4</option>
+                        <option value="2/4">2/4</option>
+                        <option value="2/2">2/2</option>
+                        <option value="6/8">6/8</option>
+                        <option value="5/4">5/4</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label for="measure-count" class="text-gray-600 w-1/4">마디 수:</label>
+                    <input type="number" id="measure-count" value="4" min="1" class="flex-1 p-2 rounded-lg border border-gray-300">
+                </div>
+                <div id="chord-inputs-container" class="space-y-2">
+                    <!-- Chord input fields will be added here -->
+                </div>
+                <div class="flex justify-center items-center space-x-4">
+                    <button id="chord-play-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">재생</button>
+                    <button id="chord-stop-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">정지</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Display -->
+    <div class="fretboard-container relative mb-8">
+        <!-- Fretboard Markers -->
+        <div class="absolute inset-y-0 left-0 w-full flex justify-around items-center z-5">
+            <div class="fret-marker" style="left: calc(10% - 10px);"></div>
+            <div class="fret-marker" style="left: calc(20% - 10px);"></div>
+            <div class="fret-marker" style="left: calc(30% - 10px);"></div>
+            <div class="fret-marker" style="left: calc(40% - 10px);"></div>
+            <div class="fret-marker double" style="left: calc(50% - 20px);"></div>
+            <div class="fret-marker" style="left: calc(60% - 10px);"></div>
+            <div class="fret-marker" style="left: calc(70% - 10px);"></div>
+            <div class="fret-marker" style="left: calc(80% - 10px);"></div>
+        </div>
+
+        <!-- Fretboard -->
+        <div id="fretboard" class="relative">
+            <!-- Strings and Frets -->
+            <!-- E String (High) -->
+            <div class="string"></div>
+            <!-- B String -->
+            <div class="string"></div>
+            <!-- G String -->
+            <div class="string"></div>
+            <!-- D String -->
+            <div class="string"></div>
+            <!-- A String -->
+            <div class="string"></div>
+            <!-- E String (Low) -->
+            <div class="string"></div>
+
+            <!-- Frets -->
+            <div class="fret" style="left: 0;"></div>
+            <div class="fret" style="left: 10%;"></div>
+            <div class="fret" style="left: 20%;"></div>
+            <div class="fret" style="left: 30%;"></div>
+            <div class="fret" style="left: 40%;"></div>
+            <div class="fret" style="left: 50%;"></div>
+            <div class="fret" style="left: 60%;"></div>
+            <div class="fret" style="left: 70%;"></div>
+            <div class="fret" style="left: 80%;"></div>
+            <div class="fret" style="left: 90%;"></div>
+        </div>
+    </div>
+
+    <!-- Metronome Display -->
+    <div class="text-center mb-8">
+        <h2 class="text-xl font-semibold mb-4">메트로놈 박자</h2>
+        <div id="metronome-dots" class="flex justify-center items-center gap-4">
+            <!-- Metronome dots will be rendered here -->
+        </div>
+    </div>
+
+    <!-- Timer Display -->
+    <div class="control-group mb-8">
+        <h2 class="text-xl font-semibold mb-4 section-heading">연습 타이머</h2>
+        <div class="flex items-center space-x-4 mb-4">
+            <div class="flex items-center space-x-2">
+                <label for="timer-mode" class="text-gray-600">모드:</label>
+                <select id="timer-mode" class="p-2 rounded-lg border border-gray-300">
+                    <option value="time">시간</option>
+                    <option value="measure">마디</option>
+                </select>
+            </div>
+            <div id="timer-time-setting" class="flex items-center space-x-2">
+                <label for="timer-time" class="text-gray-600">시간 (분):</label>
+                <select id="timer-time" class="p-2 rounded-lg border border-gray-300">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                    <option value="25">25</option>
+                    <option value="30">30</option>
+                </select>
+            </div>
+            <div id="timer-measure-setting" class="hidden flex items-center space-x-2">
+                <label for="timer-measure" class="text-gray-600">마디 수:</label>
+                <input type="number" id="timer-measure" value="10" min="1" class="w-20 p-2 rounded-lg border border-gray-300">
+            </div>
+        </div>
+        <div class="flex justify-center items-center space-x-4">
+            <button id="timer-start-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">타이머 시작</button>
+            <button id="timer-reset-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">타이머 초기화</button>
+        </div>
+        <div id="timer-display" class="mt-4 text-2xl font-bold text-center">00:00</div>
+    </div>
+</div>
+
+<script>
+    // Constants
+    const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const GUITAR_TUNING = [4, 9, 2, 7, 11, 4]; // E, A, D, G, B, E (relative to C)
+    const SCALES = {
+        'major': [0, 2, 4, 5, 7, 9, 11],
+        'dorian': [0, 2, 3, 5, 7, 9, 10],
+        'phrygian': [0, 1, 3, 5, 7, 8, 10],
+        'lydian': [0, 2, 4, 6, 7, 9, 11],
+        'mixolydian': [0, 2, 4, 5, 7, 9, 10],
+        'aeolian': [0, 2, 3, 5, 7, 8, 10],
+        'locrian': [0, 1, 3, 5, 6, 8, 10],
+        'whole-tone': [0, 2, 4, 6, 8, 10],
+        'mixolydian-b9b13': [0, 1, 4, 5, 7, 8, 10],
+        'harmonic-minor': [0, 2, 3, 5, 7, 8, 11],
+        'bebop-dominant': [0, 2, 4, 5, 7, 9, 10, 11]
+    };
+    const INTERVAL_NAMES = ["R", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7"];
+    const BEATS = {
+        '2/2': 2, '3/4': 3, '4/4': 4, '2/4': 2, '6/8': 6, '5/4': 5
+    };
+    const SUBDIVISIONS = {
+        'quarter': 1,
+        'eighths': 2,
+        'triplet': 3,
+        'triplet-rest': 3, // For visual representation
+        'sixteenths': 4
+    };
+
+    // DOM Elements
+    const keyCenterSelect = document.getElementById('key-center');
+    const scaleTypeSelect = document.getElementById('scale-type');
+    const showScaleBtn = document.getElementById('show-scale-btn');
+    const fretboardEl = document.getElementById('fretboard');
+
+    const metronomeBPMInput = document.getElementById('bpm-metronome');
+    const metronomeTimeSignatureSelect = document.getElementById('time-signature');
+    const metronomePlayBtn = document.getElementById('metronome-play-btn');
+    const metronomeStopBtn = document.getElementById('metronome-stop-btn');
+    const metronomeDotsContainer = document.getElementById('metronome-dots');
+    const subdivisionBtns = document.querySelectorAll('.subdivision-btn');
+
+    const chordBPMInput = document.getElementById('chord-bpm');
+    const chordTimeSignatureSelect = document.getElementById('chord-time-signature');
+    const measureCountInput = document.getElementById('measure-count');
+    const chordInputsContainer = document.getElementById('chord-inputs-container');
+    const chordPlayBtn = document.getElementById('chord-play-btn');
+    const chordStopBtn = document.getElementById('chord-stop-btn');
+
+    const timerModeSelect = document.getElementById('timer-mode');
+    const timerTimeSetting = document.getElementById('timer-time-setting');
+    const timerMeasureSetting = document.getElementById('timer-measure-setting');
+    const timerTimeSelect = document.getElementById('timer-time');
+    const timerMeasureInput = document.getElementById('timer-measure');
+    const timerStartBtn = document.getElementById('timer-start-btn');
+    const timerResetBtn = document.getElementById('timer-reset-btn');
+    const timerDisplay = document.getElementById('timer-display');
+
+    // State Variables
+    let metronomeAudioContext;
+    let metronomeOscillator;
+    let metronomeGainNode;
+    let metronomeInterval;
+    let currentDotIndex = 0;
+    let silentBeats = {};
+    let subdivision = 'quarter';
+
+    let chordAudioContext;
+    let chordOscillator;
+    let chordGainNode;
+    let chordInterval;
+    let currentChordIndex = 0;
+    let chordProgression = [];
+    const baseFrequencies = {
+        'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13, 'E': 329.63, 'F': 349.23,
+        'F#': 369.99, 'G': 392.00, 'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
+    };
+
+    let timerInterval;
+    let timerStartTime;
+    let timerTotalSeconds = 0;
+    let totalMeasures = 0;
+    let currentMeasure = 0;
+
+    // Functions
+    function getNoteFromFret(stringIndex, fret) {
+        const rootNoteIndex = NOTES.indexOf(NOTES[GUITAR_TUNING[stringIndex]]);
+        const noteIndex = (rootNoteIndex + fret) % NOTES.length;
+        return NOTES[noteIndex];
+    }
+
+    function getNoteInterval(rootNote, note) {
+        const rootIndex = NOTES.indexOf(rootNote);
+        const noteIndex = NOTES.indexOf(note);
+        let interval = (noteIndex - rootIndex + 12) % 12;
+        return INTERVAL_NAMES[interval];
+    }
+
+    function renderFretboard(keyCenter, scaleType) {
+        fretboardEl.querySelectorAll('.scale-note').forEach(el => el.remove());
+        const rootNote = keyCenter;
+        const scaleIntervals = SCALES[scaleType];
+
+        for (let stringIndex = 0; stringIndex < 6; stringIndex++) {
+            for (let fret = 0; fret <= 22; fret++) {
+                const note = getNoteFromFret(stringIndex, fret);
+                const noteIndex = NOTES.indexOf(note);
+                const rootIndex = NOTES.indexOf(rootNote);
+                const interval = (noteIndex - rootIndex + 12) % 12;
+
+                if (scaleIntervals.includes(interval)) {
+                    const stringY = (stringIndex * 2.5) + 1; // Position notes based on string spacing
+                    const fretX = (fret / 22) * 100; // Position notes based on fret number
+                    
+                    const noteElement = document.createElement('div');
+                    noteElement.className = 'scale-note';
+                    noteElement.style.top = `calc(${stringY}rem + ${stringIndex * 0.5}rem)`;
+                    noteElement.style.left = `calc(${fretX}% + 2%)`; // Adjust position slightly for visual alignment
+
+                    // Position correctly between frets
+                    if (fret > 0) {
+                        const prevFretX = ((fret - 1) / 22) * 100;
+                        const center = (fretX + prevFretX) / 2;
+                        noteElement.style.left = `calc(${center}% + 2%)`;
+                    } else {
+                        noteElement.style.left = `1rem`; // Open string position
+                    }
+
+                    noteElement.textContent = getNoteInterval(rootNote, note);
+                    fretboardEl.appendChild(noteElement);
+                }
+            }
+        }
+    }
+
+    // Metronome Logic
+    function playClick(frequency, duration, volume) {
+        if (!metronomeAudioContext) {
+            metronomeAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const oscillator = metronomeAudioContext.createOscillator();
+        const gainNode = metronomeAudioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(metronomeAudioContext.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, metronomeAudioContext.currentTime);
+        gainNode.gain.setValueAtTime(volume, metronomeAudioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, metronomeAudioContext.currentTime + duration);
+
+        oscillator.start(metronomeAudioContext.currentTime);
+        oscillator.stop(metronomeAudioContext.currentTime + duration);
+    }
+
+    function updateMetronomeDots() {
+        metronomeDotsContainer.innerHTML = '';
+        const timeSignature = metronomeTimeSignatureSelect.value.split('/')[0];
+        const numBeats = parseInt(timeSignature, 10);
+        for (let i = 0; i < numBeats; i++) {
+            const dot = document.createElement('div');
+            dot.className = `metronome-dot ${silentBeats[i] ? 'silent' : ''}`;
+            dot.dataset.index = i;
+            dot.addEventListener('click', () => {
+                silentBeats[i] = !silentBeats[i];
+                dot.classList.toggle('silent');
+                dot.classList.toggle('bg-red-500');
+            });
+            metronomeDotsContainer.appendChild(dot);
+        }
+    }
+
+    function startMetronome() {
+        stopMetronome();
+        const bpm = parseInt(metronomeBPMInput.value, 10);
+        const beats = parseInt(metronomeTimeSignatureSelect.value.split('/')[0], 10);
+        const intervalInMs = (60000 / bpm) / SUBDIVISIONS[subdivision];
+
+        const dots = metronomeDotsContainer.querySelectorAll('.metronome-dot');
+        const totalDots = dots.length;
+
+        metronomeInterval = setInterval(() => {
+            // Update timer display if active
+            if (timerInterval) {
+                if (timerModeSelect.value === 'measure') {
+                    if (currentDotIndex === 0) {
+                        currentMeasure++;
+                        updateTimerDisplay();
+                        if (currentMeasure > totalMeasures) {
+                            stopTimer();
+                        }
+                    }
+                }
+            }
+
+            const currentBeat = Math.floor(currentDotIndex / SUBDIVISIONS[subdivision]);
+            const isClick = currentDotIndex % SUBDIVISIONS[subdivision] === 0;
+
+            dots.forEach((dot, index) => {
+                dot.classList.remove('active');
+            });
+
+            if (isClick && currentBeat < totalDots) {
+                dots[currentBeat].classList.add('active');
+                if (!silentBeats[currentBeat]) {
+                    const frequency = currentBeat === 0 ? 880 : 440; // High pitch for the first beat
+                    playClick(frequency, 0.05, 0.5);
+                }
+            }
+
+            currentDotIndex++;
+            if (currentDotIndex >= totalDots * SUBDIVISIONS[subdivision]) {
+                currentDotIndex = 0;
+            }
+        }, intervalInMs);
+    }
+
+    function stopMetronome() {
+        if (metronomeInterval) {
+            clearInterval(metronomeInterval);
+            metronomeInterval = null;
+        }
+        metronomeDotsContainer.querySelectorAll('.metronome-dot').forEach(dot => dot.classList.remove('active'));
+    }
+
+    // Chord Progression Logic
+    function renderChordInputs() {
+        chordInputsContainer.innerHTML = '';
+        const count = parseInt(measureCountInput.value, 10);
+        for (let i = 0; i < count; i++) {
+            const container = document.createElement('div');
+            container.className = 'flex items-center space-x-2';
+            container.innerHTML = `
+                <label class="text-gray-600">마디 ${i + 1}:</label>
+                <select class="chord-input flex-1 p-2 rounded-lg border border-gray-300">
+                    <option value="C">C</option>
+                    <option value="Am">Am</option>
+                    <option value="G">G</option>
+                    <option value="F">F</option>
+                </select>
+            `;
+            chordInputsContainer.appendChild(container);
+        }
+    }
+
+    function playChord(note, duration) {
+        if (!chordAudioContext) {
+            chordAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const frequency = baseFrequencies[note];
+        
+        const oscillator = chordAudioContext.createOscillator();
+        const gainNode = chordAudioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(chordAudioContext.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, chordAudioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.5, chordAudioContext.currentTime);
+
+        oscillator.start(chordAudioContext.currentTime);
+        oscillator.stop(chordAudioContext.currentTime + duration);
+    }
+
+    function startChordProgression() {
+        stopChordProgression();
+        const bpm = parseInt(chordBPMInput.value, 10);
+        const intervalInMs = (60000 / bpm) * (parseInt(chordTimeSignatureSelect.value.split('/')[0], 10) / parseInt(chordTimeSignatureSelect.value.split('/')[1], 10));
+
+        chordProgression = Array.from(document.querySelectorAll('.chord-input')).map(el => el.value);
+        currentChordIndex = 0;
+
+        playChord(chordProgression[currentChordIndex], intervalInMs / 1000);
+        currentChordIndex++;
+
+        chordInterval = setInterval(() => {
+            if (currentChordIndex >= chordProgression.length) {
+                currentChordIndex = 0;
+            }
+            playChord(chordProgression[currentChordIndex], intervalInMs / 1000);
+            currentChordIndex++;
+        }, intervalInMs);
+    }
+
+    function stopChordProgression() {
+        if (chordInterval) {
+            clearInterval(chordInterval);
+            chordInterval = null;
+        }
+    }
+
+    // Timer Logic
+    function updateTimerDisplay() {
+        if (timerModeSelect.value === 'time') {
+            const currentTime = Date.now();
+            const elapsedSeconds = Math.floor((currentTime - timerStartTime) / 1000);
+            const remainingSeconds = timerTotalSeconds - elapsedSeconds;
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            if (remainingSeconds <= 0) {
+                stopTimer();
+                timerDisplay.textContent = '00:00';
+                alert('연습 시간이 종료되었습니다!');
+            }
+        } else if (timerModeSelect.value === 'measure') {
+            timerDisplay.textContent = `${currentMeasure} / ${totalMeasures} 마디`;
+            if (currentMeasure >= totalMeasures) {
+                stopTimer();
+                alert('연습 마디를 모두 완료했습니다!');
+            }
+        }
+    }
+
+    function startTimer() {
+        stopTimer();
+        if (timerModeSelect.value === 'time') {
+            timerTotalSeconds = parseInt(timerTimeSelect.value, 10) * 60;
+            timerStartTime = Date.now();
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay(); // Initial display
+        } else { // measure mode
+            totalMeasures = parseInt(timerMeasureInput.value, 10);
+            currentMeasure = 0;
+            updateTimerDisplay();
+        }
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        currentMeasure = 0;
+    }
+
+    // Event Listeners
+    showScaleBtn.addEventListener('click', () => {
+        renderFretboard(keyCenterSelect.value, scaleTypeSelect.value);
+    });
+
+    metronomeTimeSignatureSelect.addEventListener('change', updateMetronomeDots);
+    metronomePlayBtn.addEventListener('click', startMetronome);
+    metronomeStopBtn.addEventListener('click', stopMetronome);
+
+    chordPlayBtn.addEventListener('click', startChordProgression);
+    chordStopBtn.addEventListener('click', stopChordProgression);
+
+    subdivisionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            subdivisionBtns.forEach(b => b.classList.remove('bg-gray-200'));
+            btn.classList.add('bg-gray-200');
+            subdivision = btn.dataset.subdivision;
+        });
+    });
+
+    measureCountInput.addEventListener('change', renderChordInputs);
+    
+    // Sync BPM and Time Signature
+    metronomeBPMInput.addEventListener('input', (e) => {
+        chordBPMInput.value = e.target.value;
+    });
+    metronomeTimeSignatureSelect.addEventListener('change', (e) => {
+        chordTimeSignatureSelect.value = e.target.value;
+    });
+    chordBPMInput.addEventListener('input', (e) => {
+        metronomeBPMInput.value = e.target.value;
+    });
+    chordTimeSignatureSelect.addEventListener('change', (e) => {
+        metronomeTimeSignatureSelect.value = e.target.value;
+    });
+
+    // Timer Event Listeners
+    timerModeSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'time') {
+            timerTimeSetting.classList.remove('hidden');
+            timerMeasureSetting.classList.add('hidden');
+        } else {
+            timerTimeSetting.classList.add('hidden');
+            timerMeasureSetting.classList.remove('hidden');
+        }
+    });
+
+    timerStartBtn.addEventListener('click', startTimer);
+    timerResetBtn.addEventListener('click', () => {
+        stopTimer();
+        timerDisplay.textContent = '00:00';
+    });
+
+    // Initial setup
+    document.addEventListener('DOMContentLoaded', () => {
+        renderFretboard(keyCenterSelect.value, scaleTypeSelect.value);
+        updateMetronomeDots();
+        renderChordInputs();
+        subdivisionBtns[0].classList.add('bg-gray-200');
+    });
+
+    window.onbeforeunload = () => {
+        stopMetronome();
+        stopChordProgression();
+        stopTimer();
+    };
+
+</script>
+
+</body>
+</html>
