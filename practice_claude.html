@@ -1,0 +1,591 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, Square } from 'lucide-react';
+
+const GuitarScalePracticeApp = () => {
+  // 기본 설정
+  const [keyCenter, setKeyCenter] = useState('C');
+  const [selectedScale, setSelectedScale] = useState('major');
+  const [bpm, setBpm] = useState(120);
+  const [timeSignature, setTimeSignature] = useState('4/4');
+  
+  // 메트로놈 상태
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentBeat, setCurrentBeat] = useState(0);
+  const [beatPattern, setBeatPattern] = useState([true, true, true, true]);
+  const [subdivision, setSubdivision] = useState('quarter');
+  const [subdivisionBeat, setSubdivisionBeat] = useState(0);
+  
+  // 타이머 상태
+  const [timerType, setTimerType] = useState('time');
+  const [timeMinutes, setTimeMinutes] = useState(5);
+  const [measureCount, setMeasureCount] = useState(16);
+  const [currentMeasure, setCurrentMeasure] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(5 * 60);
+  
+  // 코드 진행 상태
+  const [chordProgression, setChordProgression] = useState(['C', 'Am', 'F', 'G']);
+  const [repeatMeasures, setRepeatMeasures] = useState(4);
+  const [currentChordIndex, setCurrentChordIndex] = useState(0);
+  
+  // 오디오 컨텍스트
+  const audioContextRef = useRef(null);
+  const intervalRef = useRef(null);
+  const timerIntervalRef = useRef(null);
+  
+  // 기타 문자열 (표준 튜닝)
+  const strings = ['E', 'B', 'G', 'D', 'A', 'E'];
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const keyOptions = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  
+  // 프렛 인레이 위치
+  const inlayPositions = [3, 5, 7, 9, 12, 15, 17, 19];
+  const doubleInlay = 12;
+  
+  // 스케일 정의
+  const scales = {
+    'major': { name: '메이저', intervals: [0, 2, 4, 5, 7, 9, 11] },
+    'minor': { name: '내추럴 마이너', intervals: [0, 2, 3, 5, 7, 8, 10] },
+    'harmonic_minor': { name: '하모닉 마이너', intervals: [0, 2, 3, 5, 7, 8, 11] },
+    'dorian': { name: '도리안', intervals: [0, 2, 3, 5, 7, 9, 10] },
+    'phrygian': { name: '프리지안', intervals: [0, 1, 3, 5, 7, 8, 10] },
+    'lydian': { name: '리디안', intervals: [0, 2, 4, 6, 7, 9, 11] },
+    'mixolydian': { name: '믹솔리디언', intervals: [0, 2, 4, 5, 7, 9, 10] },
+    'locrian': { name: '로크리안', intervals: [0, 1, 3, 5, 6, 8, 10] },
+    'mixolydian_b9b13': { name: '믹솔리디언 ♭9♭13', intervals: [0, 1, 4, 5, 7, 8, 10] },
+    'whole_tone': { name: '홀톤', intervals: [0, 2, 4, 6, 8, 10] },
+    'bebop_major': { name: '비밥 메이저', intervals: [0, 2, 4, 5, 7, 8, 9, 11] }
+  };
+  
+  // 박자표 옵션
+  const timeSignatures = ['2/2', '3/4', '4/4', '6/8'];
+  
+  // 세분화 옵션
+  const subdivisions = {
+    'quarter': { name: '4분음표', beats: 1 },
+    'eighth': { name: '8분음표', beats: 2 },
+    'eighth_triplet': { name: '8분 셋잇단음표', beats: 3 },
+    'eighth_triplet_rest': { name: '8분 셋잇단음표 (가운데 쉼)', beats: 3 },
+    'sixteenth': { name: '16분음표', beats: 4 },
+    'sixteenth_1_4': { name: '16분음표 (1,4박)', beats: 4 }
+  };
+  
+  // 음표 이름 변환
+  const getNoteFromSemitone = (rootNote, semitones) => {
+    const rootIndex = notes.indexOf(rootNote);
+    const noteIndex = (rootIndex + semitones) % 12;
+    return notes[noteIndex];
+  };
+  
+  // 도수 표시 변환
+  const getIntervalName = (semitones) => {
+    const intervalNames = {
+      0: 'R', 1: '♭2', 2: '2', 3: '♭3', 4: '3', 5: '4',
+      6: '♯4', 7: '5', 8: '♭6', 9: '6', 10: '♭7', 11: '7',
+      12: 'R'
+    };
+    return intervalNames[semitones] || semitones.toString();
+  };
+  
+  // 프렛보드 노트 계산
+  const getFretNote = (stringIndex, fret) => {
+    const openNotes = ['E', 'B', 'G', 'D', 'A', 'E'];
+    const openNote = openNotes[stringIndex];
+    const openIndex = notes.indexOf(openNote);
+    const noteIndex = (openIndex + fret) % 12;
+    return notes[noteIndex];
+  };
+  
+  // 스케일 노트 확인
+  const isScaleNote = (note) => {
+    const rootIndex = notes.indexOf(keyCenter);
+    const scaleIntervals = scales[selectedScale].intervals;
+    
+    for (let interval of scaleIntervals) {
+      const scaleNoteIndex = (rootIndex + interval) % 12;
+      if (notes.indexOf(note) === scaleNoteIndex) {
+        return interval;
+      }
+    }
+    return null;
+  };
+  
+  // 오디오 컨텍스트 초기화
+  const initAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  };
+  
+  // 메트로놈 소리 재생
+  const playMetronomeSound = (isAccent = false) => {
+    initAudioContext();
+    const ctx = audioContextRef.current;
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.frequency.setValueAtTime(isAccent ? 800 : 600, ctx.currentTime);
+    oscillator.type = 'square';
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.1);
+  };
+  
+  // 베이스 음 재생
+  const playBassNote = (note) => {
+    initAudioContext();
+    const ctx = audioContextRef.current;
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    const noteIndex = notes.indexOf(note);
+    const frequency = 82.41 * Math.pow(2, noteIndex / 12); // E2부터 시작
+    
+    oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+    oscillator.type = 'sawtooth';
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 1);
+  };
+  
+  // 박자 패턴 토글
+  const toggleBeat = (beatIndex) => {
+    const newPattern = [...beatPattern];
+    newPattern[beatIndex] = !newPattern[beatIndex];
+    setBeatPattern(newPattern);
+  };
+  
+  // 박자표에 따른 박자 수 계산
+  const getBeatsPerMeasure = () => {
+    return parseInt(timeSignature.split('/')[0]);
+  };
+  
+  // 세분화에 따른 박자 처리
+  const getSubdivisionPattern = () => {
+    const subType = subdivisions[subdivision];
+    if (subdivision === 'eighth_triplet_rest') {
+      return [true, false, true]; // 가운데 쉼
+    } else if (subdivision === 'sixteenth_1_4') {
+      return [true, false, false, true]; // 1, 4박만
+    }
+    return Array(subType.beats).fill(true);
+  };
+  
+  // 메트로놈 시작/정지
+  const toggleMetronome = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    } else {
+      setIsPlaying(true);
+      setCurrentBeat(0);
+      setSubdivisionBeat(0);
+      setCurrentMeasure(0);
+      setTimeLeft(timerType === 'time' ? timeMinutes * 60 : measureCount * 4 * 60 / bpm);
+      
+      const beatsPerMeasure = getBeatsPerMeasure();
+      const subdivisionPattern = getSubdivisionPattern();
+      const totalSubdivisions = subdivisionPattern.length;
+      const intervalTime = (60 / bpm) * (4 / subdivisions[subdivision].beats) * 1000;
+      
+      intervalRef.current = setInterval(() => {
+        setSubdivisionBeat(prev => {
+          const nextSubBeat = (prev + 1) % totalSubdivisions;
+          
+          if (nextSubBeat === 0) {
+            setCurrentBeat(prevBeat => {
+              const nextBeat = (prevBeat + 1) % beatsPerMeasure;
+              
+              if (nextBeat === 0) {
+                setCurrentMeasure(prevMeasure => prevMeasure + 1);
+                // 코드 진행
+                setCurrentChordIndex(prevIndex => (prevIndex + 1) % chordProgression.length);
+                const currentChord = chordProgression[currentChordIndex];
+                playBassNote(currentChord);
+              }
+              
+              return nextBeat;
+            });
+          }
+          
+          // 메트로놈 소리 재생
+          if (subdivisionPattern[nextSubBeat]) {
+            setCurrentBeat(prevBeat => {
+              const isAccent = prevBeat === 0 && nextSubBeat === 0;
+              if (beatPattern[prevBeat]) {
+                playMetronomeSound(isAccent);
+              }
+              return prevBeat;
+            });
+          }
+          
+          return nextSubBeat;
+        });
+      }, intervalTime);
+      
+      // 타이머
+      timerIntervalRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsPlaying(false);
+            clearInterval(intervalRef.current);
+            clearInterval(timerIntervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+  
+  // 정지
+  const stopMetronome = () => {
+    setIsPlaying(false);
+    setCurrentBeat(0);
+    setSubdivisionBeat(0);
+    setCurrentMeasure(0);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+  };
+  
+  // 컴포넌트 언마운트시 정리
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, []);
+  
+  // 박자표 변경시 패턴 업데이트
+  useEffect(() => {
+    const beatsPerMeasure = getBeatsPerMeasure();
+    setBeatPattern(Array(beatsPerMeasure).fill(true));
+    setCurrentBeat(0);
+  }, [timeSignature]);
+  
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  return (
+    <div className="min-h-screen bg-gray-900 text-white p-4">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-6">기타 스케일 연습 앱</h1>
+        
+        {/* 상단 컨트롤 */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <label className="block mb-2">키 센터</label>
+            <select 
+              value={keyCenter} 
+              onChange={(e) => setKeyCenter(e.target.value)}
+              className="w-full bg-gray-700 p-2 rounded"
+            >
+              {keyOptions.map(key => (
+                <option key={key} value={key}>{key}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <label className="block mb-2">스케일</label>
+            <select 
+              value={selectedScale} 
+              onChange={(e) => setSelectedScale(e.target.value)}
+              className="w-full bg-gray-700 p-2 rounded"
+            >
+              {Object.entries(scales).map(([key, scale]) => (
+                <option key={key} value={key}>{scale.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <label className="block mb-2">BPM</label>
+            <input 
+              type="range" 
+              min="60" 
+              max="200" 
+              value={bpm}
+              onChange={(e) => setBpm(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-center mt-1">{bpm}</div>
+          </div>
+          
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <label className="block mb-2">박자표</label>
+            <select 
+              value={timeSignature} 
+              onChange={(e) => setTimeSignature(e.target.value)}
+              className="w-full bg-gray-700 p-2 rounded"
+            >
+              {timeSignatures.map(ts => (
+                <option key={ts} value={ts}>{ts}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 프렛보드 */}
+          <div className="lg:col-span-2 bg-gray-800 p-4 rounded-lg">
+            <h3 className="text-xl font-semibold mb-4">프렛보드</h3>
+            <div className="overflow-x-auto">
+              <div className="inline-block min-w-full">
+                {/* 프렛 번호 */}
+                <div className="flex mb-2">
+                  <div className="w-12"></div>
+                  {Array.from({length: 23}, (_, i) => (
+                    <div key={i} className="w-12 text-center text-xs text-gray-400">
+                      {i === 0 ? '' : i}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* 인레이 표시 */}
+                <div className="flex mb-1">
+                  <div className="w-12"></div>
+                  {Array.from({length: 23}, (_, fret) => (
+                    <div key={fret} className="w-12 flex justify-center">
+                      {fret === doubleInlay ? (
+                        <div className="flex space-x-1">
+                          <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                          <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                        </div>
+                      ) : inlayPositions.includes(fret) ? (
+                        <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* 문자열 */}
+                {strings.map((string, stringIndex) => (
+                  <div key={stringIndex} className="flex items-center border-b border-gray-700 py-2">
+                    <div className="w-12 text-center font-mono">{string}</div>
+                    {Array.from({length: 23}, (_, fret) => {
+                      const note = getFretNote(stringIndex, fret);
+                      const interval = isScaleNote(note);
+                      return (
+                        <div key={fret} className="w-12 flex justify-center items-center relative">
+                          <div className="absolute inset-0 border-r border-gray-600"></div>
+                          {interval !== null && (
+                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold z-10">
+                              {getIntervalName(interval)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* 사이드바 컨트롤 */}
+          <div className="space-y-6">
+            {/* 메트로놈 컨트롤 */}
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-xl font-semibold mb-4">메트로놈</h3>
+              
+              {/* 재생 컨트롤 */}
+              <div className="flex gap-2 mb-4">
+                <button 
+                  onClick={toggleMetronome}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 p-2 rounded flex items-center justify-center"
+                >
+                  {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                </button>
+                <button 
+                  onClick={stopMetronome}
+                  className="bg-red-600 hover:bg-red-700 p-2 rounded"
+                >
+                  <Square size={20} />
+                </button>
+              </div>
+              
+              {/* 박자 표시 */}
+              <div className="flex justify-center gap-2 mb-4">
+                {beatPattern.map((active, index) => (
+                  <button
+                    key={index}
+                    onClick={() => toggleBeat(index)}
+                    className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold
+                      ${currentBeat === index && isPlaying ? 'animate-pulse' : ''}
+                      ${active ? 'bg-green-500 border-green-400' : 'bg-gray-600 border-gray-500'}
+                    `}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+              
+              {/* 세분화 설정 */}
+              <div className="mb-4">
+                <label className="block mb-2">세분화</label>
+                <select 
+                  value={subdivision} 
+                  onChange={(e) => setSubdivision(e.target.value)}
+                  className="w-full bg-gray-700 p-2 rounded"
+                >
+                  {Object.entries(subdivisions).map(([key, sub]) => (
+                    <option key={key} value={key}>{sub.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* 세분화 표시 */}
+              <div className="flex justify-center gap-1 mb-4">
+                {getSubdivisionPattern().map((active, index) => (
+                  <div
+                    key={index}
+                    className={`w-3 h-3 rounded-full
+                      ${subdivisionBeat === index && isPlaying ? 'animate-pulse' : ''}
+                      ${active ? 'bg-yellow-400' : 'bg-gray-600'}
+                    `}
+                  />
+                ))}
+              </div>
+            </div>
+            
+            {/* 타이머 */}
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-xl font-semibold mb-4">타이머</h3>
+              
+              <div className="mb-4">
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => setTimerType('time')}
+                    className={`flex-1 p-2 rounded ${timerType === 'time' ? 'bg-blue-600' : 'bg-gray-600'}`}
+                  >
+                    시간
+                  </button>
+                  <button
+                    onClick={() => setTimerType('measure')}
+                    className={`flex-1 p-2 rounded ${timerType === 'measure' ? 'bg-blue-600' : 'bg-gray-600'}`}
+                  >
+                    소절
+                  </button>
+                </div>
+                
+                {timerType === 'time' ? (
+                  <div>
+                    <label className="block mb-2">시간 (분)</label>
+                    <select 
+                      value={timeMinutes} 
+                      onChange={(e) => setTimeMinutes(parseInt(e.target.value))}
+                      className="w-full bg-gray-700 p-2 rounded"
+                    >
+                      {[5, 10, 15, 20, 25, 30].map(min => (
+                        <option key={min} value={min}>{min}분</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block mb-2">소절 수</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={measureCount}
+                      onChange={(e) => setMeasureCount(parseInt(e.target.value))}
+                      className="w-full bg-gray-700 p-2 rounded"
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-center">
+                <div className="text-2xl font-mono mb-2">{formatTime(timeLeft)}</div>
+                <div className="text-sm text-gray-400">소절: {currentMeasure}</div>
+              </div>
+            </div>
+            
+            {/* 코드 진행 */}
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-xl font-semibold mb-4">코드 진행</h3>
+              
+              <div className="mb-4">
+                <label className="block mb-2">반복 마디 수</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={repeatMeasures}
+                  onChange={(e) => setRepeatMeasures(parseInt(e.target.value))}
+                  className="w-full bg-gray-700 p-2 rounded"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                {chordProgression.map((chord, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="w-8 text-center">{index + 1}.</span>
+                    <select 
+                      value={chord} 
+                      onChange={(e) => {
+                        const newProgression = [...chordProgression];
+                        newProgression[index] = e.target.value;
+                        setChordProgression(newProgression);
+                      }}
+                      className={`flex-1 bg-gray-700 p-2 rounded ${
+                        currentChordIndex === index && isPlaying ? 'bg-blue-700' : ''
+                      }`}
+                    >
+                      {keyOptions.map(key => (
+                        <option key={key} value={key}>{key}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => setChordProgression([...chordProgression, 'C'])}
+                  className="bg-green-600 hover:bg-green-700 p-2 rounded text-sm"
+                >
+                  코드 추가
+                </button>
+                <button
+                  onClick={() => setChordProgression(chordProgression.slice(0, -1))}
+                  className="bg-red-600 hover:bg-red-700 p-2 rounded text-sm"
+                  disabled={chordProgression.length <= 1}
+                >
+                  코드 삭제
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GuitarScalePracticeApp;
