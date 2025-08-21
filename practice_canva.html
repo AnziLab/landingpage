@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기타 스케일 연습 도구</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fret-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #666;
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .fret-marker.double {
+            width: 6px;
+            height: 6px;
+        }
+        .scale-note {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .scale-note:hover {
+            transform: scale(1.1);
+        }
+        .beat-indicator {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .beat-indicator.active {
+            background: #3b82f6;
+            border-color: #1d4ed8;
+        }
+        .beat-indicator.disabled {
+            background: #ef4444;
+            border-color: #dc2626;
+        }
+        .string {
+            height: 2px;
+            background: #8b5cf6;
+            position: relative;
+        }
+        .fret {
+            border-right: 2px solid #666;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen text-white p-4">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-6">🎸 기타 스케일 연습 도구</h1>
+        
+        <!-- 설정 패널 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- 스케일 설정 -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3">🎵 스케일 설정</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm mb-1">키 센터</label>
+                        <select id="keyCenter" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                            <option value="C">C</option>
+                            <option value="C#">C#</option>
+                            <option value="D">D</option>
+                            <option value="D#">D#</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="F#">F#</option>
+                            <option value="G">G</option>
+                            <option value="G#">G#</option>
+                            <option value="A">A</option>
+                            <option value="A#">A#</option>
+                            <option value="B">B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">스케일</label>
+                        <select id="scaleType" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                            <option value="major">메이저 (이오니안)</option>
+                            <option value="dorian">도리안</option>
+                            <option value="phrygian">프리지안</option>
+                            <option value="lydian">리디안</option>
+                            <option value="mixolydian">믹솔리디언</option>
+                            <option value="minor">마이너 (에올리안)</option>
+                            <option value="locrian">로크리안</option>
+                            <option value="wholeTone">홀톤</option>
+                            <option value="mixolydianbF9bF13">믹솔리디언 ♭9♭13</option>
+                            <option value="naturalMinor">내추럴 마이너</option>
+                            <option value="harmonicMinor">하모닉 마이너</option>
+                            <option value="bebop">비밥</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 메트로놈 설정 -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3">🥁 메트로놈</h3>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm mb-1">BPM</label>
+                            <input type="number" id="bpm" value="120" min="60" max="200" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">박자표</label>
+                            <select id="timeSignature" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                                <option value="2/2">2/2</option>
+                                <option value="3/4">3/4</option>
+                                <option value="4/4" selected>4/4</option>
+                                <option value="6/8">6/8</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">재생 옵션</label>
+                        <select id="subdivisions" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                            <option value="quarter">4분음표</option>
+                            <option value="eighth">8분음표</option>
+                            <option value="triplet">셋잇단음표</option>
+                            <option value="tripletGhost">셋잇단음표 (가운데 빈)</option>
+                            <option value="sixteenth">16분음표</option>
+                            <option value="sixteenthSparse">16분음표 (1,4박만)</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="metronomePlay" class="flex-1 bg-green-600 hover:bg-green-700 rounded px-3 py-2 text-sm">재생</button>
+                        <button id="metronomeStop" class="flex-1 bg-red-600 hover:bg-red-700 rounded px-3 py-2 text-sm">정지</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 타이머 설정 -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3">⏱️ 연습 타이머</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm mb-1">타이머 타입</label>
+                        <select id="timerType" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                            <option value="time">시간 타이머</option>
+                            <option value="bars">소절 타이머</option>
+                        </select>
+                    </div>
+                    <div id="timeTimerDiv">
+                        <label class="block text-sm mb-1">시간 (분)</label>
+                        <select id="timeTimer" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                            <option value="5">5분</option>
+                            <option value="10">10분</option>
+                            <option value="15">15분</option>
+                            <option value="20">20분</option>
+                        </select>
+                    </div>
+                    <div id="barsTimerDiv" style="display: none;">
+                        <label class="block text-sm mb-1">소절 수</label>
+                        <input type="number" id="barsTimer" value="32" min="1" max="999" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                    </div>
+                    <div class="text-center">
+                        <div id="timerDisplay" class="text-2xl font-bold mb-2">5:00</div>
+                        <button id="timerStart" class="bg-blue-600 hover:bg-blue-700 rounded px-4 py-2 text-sm">시작</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 박자 표시기 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-3 text-center">박자 표시기</h3>
+            <div id="beatIndicators" class="flex justify-center gap-4"></div>
+        </div>
+
+        <!-- 기타 프렛보드 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-4 text-center">기타 프렛보드</h3>
+            <div class="overflow-x-auto">
+                <div id="fretboard" class="relative min-w-[1200px] mx-auto"></div>
+            </div>
+        </div>
+
+        <!-- 코드 진행 설정 -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+            <h3 class="text-lg font-semibold mb-3">🎼 코드 진행 연습</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm mb-1">반복 마디 수</label>
+                    <input type="number" id="chordBars" value="4" min="1" max="16" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">코드 1</label>
+                    <input type="text" id="chord1" value="C" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">코드 2</label>
+                    <input type="text" id="chord2" value="Am" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">코드 3</label>
+                    <input type="text" id="chord3" value="F" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm mb-1">코드 4</label>
+                    <input type="text" id="chord4" value="G" class="w-full bg-white/20 rounded px-3 py-2 text-white">
+                </div>
+                <div class="flex gap-2 items-end">
+                    <button id="chordPlay" class="flex-1 bg-purple-600 hover:bg-purple-700 rounded px-4 py-2">코드 진행 재생</button>
+                    <button id="chordStop" class="flex-1 bg-red-600 hover:bg-red-700 rounded px-4 py-2">정지</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 음계 정의
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const stringTuning = ['E', 'A', 'D', 'G', 'B', 'E']; // 6현부터 1현까지
+
+        // 스케일 패턴 정의 (반음 간격)
+        const scalePatterns = {
+            major: [0, 2, 4, 5, 7, 9, 11],
+            dorian: [0, 2, 3, 5, 7, 9, 10],
+            phrygian: [0, 1, 3, 5, 7, 8, 10],
+            lydian: [0, 2, 4, 6, 7, 9, 11],
+            mixolydian: [0, 2, 4, 5, 7, 9, 10],
+            minor: [0, 2, 3, 5, 7, 8, 10],
+            locrian: [0, 1, 3, 5, 6, 8, 10],
+            wholeTone: [0, 2, 4, 6, 8, 10],
+            mixolydianbF9bF13: [0, 1, 4, 5, 7, 8, 10],
+            naturalMinor: [0, 2, 3, 5, 7, 8, 10],
+            harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+            bebop: [0, 2, 4, 5, 7, 9, 10, 11]
+        };
+
+        // 스케일 도수 표기
+        const scaleIntervals = {
+            major: ['R', '2', '3', '4', '5', '6', '7'],
+            dorian: ['R', '2', 'b3', '4', '5', '6', 'b7'],
+            phrygian: ['R', 'b2', 'b3', '4', '5', 'b6', 'b7'],
+            lydian: ['R', '2', '3', '#4', '5', '6', '7'],
+            mixolydian: ['R', '2', '3', '4', '5', '6', 'b7'],
+            minor: ['R', '2', 'b3', '4', '5', 'b6', 'b7'],
+            locrian: ['R', 'b2', 'b3', '4', 'b5', 'b6', 'b7'],
+            wholeTone: ['R', '2', '3', '#4', '#5', '#6'],
+            mixolydianbF9bF13: ['R', 'b2', '3', '4', '5', 'b6', 'b7'],
+            naturalMinor: ['R', '2', 'b3', '4', '5', 'b6', 'b7'],
+            harmonicMinor: ['R', '2', 'b3', '4', '5', 'b6', '7'],
+            bebop: ['R', '2', '3', '4', '5', '6', 'b7', '7']
+        };
+
+        // 색상 정의
+        const intervalColors = {
+            'R': '#ef4444',     // 빨강 (루트)
+            '2': '#f97316',     // 주황
+            'b2': '#f59e0b',    // 노랑-주황
+            '3': '#eab308',     // 노랑
+            'b3': '#84cc16',    // 연두
+            '4': '#22c55e',     // 초록
+            '#4': '#10b981',    // 청록
+            '5': '#06b6d4',     // 하늘
+            'b5': '#0ea5e9',    // 파랑
+            '6': '#3b82f6',     // 진파랑
+            'b6': '#6366f1',    // 남보라
+            '7': '#8b5cf6',     // 보라
+            'b7': '#a855f7',    // 진보라
+            '#5': '#d946ef',    // 자주
+            '#6': '#ec4899'     // 분홍
+        };
+
+        let metronomeInterval = null;
+        let chordInterval = null;
+        let timerInterval = null;
+        let currentBeat = 0;
+        let beatCount = 4;
+        let beatStates = [true, true, true, true];
+        let audioContext = null;
+        let timerSeconds = 0;
+        let timerBars = 0;
+        let currentChordBar = 0;
+
+        // 오디오 컨텍스트 초기화
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // 비프 소리 생성
+        function playBeep(frequency = 800, duration = 100) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        // 베이스 소리 생성
+        function playBass(frequency = 82, duration = 500) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sawtooth';
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        // 프렛보드 생성
+        function createFretboard() {
+            const fretboard = document.getElementById('fretboard');
+            fretboard.innerHTML = '';
+            
+            const fretboardWidth = 1200;
+            const fretboardHeight = 200;
+            const fretWidth = fretboardWidth / 23; // 0프렛 + 22프렛
+            
+            fretboard.style.width = fretboardWidth + 'px';
+            fretboard.style.height = fretboardHeight + 'px';
+            
+            // 현 그리기
+            for (let string = 0; string < 6; string++) {
+                const stringEl = document.createElement('div');
+                stringEl.className = 'string';
+                stringEl.style.position = 'absolute';
+                stringEl.style.top = (30 + string * 25) + 'px';
+                stringEl.style.left = '0px';
+                stringEl.style.width = '100%';
+                fretboard.appendChild(stringEl);
+            }
+            
+            // 프렛 그리기
+            for (let fret = 1; fret <= 22; fret++) {
+                const fretEl = document.createElement('div');
+                fretEl.className = 'fret';
+                fretEl.style.position = 'absolute';
+                fretEl.style.left = (fret * fretWidth) + 'px';
+                fretEl.style.top = '20px';
+                fretEl.style.height = '160px';
+                fretboard.appendChild(fretEl);
+                
+                // 프렛 마커 (인레이)
+                if ([3, 5, 7, 9, 15, 17, 19].includes(fret)) {
+                    const marker = document.createElement('div');
+                    marker.className = 'fret-marker';
+                    marker.style.left = (fret * fretWidth - fretWidth/2 - 4) + 'px';
+                    fretboard.appendChild(marker);
+                } else if (fret === 12) {
+                    // 12프렛은 두 개의 마커
+                    const marker1 = document.createElement('div');
+                    marker1.className = 'fret-marker double';
+                    marker1.style.left = (fret * fretWidth - fretWidth/2 - 3) + 'px';
+                    marker1.style.top = '40%';
+                    fretboard.appendChild(marker1);
+                    
+                    const marker2 = document.createElement('div');
+                    marker2.className = 'fret-marker double';
+                    marker2.style.left = (fret * fretWidth - fretWidth/2 - 3) + 'px';
+                    marker2.style.top = '60%';
+                    fretboard.appendChild(marker2);
+                }
+            }
+            
+            updateScale();
+        }
+
+        // 음표 인덱스 계산
+        function getNoteIndex(note) {
+            return notes.indexOf(note);
+        }
+
+        // 프렛의 음표 계산
+        function getFretNote(stringIndex, fret) {
+            const openNote = stringTuning[stringIndex];
+            const openNoteIndex = getNoteIndex(openNote);
+            return notes[(openNoteIndex + fret) % 12];
+        }
+
+        // 스케일 업데이트
+        function updateScale() {
+            const keyCenter = document.getElementById('keyCenter').value;
+            const scaleType = document.getElementById('scaleType').value;
+            const fretboard = document.getElementById('fretboard');
+            
+            // 기존 스케일 노트 제거
+            const existingNotes = fretboard.querySelectorAll('.scale-note');
+            existingNotes.forEach(note => note.remove());
+            
+            const pattern = scalePatterns[scaleType];
+            const intervals = scaleIntervals[scaleType];
+            const keyCenterIndex = getNoteIndex(keyCenter);
+            const fretWidth = 1200 / 23;
+            
+            // 스케일 노트들 계산
+            const scaleNotes = pattern.map(interval => notes[(keyCenterIndex + interval) % 12]);
+            
+            // 각 현과 프렛에 대해 스케일 노트 표시
+            for (let string = 0; string < 6; string++) {
+                for (let fret = 0; fret <= 22; fret++) {
+                    const fretNote = getFretNote(string, fret);
+                    const scaleIndex = scaleNotes.indexOf(fretNote);
+                    
+                    if (scaleIndex !== -1) {
+                        const noteEl = document.createElement('div');
+                        noteEl.className = 'scale-note';
+                        noteEl.textContent = intervals[scaleIndex];
+                        noteEl.style.position = 'absolute';
+                        noteEl.style.left = (fret * fretWidth - 12 + (fret === 0 ? fretWidth/2 : 0)) + 'px';
+                        noteEl.style.top = (18 + string * 25) + 'px';
+                        noteEl.style.backgroundColor = intervalColors[intervals[scaleIndex]];
+                        noteEl.style.zIndex = '10';
+                        
+                        noteEl.addEventListener('click', () => {
+                            // 음표 클릭 시 소리 재생 (옵션)
+                            const frequency = 82.41 * Math.pow(2, (keyCenterIndex + pattern[scaleIndex]) / 12);
+                            playBass(frequency, 300);
+                        });
+                        
+                        fretboard.appendChild(noteEl);
+                    }
+                }
+            }
+        }
+
+        // 박자 표시기 업데이트
+        function updateBeatIndicators() {
+            const timeSignature = document.getElementById('timeSignature').value;
+            const [numerator] = timeSignature.split('/').map(Number);
+            beatCount = numerator;
+            
+            const container = document.getElementById('beatIndicators');
+            container.innerHTML = '';
+            
+            beatStates = new Array(beatCount).fill(true);
+            
+            for (let i = 0; i < beatCount; i++) {
+                const indicator = document.createElement('div');
+                indicator.className = 'beat-indicator';
+                indicator.textContent = i + 1;
+                indicator.addEventListener('click', () => {
+                    beatStates[i] = !beatStates[i];
+                    indicator.classList.toggle('disabled', !beatStates[i]);
+                });
+                container.appendChild(indicator);
+            }
+        }
+
+        // 메트로놈 재생
+        function startMetronome() {
+            if (metronomeInterval) return;
+            
+            initAudio();
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const subdivisions = document.getElementById('subdivisions').value;
+            
+            let interval;
+            let pattern;
+            
+            switch (subdivisions) {
+                case 'quarter':
+                    interval = 60000 / bpm;
+                    pattern = [true];
+                    break;
+                case 'eighth':
+                    interval = 60000 / bpm / 2;
+                    pattern = [true, false];
+                    break;
+                case 'triplet':
+                    interval = 60000 / bpm / 3;
+                    pattern = [true, false, false];
+                    break;
+                case 'tripletGhost':
+                    interval = 60000 / bpm / 3;
+                    pattern = [true, false, true];
+                    break;
+                case 'sixteenth':
+                    interval = 60000 / bpm / 4;
+                    pattern = [true, false, false, false];
+                    break;
+                case 'sixteenthSparse':
+                    interval = 60000 / bpm / 4;
+                    pattern = [true, false, false, true];
+                    break;
+            }
+            
+            let subBeat = 0;
+            
+            metronomeInterval = setInterval(() => {
+                const indicators = document.querySelectorAll('.beat-indicator');
+                
+                // 이전 표시 제거
+                indicators.forEach(ind => ind.classList.remove('active'));
+                
+                // 현재 박자 표시
+                if (pattern[subBeat % pattern.length] && beatStates[currentBeat]) {
+                    indicators[currentBeat].classList.add('active');
+                    playBeep(currentBeat === 0 ? 1000 : 800, 50);
+                }
+                
+                subBeat++;
+                if (subBeat % pattern.length === 0) {
+                    currentBeat = (currentBeat + 1) % beatCount;
+                }
+            }, interval);
+        }
+
+        // 메트로놈 정지
+        function stopMetronome() {
+            if (metronomeInterval) {
+                clearInterval(metronomeInterval);
+                metronomeInterval = null;
+                currentBeat = 0;
+                
+                const indicators = document.querySelectorAll('.beat-indicator');
+                indicators.forEach(ind => ind.classList.remove('active'));
+            }
+        }
+
+        // 타이머 업데이트
+        function updateTimerDisplay() {
+            const timerType = document.getElementById('timerType').value;
+            const display = document.getElementById('timerDisplay');
+            
+            if (timerType === 'time') {
+                const minutes = Math.floor(timerSeconds / 60);
+                const seconds = timerSeconds % 60;
+                display.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                display.textContent = `${timerBars} 소절`;
+            }
+        }
+
+        // 타이머 시작
+        function startTimer() {
+            const timerType = document.getElementById('timerType').value;
+            
+            if (timerType === 'time') {
+                timerSeconds = parseInt(document.getElementById('timeTimer').value) * 60;
+            } else {
+                timerBars = parseInt(document.getElementById('barsTimer').value);
+            }
+            
+            updateTimerDisplay();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                if (timerType === 'time') {
+                    timerSeconds--;
+                    if (timerSeconds <= 0) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        playBeep(1200, 500); // 완료 신호
+                    }
+                } else {
+                    // 소절 타이머는 메트로놈과 연동하여 계산
+                    const bpm = parseInt(document.getElementById('bpm').value);
+                    const timeSignature = document.getElementById('timeSignature').value;
+                    const [numerator] = timeSignature.split('/').map(Number);
+                    const barDuration = (60000 / bpm) * numerator;
+                    
+                    // 간단히 1초마다 체크
+                    if (metronomeInterval && currentBeat === 0) {
+                        timerBars--;
+                        if (timerBars <= 0) {
+                            clearInterval(timerInterval);
+                            timerInterval = null;
+                            playBeep(1200, 500);
+                        }
+                    }
+                }
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        // 코드 진행 재생
+        function startChordProgression() {
+            if (chordInterval) return;
+            
+            initAudio();
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const timeSignature = document.getElementById('timeSignature').value;
+            const [numerator] = timeSignature.split('/').map(Number);
+            const barDuration = (60000 / bpm) * numerator;
+            
+            const chords = [
+                document.getElementById('chord1').value,
+                document.getElementById('chord2').value,
+                document.getElementById('chord3').value,
+                document.getElementById('chord4').value
+            ];
+            
+            currentChordBar = 0;
+            
+            // 첫 코드 재생
+            playChordBass(chords[0]);
+            
+            chordInterval = setInterval(() => {
+                currentChordBar = (currentChordBar + 1) % chords.length;
+                playChordBass(chords[currentChordBar]);
+            }, barDuration);
+        }
+
+        // 코드 베이스 재생
+        function playChordBass(chord) {
+            // 간단한 코드-베이스 매핑
+            const bassNotes = {
+                'C': 65.41, 'C#': 69.30, 'Db': 69.30, 'D': 73.42, 'D#': 77.78, 'Eb': 77.78,
+                'E': 82.41, 'F': 87.31, 'F#': 92.50, 'Gb': 92.50, 'G': 98.00, 'G#': 103.83, 'Ab': 103.83,
+                'A': 110.00, 'A#': 116.54, 'Bb': 116.54, 'B': 123.47,
+                'Am': 110.00, 'Bm': 123.47, 'Cm': 65.41, 'Dm': 73.42, 'Em': 82.41, 'Fm': 87.31, 'Gm': 98.00
+            };
+            
+            const frequency = bassNotes[chord] || 82.41;
+            playBass(frequency, 800);
+        }
+
+        // 코드 진행 정지
+        function stopChordProgression() {
+            if (chordInterval) {
+                clearInterval(chordInterval);
+                chordInterval = null;
+                currentChordBar = 0;
+            }
+        }
+
+        // 이벤트 리스너 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            createFretboard();
+            updateBeatIndicators();
+            updateTimerDisplay();
+            
+            // 스케일 변경 이벤트
+            document.getElementById('keyCenter').addEventListener('change', updateScale);
+            document.getElementById('scaleType').addEventListener('change', updateScale);
+            
+            // 박자표 변경 이벤트
+            document.getElementById('timeSignature').addEventListener('change', updateBeatIndicators);
+            
+            // 메트로놈 버튼
+            document.getElementById('metronomePlay').addEventListener('click', startMetronome);
+            document.getElementById('metronomeStop').addEventListener('click', stopMetronome);
+            
+            // 타이머 설정
+            document.getElementById('timerType').addEventListener('change', (e) => {
+                const timeDiv = document.getElementById('timeTimerDiv');
+                const barsDiv = document.getElementById('barsTimerDiv');
+                
+                if (e.target.value === 'time') {
+                    timeDiv.style.display = 'block';
+                    barsDiv.style.display = 'none';
+                } else {
+                    timeDiv.style.display = 'none';
+                    barsDiv.style.display = 'block';
+                }
+                updateTimerDisplay();
+            });
+            
+            document.getElementById('timeTimer').addEventListener('change', updateTimerDisplay);
+            document.getElementById('barsTimer').addEventListener('change', updateTimerDisplay);
+            document.getElementById('timerStart').addEventListener('click', startTimer);
+            
+            // 코드 진행 버튼
+            document.getElementById('chordPlay').addEventListener('click', startChordProgression);
+            document.getElementById('chordStop').addEventListener('click', stopChordProgression);
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9726f600640fbcc4',t:'MTc1NTc0NjA3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
