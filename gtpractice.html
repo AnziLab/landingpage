@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>기타 스케일 연습 도구</title>
+    <title>기타/바이올린 스케일 연습 도구</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .fret-marker {
@@ -59,9 +59,22 @@
             background: #8b5cf6;
             position: relative;
         }
+        .violin-string {
+            height: 3px;
+            background: linear-gradient(to right, #8b5cf6, #a855f7);
+            position: relative;
+            border-radius: 1px;
+        }
         .fret {
             border-right: 2px solid #666;
             height: 100%;
+        }
+        .position-marker {
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            background: #999;
+            opacity: 0.3;
         }
         
         /* 테마 관련 CSS */
@@ -165,13 +178,31 @@
 <body class="light-theme min-h-screen p-4 transition-colors duration-300" id="body">
     <div class="max-w-7xl mx-auto">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold">🎸 기타 스케일 연습 도구</h1>
+            <h1 class="text-3xl font-bold" id="mainTitle">🎸 기타 스케일 연습 도구</h1>
             <div class="flex items-center gap-4">
-                <!-- 지판 모드 토글 -->
+                <!-- 악기 선택 -->
                 <div class="flex items-center gap-2">
+                    <span class="text-sm">🎸</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="instrumentMode" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                    <span class="text-sm">🎻</span>
+                </div>
+                <!-- 지판 모드 토글 (기타일 때만) -->
+                <div class="flex items-center gap-2" id="fretboardModeDiv">
                     <span class="text-sm">거울모드</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="fretboardMode" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                    <span class="text-sm">실물모드</span>
+                </div>
+                <!-- 바이올린 모드 토글 (바이올린일 때만) -->
+                <div class="flex items-center gap-2" id="violinModeDiv" style="display: none;">
+                    <span class="text-sm">거울모드</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="violinMode" class="sr-only peer" checked>
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                     </label>
                     <span class="text-sm">실물모드</span>
@@ -354,9 +385,9 @@
             <div id="beatIndicators" class="flex justify-center gap-4"></div>
         </div>
 
-        <!-- 기타 프렛보드 -->
+        <!-- 악기 지판 -->
         <div class="panel-bg rounded-lg p-6 mb-6 border">
-            <h3 class="text-lg font-semibold mb-4 text-center">기타 프렛보드</h3>
+            <h3 class="text-lg font-semibold mb-4 text-center" id="fretboardTitle">기타 프렛보드</h3>
             <div class="overflow-x-auto px-8">
                 <div id="fretboard" class="relative min-w-[1200px] mx-auto"></div>
             </div>
@@ -368,7 +399,13 @@
     <script>
         // 음계 정의
         const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const stringTuning = ['E', 'A', 'D', 'G', 'B', 'E']; // 6현부터 1현까지
+        
+        // 악기별 튜닝 정의
+        const guitarTuning = ['E', 'A', 'D', 'G', 'B', 'E']; // 6현부터 1현까지
+        const violinTuning = ['G', 'D', 'A', 'E']; // 4현부터 1현까지 (낮은 음부터)
+        
+        let currentInstrument = 'guitar'; // 'guitar' 또는 'violin'
+        let stringTuning = guitarTuning;
 
         // 스케일 패턴 정의 (반음 간격)
         const scalePatterns = {
@@ -523,60 +560,102 @@
             oscillator.stop(audioContext.currentTime + duration / 1000);
         }
 
-        // 프렛보드 생성
+        // 악기 변경 함수
+        function switchInstrument() {
+            const isViolin = document.getElementById('instrumentMode').checked;
+            const mainTitle = document.getElementById('mainTitle');
+            const fretboardTitle = document.getElementById('fretboardTitle');
+            const fretboardModeDiv = document.getElementById('fretboardModeDiv');
+            const violinModeDiv = document.getElementById('violinModeDiv');
+            
+            if (isViolin) {
+                currentInstrument = 'violin';
+                stringTuning = violinTuning;
+                mainTitle.textContent = '🎻 바이올린 스케일 연습 도구';
+                fretboardTitle.textContent = '바이올린 지판';
+                fretboardModeDiv.style.display = 'none';
+                violinModeDiv.style.display = 'flex';
+            } else {
+                currentInstrument = 'guitar';
+                stringTuning = guitarTuning;
+                mainTitle.textContent = '🎸 기타 스케일 연습 도구';
+                fretboardTitle.textContent = '기타 프렛보드';
+                fretboardModeDiv.style.display = 'flex';
+                violinModeDiv.style.display = 'none';
+            }
+            
+            createFretboard();
+        }
+
+        // 프렛보드/지판 생성
         function createFretboard() {
             const fretboard = document.getElementById('fretboard');
             fretboard.innerHTML = '';
             
             const fretboardWidth = 1200;
-            const fretboardHeight = 200;
+            const stringCount = stringTuning.length;
+            const fretboardHeight = stringCount === 4 ? 120 : 200; // 바이올린은 더 작게
             const fretWidth = fretboardWidth / 23; // 0프렛 + 22프렛
+            const stringSpacing = stringCount === 4 ? 25 : 25; // 현 간격
             
             fretboard.style.width = fretboardWidth + 'px';
             fretboard.style.height = fretboardHeight + 'px';
             
             // 현 그리기
-            for (let string = 0; string < 6; string++) {
+            for (let string = 0; string < stringCount; string++) {
                 const stringEl = document.createElement('div');
-                stringEl.className = 'string';
+                stringEl.className = currentInstrument === 'violin' ? 'violin-string' : 'string';
                 stringEl.style.position = 'absolute';
-                stringEl.style.top = (30 + string * 25) + 'px';
+                stringEl.style.top = (30 + string * stringSpacing) + 'px';
                 stringEl.style.left = '0px';
                 stringEl.style.width = '100%';
                 fretboard.appendChild(stringEl);
             }
             
-            // 프렛 그리기
-            for (let fret = 1; fret <= 22; fret++) {
-                const fretEl = document.createElement('div');
-                fretEl.className = 'fret';
-                fretEl.style.position = 'absolute';
-                fretEl.style.left = (fret * fretWidth) + 'px';
-                fretEl.style.top = '20px';
-                fretEl.style.height = '160px';
-                fretboard.appendChild(fretEl);
-                
-                // 프렛 마커 (인레이)
-                if ([3, 5, 7, 9, 15, 17, 19].includes(fret)) {
-                    const marker = document.createElement('div');
-                    marker.className = 'fret-marker';
-                    marker.style.left = (fret * fretWidth - fretWidth/2 - 4) + 'px';
-                    marker.style.top = '190px';
-                    fretboard.appendChild(marker);
-                } else if (fret === 12) {
-                    // 12프렛은 두 개의 마커
-                    const marker1 = document.createElement('div');
-                    marker1.className = 'fret-marker double';
-                    marker1.style.left = (fret * fretWidth - fretWidth/2 - 8) + 'px';
-                    marker1.style.top = '190px';
-                    fretboard.appendChild(marker1);
+            if (currentInstrument === 'guitar') {
+                // 기타 프렛 그리기
+                for (let fret = 1; fret <= 22; fret++) {
+                    const fretEl = document.createElement('div');
+                    fretEl.className = 'fret';
+                    fretEl.style.position = 'absolute';
+                    fretEl.style.left = (fret * fretWidth) + 'px';
+                    fretEl.style.top = '20px';
+                    fretEl.style.height = '160px';
+                    fretboard.appendChild(fretEl);
                     
-                    const marker2 = document.createElement('div');
-                    marker2.className = 'fret-marker double';
-                    marker2.style.left = (fret * fretWidth - fretWidth/2 + 2) + 'px';
-                    marker2.style.top = '190px';
-                    fretboard.appendChild(marker2);
+                    // 프렛 마커 (인레이)
+                    if ([3, 5, 7, 9, 15, 17, 19].includes(fret)) {
+                        const marker = document.createElement('div');
+                        marker.className = 'fret-marker';
+                        marker.style.left = (fret * fretWidth - fretWidth/2 - 4) + 'px';
+                        marker.style.top = '190px';
+                        fretboard.appendChild(marker);
+                    } else if (fret === 12) {
+                        // 12프렛은 두 개의 마커
+                        const marker1 = document.createElement('div');
+                        marker1.className = 'fret-marker double';
+                        marker1.style.left = (fret * fretWidth - fretWidth/2 - 8) + 'px';
+                        marker1.style.top = '190px';
+                        fretboard.appendChild(marker1);
+                        
+                        const marker2 = document.createElement('div');
+                        marker2.className = 'fret-marker double';
+                        marker2.style.left = (fret * fretWidth - fretWidth/2 + 2) + 'px';
+                        marker2.style.top = '190px';
+                        fretboard.appendChild(marker2);
+                    }
                 }
+            } else {
+                // 바이올린 포지션 마커 (프렛 대신 위치 가이드)
+                const positions = [3, 5, 7, 9, 12, 15, 17, 19]; // 주요 포지션들
+                positions.forEach(pos => {
+                    const marker = document.createElement('div');
+                    marker.className = 'position-marker';
+                    marker.style.left = (pos * fretWidth) + 'px';
+                    marker.style.top = '20px';
+                    marker.style.height = (stringCount * stringSpacing + 20) + 'px';
+                    fretboard.appendChild(marker);
+                });
             }
             
             updateScale();
@@ -587,7 +666,7 @@
             return notes.indexOf(note);
         }
 
-        // 프렛의 음표 계산
+        // 프렛/포지션의 음표 계산
         function getFretNote(stringIndex, fret) {
             const openNote = stringTuning[stringIndex];
             const openNoteIndex = getNoteIndex(openNote);
@@ -599,7 +678,14 @@
             const keyCenter = document.getElementById('keyCenter').value;
             const scaleType = document.getElementById('scaleType').value;
             const fretboard = document.getElementById('fretboard');
-            const isRealMode = document.getElementById('fretboardMode').checked;
+            
+            // 현재 악기에 따른 모드 확인
+            let isRealMode;
+            if (currentInstrument === 'guitar') {
+                isRealMode = document.getElementById('fretboardMode').checked;
+            } else {
+                isRealMode = document.getElementById('violinMode').checked;
+            }
             
             // 기존 스케일 노트 제거
             const existingNotes = fretboard.querySelectorAll('.scale-note');
@@ -609,14 +695,23 @@
             const intervals = scaleIntervals[scaleType];
             const keyCenterIndex = getNoteIndex(keyCenter);
             const fretWidth = 1200 / 23;
+            const stringCount = stringTuning.length;
+            const stringSpacing = 25;
             
             // 스케일 노트들 계산
             const scaleNotes = pattern.map(interval => notes[(keyCenterIndex + interval) % 12]);
             
-            // 각 현과 프렛에 대해 스케일 노트 표시
-            for (let string = 0; string < 6; string++) {
+            // 각 현과 프렛/포지션에 대해 스케일 노트 표시
+            for (let string = 0; string < stringCount; string++) {
                 for (let fret = 0; fret <= 22; fret++) {
-                    const displayString = isRealMode ? string : (5 - string); // 실물모드에서는 정상 순서
+                    let displayString;
+                    if (currentInstrument === 'guitar') {
+                        displayString = isRealMode ? string : (stringCount - 1 - string);
+                    } else {
+                        // 바이올린: 실물모드가 기본값이므로 반대로 처리
+                        displayString = isRealMode ? (stringCount - 1 - string) : string;
+                    }
+                    
                     const fretNote = getFretNote(string, fret);
                     const scaleIndex = scaleNotes.indexOf(fretNote);
                     
@@ -626,12 +721,12 @@
                         noteEl.textContent = intervals[scaleIndex];
                         noteEl.style.position = 'absolute';
                         noteEl.style.left = (fret === 0 ? -30 : fret * fretWidth - fretWidth/2 - 12) + 'px';
-                        noteEl.style.top = (18 + displayString * 25) + 'px';
+                        noteEl.style.top = (18 + displayString * stringSpacing) + 'px';
                         noteEl.style.backgroundColor = intervalColors[intervals[scaleIndex]];
                         noteEl.style.zIndex = '10';
                         
                         noteEl.addEventListener('click', () => {
-                            // 음표 클릭 시 소리 재생 (옵션)
+                            // 음표 클릭 시 소리 재생
                             const frequency = 82.41 * Math.pow(2, (keyCenterIndex + pattern[scaleIndex]) / 12);
                             playBass(frequency, 300);
                         });
@@ -959,12 +1054,18 @@
             updateTimerDisplay();
             initNoteIcons();
             
+            // 악기 변경 이벤트
+            document.getElementById('instrumentMode').addEventListener('change', switchInstrument);
+            
             // 스케일 변경 이벤트
             document.getElementById('keyCenter').addEventListener('change', updateScale);
             document.getElementById('scaleType').addEventListener('change', updateScale);
             
-            // 지판 모드 토글
+            // 지판 모드 토글 (기타)
             document.getElementById('fretboardMode').addEventListener('change', updateScale);
+            
+            // 바이올린 모드 토글
+            document.getElementById('violinMode').addEventListener('change', updateScale);
             
             // 다크모드 토글
             document.getElementById('darkMode').addEventListener('change', toggleTheme);
@@ -1015,5 +1116,5 @@
             document.getElementById('timerStart').addEventListener('click', startTimer);
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97281b1706e4d1e2',t:'MTc1NTc1ODA3OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'972f5555a0d6d1db',t:'MTc1NTgzMzg2NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
