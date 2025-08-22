@@ -36,15 +36,16 @@
             transform: scale(1.1);
         }
         .beat-indicator {
-            width: 40px;
-            height: 40px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            border: 3px solid #ddd;
+            border: 2px solid #ddd;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.1s;
+            font-size: 12px;
         }
         .beat-indicator.active {
             background: #3b82f6;
@@ -135,13 +136,13 @@
         
         /* 재생 옵션 버튼 스타일 */
         .subdivision-btn {
-            padding: 8px;
-            border: 2px solid #d1d5db;
-            border-radius: 6px;
+            padding: 4px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
             background: transparent;
             cursor: pointer;
             transition: all 0.2s;
-            min-height: 40px;
+            min-height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -173,6 +174,111 @@
             font-size: 16px;
             font-weight: bold;
         }
+        
+        /* 코드 관련 스타일 */
+        .chord-item {
+            position: relative;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+            min-width: 120px;
+            flex-shrink: 0;
+        }
+        .dark-theme .chord-item {
+            border-color: #6b7280;
+            background: rgba(55, 65, 81, 0.8);
+        }
+        .chord-item:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .chord-item.playing {
+            border-color: #10b981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+            animation: pulse-glow 2s infinite;
+        }
+        .dark-theme .chord-item.playing {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.15));
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 8px 35px rgba(16, 185, 129, 0.5); }
+        }
+        .chord-controls {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            display: none;
+            gap: 4px;
+        }
+        .chord-item:hover .chord-controls {
+            display: flex;
+        }
+        .chord-duration-controls {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 4px;
+        }
+        .chord-item:hover .chord-duration-controls {
+            display: flex;
+        }
+        .control-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid #d1d5db;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .control-btn:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+            transform: scale(1.1);
+        }
+        .control-btn.delete {
+            background: #ef4444;
+            color: white;
+            border-color: #dc2626;
+        }
+        .control-btn.delete:hover {
+            background: #dc2626;
+        }
+        .chord-duration-display {
+            font-size: 11px;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        .chord-name-display {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 4px;
+            color: #1f2937;
+        }
+        .dark-theme .chord-name-display {
+            color: #f9fafb;
+        }
+        .chord-item.playing .chord-name-display {
+            color: #10b981;
+        }
     </style>
 </head>
 <body class="light-theme min-h-screen p-4 transition-colors duration-300" id="body">
@@ -182,30 +288,28 @@
             <div class="flex items-center gap-4">
                 <!-- 악기 선택 -->
                 <div class="flex items-center gap-2">
-                    <span class="text-sm">🎸</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="instrumentMode" class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                    </label>
-                    <span class="text-sm">🎻</span>
+                    <select id="instrumentSelect" class="input-bg rounded px-3 py-1 border text-sm">
+                        <option value="guitar">🎸 기타</option>
+                        <option value="bass4">🎸 4현 베이스</option>
+                        <option value="bass5">🎸 5현 베이스</option>
+                        <option value="violin">🎻 바이올린</option>
+                    </select>
                 </div>
                 <!-- 지판 모드 토글 (기타일 때만) -->
                 <div class="flex items-center gap-2" id="fretboardModeDiv">
-                    <span class="text-sm">거울모드</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
+                    <label class="relative inline-flex items-center cursor-pointer" title="상하반전">
                         <input type="checkbox" id="fretboardMode" class="sr-only peer">
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                     </label>
-                    <span class="text-sm">실물모드</span>
+                    <span class="text-sm">⇅</span>
                 </div>
                 <!-- 바이올린 모드 토글 (바이올린일 때만) -->
                 <div class="flex items-center gap-2" id="violinModeDiv" style="display: none;">
-                    <span class="text-sm">거울모드</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
+                    <label class="relative inline-flex items-center cursor-pointer" title="상하반전">
                         <input type="checkbox" id="violinMode" class="sr-only peer" checked>
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                     </label>
-                    <span class="text-sm">실물모드</span>
+                    <span class="text-sm">⇅</span>
                 </div>
                 <!-- 다크모드 토글 -->
                 <div class="flex items-center gap-2">
@@ -220,14 +324,14 @@
         </div>
         
         <!-- 설정 패널 -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <!-- 스케일 설정 -->
-            <div class="panel-bg rounded-lg p-4 border">
-                <h3 class="text-lg font-semibold mb-3">🎵 스케일 설정</h3>
-                <div class="space-y-3">
+            <div class="panel-bg rounded-lg p-3 border">
+                <h3 class="text-base font-semibold mb-2">🎵 스케일 설정</h3>
+                <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-sm mb-1">키 센터</label>
-                        <select id="keyCenter" class="w-full input-bg rounded px-3 py-2 border">
+                        <label class="block text-xs mb-1">키 센터</label>
+                        <select id="keyCenter" class="w-full input-bg rounded px-2 py-1 border text-sm">
                             <option value="C">C</option>
                             <option value="C#">C#</option>
                             <option value="D">D</option>
@@ -243,21 +347,18 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm mb-1">스케일</label>
-                        <select id="scaleType" class="w-full input-bg rounded px-3 py-2 border">
-                            <option value="major">메이저 (이오니안)</option>
+                        <label class="block text-xs mb-1">스케일</label>
+                        <select id="scaleType" class="w-full input-bg rounded px-2 py-1 border text-sm">
+                            <option value="major">메이저</option>
                             <option value="dorian">도리안</option>
                             <option value="phrygian">프리지안</option>
                             <option value="lydian">리디안</option>
                             <option value="mixolydian">믹솔리디언</option>
-                            <option value="minor">마이너 (에올리안)</option>
+                            <option value="minor">마이너</option>
                             <option value="locrian">로크리안</option>
-                            <option value="majorPentatonic">메이저 펜타토닉</option>
-                            <option value="minorPentatonic">마이너 펜타토닉</option>
-                            <option value="minorMajorPentatonic">마이너메이저 펜타토닉</option>
+                            <option value="majorPentatonic">메이저 펜타</option>
+                            <option value="minorPentatonic">마이너 펜타</option>
                             <option value="wholeTone">홀톤</option>
-                            <option value="mixolydianbF9bF13">믹솔리디언 ♭9♭13</option>
-                            <option value="naturalMinor">내추럴 마이너</option>
                             <option value="harmonicMinor">하모닉 마이너</option>
                             <option value="bebop">비밥</option>
                         </select>
@@ -265,102 +366,20 @@
                 </div>
             </div>
 
-            <!-- 메트로놈 & 코드진행 설정 -->
-            <div class="panel-bg rounded-lg p-4 border">
-                <h3 class="text-lg font-semibold mb-3">🥁 메트로놈 & 코드진행</h3>
-                <div class="space-y-3">
-                    <!-- 코드진행 모드 토글 -->
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="text-sm">메트로놈만</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="chordMode" class="sr-only peer">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                        </label>
-                        <span class="text-sm">코드진행</span>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-sm mb-1">BPM</label>
-                            <input type="number" id="bpm" value="120" min="60" max="200" class="w-full input-bg rounded px-3 py-2 border">
-                        </div>
-                        <div>
-                            <label class="block text-sm mb-1">박자표</label>
-                            <select id="timeSignature" class="w-full input-bg rounded px-3 py-2 border">
-                                <option value="2/2">2/2</option>
-                                <option value="3/4">3/4</option>
-                                <option value="4/4" selected>4/4</option>
-                                <option value="6/8">6/8</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-2">재생 옵션</label>
-                        <div class="grid grid-cols-3 gap-1">
-                            <button class="subdivision-btn active" data-value="quarter" title="4분음표 (1박에 1번)">
-                                <div class="note-icon" data-note="quarter"></div>
-                            </button>
-                            <button class="subdivision-btn" data-value="eighth" title="8분음표 (1박에 2번)">
-                                <div class="note-icon" data-note="eighth"></div>
-                            </button>
-                            <button class="subdivision-btn" data-value="triplet" title="셋잇단음표 (1박에 3번)">
-                                <div class="note-icon" data-note="triplet"></div>
-                            </button>
-                            <button class="subdivision-btn" data-value="tripletGhost" title="셋잇단음표 (가운데 빈)">
-                                <div class="note-icon" data-note="tripletGhost"></div>
-                            </button>
-                            <button class="subdivision-btn" data-value="sixteenth" title="16분음표 (1박에 4번)">
-                                <div class="note-icon" data-note="sixteenth"></div>
-                            </button>
-                            <button class="subdivision-btn" data-value="sixteenthSparse" title="16분음표 (1,4만)">
-                                <div class="note-icon" data-note="sixteenthSparse"></div>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- 코드진행 설정 -->
-                    <div id="chordSettings" style="display: none;" class="space-y-2 pt-2 border-t">
-                        <div class="grid grid-cols-4 gap-2">
-                            <div>
-                                <label class="block text-xs mb-1">코드 1</label>
-                                <input type="text" id="chord1" value="C" class="w-full input-bg rounded px-2 py-1 text-sm border">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">코드 2</label>
-                                <input type="text" id="chord2" value="Am" class="w-full input-bg rounded px-2 py-1 text-sm border">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">코드 3</label>
-                                <input type="text" id="chord3" value="F" class="w-full input-bg rounded px-2 py-1 text-sm border">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">코드 4</label>
-                                <input type="text" id="chord4" value="G" class="w-full input-bg rounded px-2 py-1 text-sm border">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex gap-2">
-                        <button id="metronomePlay" class="flex-1 btn-primary rounded px-3 py-2 text-sm">재생</button>
-                        <button id="metronomeStop" class="flex-1 btn-secondary rounded px-3 py-2 text-sm">정지</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- 타이머 설정 -->
-            <div class="panel-bg rounded-lg p-4 border">
-                <h3 class="text-lg font-semibold mb-3">⏱️ 연습 타이머</h3>
-                <div class="space-y-3">
+            <div class="panel-bg rounded-lg p-3 border">
+                <h3 class="text-base font-semibold mb-2">⏱️ 연습 타이머</h3>
+                <div class="grid grid-cols-3 gap-2 items-end">
                     <div>
-                        <label class="block text-sm mb-1">타이머 타입</label>
-                        <select id="timerType" class="w-full input-bg rounded px-3 py-2 border">
-                            <option value="time">시간 타이머</option>
-                            <option value="bars">소절 타이머</option>
+                        <label class="block text-xs mb-1">타입</label>
+                        <select id="timerType" class="w-full input-bg rounded px-2 py-1 border text-sm">
+                            <option value="time">시간</option>
+                            <option value="bars">소절</option>
                         </select>
                     </div>
                     <div id="timeTimerDiv">
-                        <label class="block text-sm mb-1">시간 (분)</label>
-                        <select id="timeTimer" class="w-full input-bg rounded px-3 py-2 border">
+                        <label class="block text-xs mb-1">시간</label>
+                        <select id="timeTimer" class="w-full input-bg rounded px-2 py-1 border text-sm">
                             <option value="5">5분</option>
                             <option value="10">10분</option>
                             <option value="15">15분</option>
@@ -368,28 +387,137 @@
                         </select>
                     </div>
                     <div id="barsTimerDiv" style="display: none;">
-                        <label class="block text-sm mb-1">소절 수</label>
-                        <input type="number" id="barsTimer" value="32" min="1" max="999" class="w-full input-bg rounded px-3 py-2 border">
+                        <label class="block text-xs mb-1">소절</label>
+                        <input type="number" id="barsTimer" value="32" min="1" max="999" class="w-full input-bg rounded px-2 py-1 border text-sm">
                     </div>
                     <div class="text-center">
-                        <div id="timerDisplay" class="text-2xl font-bold mb-2">5:00</div>
-                        <button id="timerStart" class="btn-primary rounded px-4 py-2 text-sm">시작</button>
+                        <div id="timerDisplay" class="text-lg font-bold mb-1">5:00</div>
+                        <button id="timerStart" class="btn-primary rounded px-2 py-1 text-xs">시작</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 박자 표시기 -->
-        <div class="panel-bg rounded-lg p-4 mb-6 border">
-            <h3 class="text-lg font-semibold mb-3 text-center">박자 표시기</h3>
-            <div id="beatIndicators" class="flex justify-center gap-4"></div>
+        <!-- 메트로놈 & 박자 표시기 -->
+        <div class="panel-bg rounded-lg p-3 mb-4 border">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-semibold">🥁 메트로놈</h3>
+                <div class="flex items-center gap-4">
+                    <!-- 코드진행 모드 토글 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs">메트로놈</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="chordMode" class="sr-only peer">
+                            <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                        </label>
+                        <span class="text-xs">코드진행</span>
+                    </div>
+                    <!-- 음량 조절 버튼 -->
+                    <div class="relative">
+                        <button id="volumeToggle" class="btn-primary rounded px-2 py-1 text-xs">🔊</button>
+                        <div id="volumePanel" class="absolute top-full right-0 mt-1 panel-bg rounded-lg p-3 border shadow-lg z-50 min-w-[300px]" style="display: none;">
+                            <h3 class="text-sm font-semibold mb-2">🔊 음량 조절</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs mb-1">메트로놈</label>
+                                    <input type="range" id="metronomeVolume" min="0" max="100" value="50" class="w-full">
+                                    <div class="text-xs text-center mt-1"><span id="metronomeVolumeDisplay">50</span>%</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs mb-1">베이스</label>
+                                    <input type="range" id="bassVolume" min="0" max="100" value="50" class="w-full">
+                                    <div class="text-xs text-center mt-1"><span id="bassVolumeDisplay">50</span>%</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs mb-1">피아노</label>
+                                    <input type="range" id="pianoVolume" min="0" max="100" value="50" class="w-full">
+                                    <div class="text-xs text-center mt-1"><span id="pianoVolumeDisplay">50</span>%</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs mb-1">악기음</label>
+                                    <input type="range" id="instrumentVolume" min="0" max="100" value="70" class="w-full">
+                                    <div class="text-xs text-center mt-1"><span id="instrumentVolumeDisplay">70</span>%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-12 gap-2 items-center">
+                <!-- 메트로놈 설정 -->
+                <div class="col-span-2">
+                    <label class="block text-xs mb-1">BPM</label>
+                    <input type="number" id="bpm" value="120" min="60" max="200" class="w-full input-bg rounded px-2 py-1 border text-sm">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-xs mb-1">박자표</label>
+                    <select id="timeSignature" class="w-full input-bg rounded px-2 py-1 border text-sm">
+                        <option value="2/2">2/2</option>
+                        <option value="3/4">3/4</option>
+                        <option value="4/4" selected>4/4</option>
+                        <option value="6/8">6/8</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs mb-1">사운드</label>
+                    <select id="metronomeSound" class="w-full input-bg rounded px-2 py-1 border text-sm">
+                        <option value="beep">비프</option>
+                        <option value="drum">드럼</option>
+                    </select>
+                </div>
+                
+                <!-- 재생 옵션 -->
+                <div class="col-span-2">
+                    <label class="block text-xs mb-1">재생 옵션</label>
+                    <div class="grid grid-cols-6 gap-1">
+                        <button class="subdivision-btn active text-xs" data-value="quarter" title="4분음표">♩</button>
+                        <button class="subdivision-btn text-xs" data-value="eighth" title="8분음표">♫</button>
+                        <button class="subdivision-btn text-xs" data-value="triplet" title="셋잇단음표">♪♪♪</button>
+                        <button class="subdivision-btn text-xs" data-value="tripletGhost" title="셋잇단음표(가운데빈)">♪_♪</button>
+                        <button class="subdivision-btn text-xs" data-value="sixteenth" title="16분음표">♬</button>
+                        <button class="subdivision-btn text-xs" data-value="sixteenthSparse" title="16분음표(1,4만)">♬_♬</button>
+                    </div>
+                </div>
+                
+                <!-- 박자 표시기 -->
+                <div class="col-span-2">
+                    <label class="block text-xs mb-1">박자 표시</label>
+                    <div id="beatIndicators" class="flex gap-1"></div>
+                </div>
+                
+                <!-- 컨트롤 버튼 -->
+                <div class="col-span-1">
+                    <div class="flex flex-col gap-1">
+                        <button id="metronomePlay" class="btn-primary rounded px-2 py-1 text-xs">재생</button>
+                        <button id="metronomeStop" class="btn-secondary rounded px-2 py-1 text-xs">정지</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 코드진행 설정 -->
+            <div id="chordSettings" style="display: none;" class="mt-3 pt-2 border-t">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-medium">현재 연주: <span id="currentChordDisplay">-</span></span>
+                    <button id="addChord" class="text-blue-500 hover:text-blue-700 text-xs">+ 코드 추가</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 코드 진행 표시 -->
+        <div id="chordProgressionDisplay" class="panel-bg rounded-lg p-3 mb-4 border" style="display: none;">
+            <div class="overflow-x-auto">
+                <div id="chordContainer" class="flex gap-2 min-w-max">
+                    <!-- 코드들이 동적으로 추가됩니다 -->
+                </div>
+            </div>
         </div>
 
         <!-- 악기 지판 -->
-        <div class="panel-bg rounded-lg p-6 mb-6 border">
-            <h3 class="text-lg font-semibold mb-4 text-center" id="fretboardTitle">기타 프렛보드</h3>
-            <div class="overflow-x-auto px-8">
-                <div id="fretboard" class="relative min-w-[1200px] mx-auto"></div>
+        <div class="panel-bg rounded-lg p-3 border">
+            <h3 class="text-base font-semibold mb-2 text-center" id="fretboardTitle">기타 프렛보드</h3>
+            <div class="overflow-x-auto px-4">
+                <div id="fretboard" class="relative min-w-[1100px] mx-auto"></div>
             </div>
         </div>
 
@@ -400,11 +528,39 @@
         // 음계 정의
         const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         
-        // 악기별 튜닝 정의
-        const guitarTuning = ['E', 'A', 'D', 'G', 'B', 'E']; // 6현부터 1현까지
-        const violinTuning = ['G', 'D', 'A', 'E']; // 4현부터 1현까지 (낮은 음부터)
+        // 악기별 튜닝 정의 (옥타브 포함)
+        const guitarTuning = [
+            {note: 'E', octave: 2}, // 6현 (가장 낮은 현)
+            {note: 'A', octave: 2}, // 5현
+            {note: 'D', octave: 3}, // 4현
+            {note: 'G', octave: 3}, // 3현
+            {note: 'B', octave: 3}, // 2현
+            {note: 'E', octave: 4}  // 1현 (가장 높은 현)
+        ];
         
-        let currentInstrument = 'guitar'; // 'guitar' 또는 'violin'
+        const bass4Tuning = [
+            {note: 'E', octave: 1}, // 4현 (가장 낮은 현)
+            {note: 'A', octave: 1}, // 3현
+            {note: 'D', octave: 2}, // 2현
+            {note: 'G', octave: 2}  // 1현 (가장 높은 현)
+        ];
+        
+        const bass5Tuning = [
+            {note: 'B', octave: 0}, // 5현 (가장 낮은 현)
+            {note: 'E', octave: 1}, // 4현
+            {note: 'A', octave: 1}, // 3현
+            {note: 'D', octave: 2}, // 2현
+            {note: 'G', octave: 2}  // 1현 (가장 높은 현)
+        ];
+        
+        const violinTuning = [
+            {note: 'G', octave: 3}, // 4현 (가장 낮은 현)
+            {note: 'D', octave: 4}, // 3현
+            {note: 'A', octave: 4}, // 2현
+            {note: 'E', octave: 5}  // 1현 (가장 높은 현)
+        ];
+        
+        let currentInstrument = 'guitar'; // 'guitar', 'bass4', 'bass5', 또는 'violin'
         let stringTuning = guitarTuning;
 
         // 스케일 패턴 정의 (반음 간격)
@@ -475,6 +631,16 @@
         let timerBars = 0;
         let currentChordBar = 0;
         let currentSubdivision = 'quarter';
+        
+        // 코드 진행 시스템
+        let chordProgression = [
+            { root: 'C', quality: 'major', seventh: '', tensions: [], duration: 4 },
+            { root: 'A', quality: 'minor', seventh: '', tensions: [], duration: 4 },
+            { root: 'F', quality: 'major', seventh: '', tensions: [], duration: 4 },
+            { root: 'G', quality: 'major', seventh: '', tensions: [], duration: 4 }
+        ];
+        let currentChordIndex = 0;
+        let currentChordBeat = 0;
 
         // 음표 아이콘 정의 (향후 벡터 이미지로 교체 가능)
         const noteIcons = {
@@ -524,6 +690,8 @@
         function playBeep(frequency = 800, duration = 100) {
             if (!audioContext) return;
             
+            const metronomeVol = document.getElementById('metronomeVolume').value / 100;
+            
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             
@@ -533,8 +701,53 @@
             oscillator.frequency.value = frequency;
             oscillator.type = 'sine';
             
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.3 * metronomeVol, audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        // 드럼 사운드 생성
+        function playDrum(drumType = 'kick', duration = 100) {
+            if (!audioContext) return;
+            
+            const metronomeVol = document.getElementById('metronomeVolume').value / 100;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const filterNode = audioContext.createBiquadFilter();
+            
+            oscillator.connect(filterNode);
+            filterNode.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            switch (drumType) {
+                case 'kick':
+                    oscillator.frequency.value = 60;
+                    oscillator.type = 'sine';
+                    filterNode.type = 'lowpass';
+                    filterNode.frequency.value = 100;
+                    gainNode.gain.setValueAtTime(0.8 * metronomeVol, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+                    break;
+                case 'snare':
+                    oscillator.frequency.value = 200;
+                    oscillator.type = 'square';
+                    filterNode.type = 'highpass';
+                    filterNode.frequency.value = 1000;
+                    gainNode.gain.setValueAtTime(0.5 * metronomeVol, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+                    break;
+                case 'hihat':
+                    oscillator.frequency.value = 8000;
+                    oscillator.type = 'square';
+                    filterNode.type = 'highpass';
+                    filterNode.frequency.value = 5000;
+                    gainNode.gain.setValueAtTime(0.3 * metronomeVol, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000 * 0.3);
+                    break;
+            }
             
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + duration / 1000);
@@ -543,6 +756,8 @@
         // 베이스 소리 생성
         function playBass(frequency = 82, duration = 500) {
             if (!audioContext) return;
+            
+            const bassVol = document.getElementById('bassVolume').value / 100;
             
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
@@ -553,7 +768,79 @@
             oscillator.frequency.value = frequency;
             oscillator.type = 'sawtooth';
             
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.2 * bassVol, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        // 실제 음 주파수 계산 (C4 = 261.63Hz 기준)
+        function getNoteFrequency(note, octave) {
+            const noteFrequencies = {
+                'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+                'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+            };
+            
+            const semitoneFromC4 = (octave - 4) * 12 + noteFrequencies[note];
+            return 261.63 * Math.pow(2, semitoneFromC4 / 12);
+        }
+
+        // 확장 가능한 악기 소리 재생 시스템
+        async function playInstrumentNote(note, octave, instrument = currentInstrument, duration = 500) {
+            const noteKey = `${note}${octave}`;
+            
+            // 1단계: 실제 악기 샘플 파일 확인 (향후 구현)
+            const samplePath = `/sounds/${instrument}/${noteKey}.mp3`;
+            
+            try {
+                // 향후 실제 악기 샘플 재생 코드
+                /*
+                const audio = new Audio(samplePath);
+                audio.volume = 0.7;
+                await audio.play();
+                return;
+                */
+            } catch (error) {
+                // 샘플 파일이 없으면 주파수로 재생
+            }
+            
+            // 2단계: 주파수로 재생 (현재 구현)
+            const frequency = getNoteFrequency(note, octave);
+            
+            // 악기별 음색 설정
+            let waveType = 'sine';
+            let volume = 0.3;
+            const instrumentVol = document.getElementById('instrumentVolume').value / 100;
+            
+            switch (instrument) {
+                case 'guitar':
+                    waveType = 'sawtooth';
+                    volume = 0.4 * instrumentVol;
+                    break;
+                case 'bass4':
+                case 'bass5':
+                    waveType = 'sawtooth';
+                    volume = 0.5 * instrumentVol;
+                    break;
+                case 'violin':
+                    waveType = 'triangle';
+                    volume = 0.3 * instrumentVol;
+                    break;
+            }
+            
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = waveType;
+            
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
             
             oscillator.start(audioContext.currentTime);
@@ -562,26 +849,43 @@
 
         // 악기 변경 함수
         function switchInstrument() {
-            const isViolin = document.getElementById('instrumentMode').checked;
+            const selectedInstrument = document.getElementById('instrumentSelect').value;
             const mainTitle = document.getElementById('mainTitle');
             const fretboardTitle = document.getElementById('fretboardTitle');
             const fretboardModeDiv = document.getElementById('fretboardModeDiv');
             const violinModeDiv = document.getElementById('violinModeDiv');
             
-            if (isViolin) {
-                currentInstrument = 'violin';
-                stringTuning = violinTuning;
-                mainTitle.textContent = '🎻 바이올린 스케일 연습 도구';
-                fretboardTitle.textContent = '바이올린 지판';
-                fretboardModeDiv.style.display = 'none';
-                violinModeDiv.style.display = 'flex';
-            } else {
-                currentInstrument = 'guitar';
-                stringTuning = guitarTuning;
-                mainTitle.textContent = '🎸 기타 스케일 연습 도구';
-                fretboardTitle.textContent = '기타 프렛보드';
-                fretboardModeDiv.style.display = 'flex';
-                violinModeDiv.style.display = 'none';
+            currentInstrument = selectedInstrument;
+            
+            switch (selectedInstrument) {
+                case 'guitar':
+                    stringTuning = guitarTuning;
+                    mainTitle.textContent = '🎸 기타 스케일 연습 도구';
+                    fretboardTitle.textContent = '기타 프렛보드';
+                    fretboardModeDiv.style.display = 'flex';
+                    violinModeDiv.style.display = 'none';
+                    break;
+                case 'bass4':
+                    stringTuning = bass4Tuning;
+                    mainTitle.textContent = '🎸 4현 베이스 스케일 연습 도구';
+                    fretboardTitle.textContent = '4현 베이스 프렛보드';
+                    fretboardModeDiv.style.display = 'flex';
+                    violinModeDiv.style.display = 'none';
+                    break;
+                case 'bass5':
+                    stringTuning = bass5Tuning;
+                    mainTitle.textContent = '🎸 5현 베이스 스케일 연습 도구';
+                    fretboardTitle.textContent = '5현 베이스 프렛보드';
+                    fretboardModeDiv.style.display = 'flex';
+                    violinModeDiv.style.display = 'none';
+                    break;
+                case 'violin':
+                    stringTuning = violinTuning;
+                    mainTitle.textContent = '🎻 바이올린 스케일 연습 도구';
+                    fretboardTitle.textContent = '바이올린 지판';
+                    fretboardModeDiv.style.display = 'none';
+                    violinModeDiv.style.display = 'flex';
+                    break;
             }
             
             createFretboard();
@@ -592,11 +896,11 @@
             const fretboard = document.getElementById('fretboard');
             fretboard.innerHTML = '';
             
-            const fretboardWidth = 1200;
+            const fretboardWidth = 1100;
             const stringCount = stringTuning.length;
-            const fretboardHeight = stringCount === 4 ? 120 : 200; // 바이올린은 더 작게
+            const fretboardHeight = stringCount === 4 ? 120 : 200; // 4현 악기는 더 작게
             const fretWidth = fretboardWidth / 23; // 0프렛 + 22프렛
-            const stringSpacing = stringCount === 4 ? 25 : 25; // 현 간격
+            const stringSpacing = 25; // 현 간격
             
             fretboard.style.width = fretboardWidth + 'px';
             fretboard.style.height = fretboardHeight + 'px';
@@ -612,15 +916,18 @@
                 fretboard.appendChild(stringEl);
             }
             
-            if (currentInstrument === 'guitar') {
-                // 기타 프렛 그리기
+            if (currentInstrument === 'guitar' || currentInstrument === 'bass4' || currentInstrument === 'bass5') {
+                // 기타/베이스 프렛 그리기
+                const fretHeight = stringCount <= 5 ? (stringCount === 4 ? 100 : 125) : 160; // 베이스는 더 작게
+                const markerTop = stringCount <= 5 ? (stringCount === 4 ? 140 : 165) : 190;
+                
                 for (let fret = 1; fret <= 22; fret++) {
                     const fretEl = document.createElement('div');
                     fretEl.className = 'fret';
                     fretEl.style.position = 'absolute';
                     fretEl.style.left = (fret * fretWidth) + 'px';
                     fretEl.style.top = '20px';
-                    fretEl.style.height = '160px';
+                    fretEl.style.height = fretHeight + 'px';
                     fretboard.appendChild(fretEl);
                     
                     // 프렛 마커 (인레이)
@@ -628,20 +935,20 @@
                         const marker = document.createElement('div');
                         marker.className = 'fret-marker';
                         marker.style.left = (fret * fretWidth - fretWidth/2 - 4) + 'px';
-                        marker.style.top = '190px';
+                        marker.style.top = markerTop + 'px';
                         fretboard.appendChild(marker);
                     } else if (fret === 12) {
                         // 12프렛은 두 개의 마커
                         const marker1 = document.createElement('div');
                         marker1.className = 'fret-marker double';
                         marker1.style.left = (fret * fretWidth - fretWidth/2 - 8) + 'px';
-                        marker1.style.top = '190px';
+                        marker1.style.top = markerTop + 'px';
                         fretboard.appendChild(marker1);
                         
                         const marker2 = document.createElement('div');
                         marker2.className = 'fret-marker double';
                         marker2.style.left = (fret * fretWidth - fretWidth/2 + 2) + 'px';
-                        marker2.style.top = '190px';
+                        marker2.style.top = markerTop + 'px';
                         fretboard.appendChild(marker2);
                     }
                 }
@@ -666,11 +973,21 @@
             return notes.indexOf(note);
         }
 
-        // 프렛/포지션의 음표 계산
+        // 프렛/포지션의 음표와 옥타브 계산
         function getFretNote(stringIndex, fret) {
-            const openNote = stringTuning[stringIndex];
+            const openString = stringTuning[stringIndex];
+            const openNote = openString.note;
+            const openOctave = openString.octave;
             const openNoteIndex = getNoteIndex(openNote);
-            return notes[(openNoteIndex + fret) % 12];
+            
+            const totalSemitones = openNoteIndex + fret;
+            const noteIndex = totalSemitones % 12;
+            const octaveOffset = Math.floor(totalSemitones / 12);
+            
+            return {
+                note: notes[noteIndex],
+                octave: openOctave + octaveOffset
+            };
         }
 
         // 스케일 업데이트
@@ -681,7 +998,7 @@
             
             // 현재 악기에 따른 모드 확인
             let isRealMode;
-            if (currentInstrument === 'guitar') {
+            if (currentInstrument === 'guitar' || currentInstrument === 'bass4' || currentInstrument === 'bass5') {
                 isRealMode = document.getElementById('fretboardMode').checked;
             } else {
                 isRealMode = document.getElementById('violinMode').checked;
@@ -694,7 +1011,7 @@
             const pattern = scalePatterns[scaleType];
             const intervals = scaleIntervals[scaleType];
             const keyCenterIndex = getNoteIndex(keyCenter);
-            const fretWidth = 1200 / 23;
+            const fretWidth = 1100 / 23;
             const stringCount = stringTuning.length;
             const stringSpacing = 25;
             
@@ -705,30 +1022,29 @@
             for (let string = 0; string < stringCount; string++) {
                 for (let fret = 0; fret <= 22; fret++) {
                     let displayString;
-                    if (currentInstrument === 'guitar') {
+                    if (currentInstrument === 'guitar' || currentInstrument === 'bass4' || currentInstrument === 'bass5') {
                         displayString = isRealMode ? string : (stringCount - 1 - string);
                     } else {
                         // 바이올린: 실물모드가 기본값이므로 반대로 처리
                         displayString = isRealMode ? (stringCount - 1 - string) : string;
                     }
                     
-                    const fretNote = getFretNote(string, fret);
-                    const scaleIndex = scaleNotes.indexOf(fretNote);
+                    const fretNoteData = getFretNote(string, fret);
+                    const scaleIndex = scaleNotes.indexOf(fretNoteData.note);
                     
                     if (scaleIndex !== -1) {
                         const noteEl = document.createElement('div');
                         noteEl.className = 'scale-note';
                         noteEl.textContent = intervals[scaleIndex];
                         noteEl.style.position = 'absolute';
-                        noteEl.style.left = (fret === 0 ? -30 : fret * fretWidth - fretWidth/2 - 12) + 'px';
+                        noteEl.style.left = (fret === 0 ? -25 : (fret - 0.5) * fretWidth - 12) + 'px';
                         noteEl.style.top = (18 + displayString * stringSpacing) + 'px';
                         noteEl.style.backgroundColor = intervalColors[intervals[scaleIndex]];
                         noteEl.style.zIndex = '10';
                         
                         noteEl.addEventListener('click', () => {
-                            // 음표 클릭 시 소리 재생
-                            const frequency = 82.41 * Math.pow(2, (keyCenterIndex + pattern[scaleIndex]) / 12);
-                            playBass(frequency, 300);
+                            // 실제 음 주파수로 재생
+                            playInstrumentNote(fretNoteData.note, fretNoteData.octave, currentInstrument, 400);
                         });
                         
                         fretboard.appendChild(noteEl);
@@ -821,13 +1137,7 @@
                 
                 // 코드 모드일 때 첫 코드도 동시에 재생
                 if (isChordMode) {
-                    const chords = [
-                        document.getElementById('chord1').value,
-                        document.getElementById('chord2').value,
-                        document.getElementById('chord3').value,
-                        document.getElementById('chord4').value
-                    ];
-                    playChordSound(chords[0]);
+                    playChordSound(chordProgression[0]);
                 }
             }
             
@@ -861,13 +1171,24 @@
                     // 각 박의 첫 번째 세분화는 높은 음, 나머지는 낮은 음
                     const isDownbeat = patternIndex === 0;
                     const isFirstBeat = beatIndex === 0;
+                    const soundType = document.getElementById('metronomeSound').value;
                     
-                    if (isDownbeat && isFirstBeat) {
-                        playBeep(1000, 50); // 첫 박의 첫 소리는 가장 높은 음
-                    } else if (isDownbeat) {
-                        playBeep(900, 50); // 각 박의 첫 소리는 높은 음
+                    if (soundType === 'drum') {
+                        if (isDownbeat && isFirstBeat) {
+                            playDrum('kick', 80); // 첫 박은 킥드럼
+                        } else if (isDownbeat) {
+                            playDrum('snare', 60); // 각 박은 스네어
+                        } else {
+                            playDrum('hihat', 40); // 세분화는 하이햇
+                        }
                     } else {
-                        playBeep(800, 50); // 세분화된 소리는 낮은 음
+                        if (isDownbeat && isFirstBeat) {
+                            playBeep(1000, 50); // 첫 박의 첫 소리는 가장 높은 음
+                        } else if (isDownbeat) {
+                            playBeep(900, 50); // 각 박의 첫 소리는 높은 음
+                        } else {
+                            playBeep(800, 50); // 세분화된 소리는 낮은 음
+                        }
                     }
                 }
                 
@@ -952,48 +1273,299 @@
             if (chordInterval) return;
             
             const bpm = parseInt(document.getElementById('bpm').value);
-            const timeSignature = document.getElementById('timeSignature').value;
-            const [numerator] = timeSignature.split('/').map(Number);
-            const barDuration = (60000 / bpm) * numerator;
+            const beatDuration = 60000 / bpm;
             
-            const chords = [
-                document.getElementById('chord1').value,
-                document.getElementById('chord2').value,
-                document.getElementById('chord3').value,
-                document.getElementById('chord4').value
-            ];
+            currentChordIndex = 0;
+            currentChordBeat = 0;
+            
+            // 첫 코드 표시 업데이트
+            updateCurrentChordDisplay();
             
             // 첫 코드는 메트로놈에서 이미 재생했으므로 여기서는 타이머만 설정
             chordInterval = setInterval(() => {
-                currentChordBar = (currentChordBar + 1) % chords.length;
-                playChordSound(chords[currentChordBar]);
-            }, barDuration);
+                currentChordBeat++;
+                
+                // 현재 코드의 지속시간이 끝났는지 확인
+                if (currentChordBeat >= chordProgression[currentChordIndex].duration) {
+                    currentChordIndex = (currentChordIndex + 1) % chordProgression.length;
+                    currentChordBeat = 0;
+                    playChordSound(chordProgression[currentChordIndex]);
+                    updateCurrentChordDisplay();
+                }
+            }, beatDuration);
+        }
+        
+        // 현재 연주 중인 코드 표시 업데이트
+        function updateCurrentChordDisplay() {
+            // 설정 패널의 현재 코드 표시 업데이트
+            const currentChordDisplay = document.getElementById('currentChordDisplay');
+            if (currentChordDisplay) {
+                currentChordDisplay.textContent = getChordName(chordProgression[currentChordIndex]);
+            }
+            
+            // 코드 진행 표시에서 현재 코드 하이라이트
+            const chordItems = document.querySelectorAll('.chord-item');
+            chordItems.forEach((item, index) => {
+                if (index === currentChordIndex) {
+                    item.classList.add('playing');
+                } else {
+                    item.classList.remove('playing');
+                }
+            });
         }
 
-        // 코드 사운드 재생 (향후 MP3 지원 준비)
-        function playChordSound(chord) {
-            // 현재는 베이스 음으로 재생, 향후 MP3 파일로 교체 가능
-            const bassNotes = {
-                'C': 65.41, 'C#': 69.30, 'Db': 69.30, 'D': 73.42, 'D#': 77.78, 'Eb': 77.78,
-                'E': 82.41, 'F': 87.31, 'F#': 92.50, 'Gb': 92.50, 'G': 98.00, 'G#': 103.83, 'Ab': 103.83,
-                'A': 110.00, 'A#': 116.54, 'Bb': 116.54, 'B': 123.47,
-                'Am': 110.00, 'Bm': 123.47, 'Cm': 65.41, 'Dm': 73.42, 'Em': 82.41, 'Fm': 87.31, 'Gm': 98.00
+        // 코드 구성음 계산
+        function getChordNotes(chordObj) {
+            const { root, quality, seventh, tensions } = chordObj;
+            const rootIndex = getNoteIndex(root);
+            let intervals = [];
+            
+            // 기본 트라이어드
+            switch (quality) {
+                case 'major':
+                    intervals = [0, 4, 7]; // 1, 3, 5
+                    break;
+                case 'minor':
+                    intervals = [0, 3, 7]; // 1, b3, 5
+                    break;
+                case 'augmented':
+                    intervals = [0, 4, 8]; // 1, 3, #5
+                    break;
+                case 'diminished':
+                    intervals = [0, 3, 6]; // 1, b3, b5
+                    break;
+                case 'halfDiminished':
+                    intervals = [0, 3, 6]; // 1, b3, b5 (하프디미니시는 기본적으로 m7b5)
+                    break;
+            }
+            
+            // 세븐스 추가
+            if (seventh === 'dominant') {
+                intervals.push(10); // b7
+            } else if (seventh === 'major7') {
+                intervals.push(11); // 7
+            }
+            
+            // 디미니시와 하프디미니시의 기본 세븐스 처리
+            if (quality === 'diminished' && seventh === '') {
+                intervals.push(9); // bb7 (디미니시는 기본적으로 더블플랫7)
+            } else if (quality === 'halfDiminished' && seventh === '') {
+                intervals.push(10); // b7 (하프디미니시는 기본적으로 m7b5)
+            }
+            
+            // 텐션 추가
+            tensions.forEach(tension => {
+                switch (tension) {
+                    case '9': intervals.push(2); break;
+                    case 'b9': intervals.push(1); break;
+                    case '#9': intervals.push(3); break;
+                    case '11': intervals.push(5); break;
+                    case '#11': intervals.push(6); break;
+                    case '13': intervals.push(9); break;
+                    case 'b13': intervals.push(8); break;
+                }
+            });
+            
+            // 음표로 변환 (한 옥타브 내에서)
+            return intervals.map(interval => notes[(rootIndex + interval) % 12]);
+        }
+        
+        // 코드 사운드 재생 (베이스 + 피아노)
+        function playChordSound(chordObj) {
+            if (!audioContext) return;
+            
+            const chordNotes = getChordNotes(chordObj);
+            const rootFreq = getNoteFrequency(chordObj.root, 2); // 베이스는 2옥타브
+            
+            // 베이스 음 재생
+            playBass(rootFreq, 800);
+            
+            // 피아노 코드 재생 (4옥타브)
+            chordNotes.forEach((note, index) => {
+                setTimeout(() => {
+                    const freq = getNoteFrequency(note, 4);
+                    playPianoNote(freq, 600);
+                }, index * 50); // 약간의 딜레이로 아르페지오 효과
+            });
+        }
+        
+        // 피아노 음 재생
+        function playPianoNote(frequency, duration = 500) {
+            if (!audioContext) return;
+            
+            const pianoVol = document.getElementById('pianoVolume').value / 100;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'triangle';
+            
+            gainNode.gain.setValueAtTime(0.15 * pianoVol, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+        
+        // 코드 이름 생성
+        function getChordName(chordObj) {
+            const { root, quality, seventh, tensions } = chordObj;
+            let name = root;
+            
+            // 퀄리티 표기
+            if (quality === 'minor') name += 'm';
+            else if (quality === 'augmented') name += '(#5)';
+            else if (quality === 'diminished') name += '°';
+            else if (quality === 'halfDiminished') name += 'ø';
+            
+            // 세븐스 표기
+            if (seventh === 'dominant') {
+                name += '7';
+            } else if (seventh === 'major7') {
+                name += '△7';
+            } else if (quality === 'diminished' && seventh === '') {
+                name += '7'; // 디미니시는 기본적으로 dim7
+            } else if (quality === 'halfDiminished' && seventh === '') {
+                name += '7'; // 하프디미니시는 기본적으로 m7b5
+            }
+            
+            // 텐션 표기
+            if (tensions.length > 0) {
+                name += '(' + tensions.join(',') + ')';
+            }
+            
+            return name;
+        }
+
+        // 코드 UI 생성
+        function createChordElement(chordObj, index) {
+            const chordDiv = document.createElement('div');
+            chordDiv.className = 'chord-item';
+            chordDiv.setAttribute('data-chord-index', index);
+            chordDiv.innerHTML = `
+                <div class="chord-duration-controls">
+                    <div class="control-btn" onclick="adjustChordDuration(${index}, -1)">-</div>
+                    <div class="control-btn" onclick="adjustChordDuration(${index}, 1)">+</div>
+                </div>
+                <div class="chord-controls">
+                    <div class="control-btn delete" onclick="deleteChord(${index})">×</div>
+                </div>
+                <div class="chord-name-display">${getChordName(chordObj)}</div>
+                <div class="grid grid-cols-2 gap-1 mb-1">
+                    <div>
+                        <select class="chord-root w-full input-bg rounded px-1 py-1 text-xs border" onchange="updateChord(${index})">
+                            ${notes.map(note => `<option value="${note}" ${note === chordObj.root ? 'selected' : ''}>${note}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <select class="chord-quality w-full input-bg rounded px-1 py-1 text-xs border" onchange="updateChord(${index})">
+                            <option value="major" ${chordObj.quality === 'major' ? 'selected' : ''}></option>
+                            <option value="minor" ${chordObj.quality === 'minor' ? 'selected' : ''}>m</option>
+                            <option value="augmented" ${chordObj.quality === 'augmented' ? 'selected' : ''}>(#5)</option>
+                            <option value="diminished" ${chordObj.quality === 'diminished' ? 'selected' : ''}>°</option>
+                            <option value="halfDiminished" ${chordObj.quality === 'halfDiminished' ? 'selected' : ''}>ø</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-1 mb-1">
+                    <div>
+                        <select class="chord-seventh w-full input-bg rounded px-1 py-1 text-xs border" onchange="updateChord(${index})">
+                            <option value="" ${chordObj.seventh === '' ? 'selected' : ''}>-</option>
+                            <option value="dominant" ${chordObj.seventh === 'dominant' ? 'selected' : ''}>7</option>
+                            <option value="major7" ${chordObj.seventh === 'major7' ? 'selected' : ''}>△7</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select class="chord-tension w-full input-bg rounded px-1 py-1 text-xs border" onchange="addTension(${index}, this.value); this.value='';">
+                            <option value="">+</option>
+                            <option value="9">9</option>
+                            <option value="b9">b9</option>
+                            <option value="#9">#9</option>
+                            <option value="11">11</option>
+                            <option value="#11">#11</option>
+                            <option value="13">13</option>
+                            <option value="b13">b13</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tensions-display text-xs mb-1">
+                    ${chordObj.tensions.map(t => `<span class="inline-block bg-blue-100 text-blue-800 px-1 py-0 rounded text-xs cursor-pointer" onclick="removeTension(${index}, '${t}')">${t}×</span>`).join(' ')}
+                </div>
+                <div class="chord-duration-display text-xs">${chordObj.duration}박</div>
+            `;
+            return chordDiv;
+        }
+        
+        // 코드 진행 UI 업데이트
+        function updateChordProgressionUI() {
+            const container = document.getElementById('chordContainer');
+            container.innerHTML = '';
+            
+            chordProgression.forEach((chord, index) => {
+                container.appendChild(createChordElement(chord, index));
+            });
+        }
+        
+        // 코드 업데이트
+        function updateChord(index) {
+            const chordDiv = document.querySelectorAll('.chord-item')[index];
+            const root = chordDiv.querySelector('.chord-root').value;
+            const quality = chordDiv.querySelector('.chord-quality').value;
+            const seventh = chordDiv.querySelector('.chord-seventh').value;
+            
+            chordProgression[index] = {
+                ...chordProgression[index],
+                root,
+                quality,
+                seventh
             };
             
-            const frequency = bassNotes[chord] || 82.41;
-            
-            // TODO: 향후 MP3 파일 재생으로 교체
-            // const audio = new Audio(`/sounds/chords/${chord}.mp3`);
-            // audio.volume = 0.5;
-            // audio.play().catch(e => console.log('Audio play failed:', e));
-            
-            // 현재는 베이스 음으로 재생
-            playBass(frequency, 800);
+            updateChordProgressionUI();
         }
-
-        // 코드 베이스 재생 (호환성을 위해 유지)
-        function playChordBass(chord) {
-            playChordSound(chord);
+        
+        // 텐션 추가
+        function addTension(index, tension) {
+            if (tension && !chordProgression[index].tensions.includes(tension)) {
+                chordProgression[index].tensions.push(tension);
+                updateChordProgressionUI();
+            }
+        }
+        
+        // 텐션 제거
+        function removeTension(index, tension) {
+            chordProgression[index].tensions = chordProgression[index].tensions.filter(t => t !== tension);
+            updateChordProgressionUI();
+        }
+        
+        // 코드 지속시간 조정
+        function adjustChordDuration(index, delta) {
+            const newDuration = Math.max(1, chordProgression[index].duration + delta);
+            chordProgression[index].duration = newDuration;
+            updateChordProgressionUI();
+        }
+        
+        // 코드 추가
+        function addChord() {
+            chordProgression.push({
+                root: 'C',
+                quality: 'major',
+                seventh: '',
+                tensions: [],
+                duration: 4
+            });
+            updateChordProgressionUI();
+        }
+        
+        // 코드 삭제
+        function deleteChord(index) {
+            if (chordProgression.length > 1) {
+                chordProgression.splice(index, 1);
+                updateChordProgressionUI();
+            }
         }
 
         // 코드 진행 정지
@@ -1001,7 +1573,20 @@
             if (chordInterval) {
                 clearInterval(chordInterval);
                 chordInterval = null;
-                currentChordBar = 0;
+                currentChordIndex = 0;
+                currentChordBeat = 0;
+                
+                // 현재 코드 표시 초기화
+                const currentChordDisplay = document.getElementById('currentChordDisplay');
+                if (currentChordDisplay) {
+                    currentChordDisplay.textContent = '-';
+                }
+                
+                // 모든 코드 하이라이트 제거
+                const chordItems = document.querySelectorAll('.chord-item');
+                chordItems.forEach(item => {
+                    item.classList.remove('playing');
+                });
             }
         }
 
@@ -1053,9 +1638,10 @@
             updateBeatIndicators();
             updateTimerDisplay();
             initNoteIcons();
+            updateChordProgressionUI();
             
             // 악기 변경 이벤트
-            document.getElementById('instrumentMode').addEventListener('change', switchInstrument);
+            document.getElementById('instrumentSelect').addEventListener('change', switchInstrument);
             
             // 스케일 변경 이벤트
             document.getElementById('keyCenter').addEventListener('change', updateScale);
@@ -1073,8 +1659,19 @@
             // 코드 모드 토글
             document.getElementById('chordMode').addEventListener('change', (e) => {
                 const chordSettings = document.getElementById('chordSettings');
-                chordSettings.style.display = e.target.checked ? 'block' : 'none';
+                const chordProgressionDisplay = document.getElementById('chordProgressionDisplay');
+                
+                if (e.target.checked) {
+                    chordSettings.style.display = 'block';
+                    chordProgressionDisplay.style.display = 'block';
+                } else {
+                    chordSettings.style.display = 'none';
+                    chordProgressionDisplay.style.display = 'none';
+                }
             });
+            
+            // 코드 추가 버튼
+            document.getElementById('addChord').addEventListener('click', addChord);
             
             // 박자표 변경 이벤트
             document.getElementById('timeSignature').addEventListener('change', updateBeatIndicators);
@@ -1114,7 +1711,36 @@
             document.getElementById('timeTimer').addEventListener('change', updateTimerDisplay);
             document.getElementById('barsTimer').addEventListener('change', updateTimerDisplay);
             document.getElementById('timerStart').addEventListener('click', startTimer);
+            
+            // 음량 패널 토글
+            document.getElementById('volumeToggle').addEventListener('click', () => {
+                const panel = document.getElementById('volumePanel');
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            });
+            
+            // 음량 패널 외부 클릭 시 닫기
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('volumePanel');
+                const toggle = document.getElementById('volumeToggle');
+                if (!panel.contains(e.target) && !toggle.contains(e.target)) {
+                    panel.style.display = 'none';
+                }
+            });
+            
+            // 음량 슬라이더 이벤트
+            document.getElementById('metronomeVolume').addEventListener('input', (e) => {
+                document.getElementById('metronomeVolumeDisplay').textContent = e.target.value;
+            });
+            document.getElementById('bassVolume').addEventListener('input', (e) => {
+                document.getElementById('bassVolumeDisplay').textContent = e.target.value;
+            });
+            document.getElementById('pianoVolume').addEventListener('input', (e) => {
+                document.getElementById('pianoVolumeDisplay').textContent = e.target.value;
+            });
+            document.getElementById('instrumentVolume').addEventListener('input', (e) => {
+                document.getElementById('instrumentVolumeDisplay').textContent = e.target.value;
+            });
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'972f5555a0d6d1db',t:'MTc1NTgzMzg2NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973348f8b05e80b7',t:'MTc1NTg3NTMwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
