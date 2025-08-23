@@ -985,38 +985,35 @@
             // E1-D#2 범위 내로 제한 (베이스 음원 범위)
             if (octave < 1) {
                 octave = 1;
-                note = 'E'; // 최저음은 E1
+                note = 'E';
             }
             if (octave > 2) {
                 octave = 2;
-                note = 'D#'; // 최고음은 D#2
+                note = 'D#';
             }
             if (octave === 1 && notes.indexOf(note) < notes.indexOf('E')) {
-                note = 'E'; // 1옥타브에서 E보다 낮으면 E1로
+                note = 'E';
             }
             if (octave === 2 && notes.indexOf(note) > notes.indexOf('D#')) {
-                note = 'D#'; // 2옥타브에서 D#보다 높으면 D#2로
+                note = 'D#';
             }
             
-            // 음원 파일 경로 (원래 경로로 검색)
+            // 음원 파일 경로
             const samplePath = `sounds/bass4/${note}${octave}.wav`;
             const sample = audioPool.samples.get(samplePath);
             
             if (sample) {
-                // 음원 파일로 재생
                 try {
                     const bassVol = document.getElementById('bassVolume').value / 100;
                     const clonedAudio = sample.cloneNode();
                     clonedAudio.volume = 0.7 * bassVol;
                     clonedAudio.currentTime = 0;
-                    await clonedAudio.play();
+                    clonedAudio.play();
                 } catch (error) {
                     console.log(`Failed to play bass sample: ${samplePath}`);
-                    // 실패 시 합성음으로 대체
                     playBassSynthetic(frequency, duration, note, octave);
                 }
             } else {
-                // 음원이 없으면 합성음으로 재생
                 playBassSynthetic(frequency, duration, note, octave);
             }
         }
@@ -1066,87 +1063,56 @@
             };
         }
 
-        // 오디오 풀 관리 시스템 (음원 겹침 방지)
+        // 오디오 풀 관리 시스템
         const audioPool = {
-            samples: new Map(), // 로드된 샘플 캐시
-            playingSounds: new Map(), // 현재 재생 중인 사운드 추적
-            maxPolyphony: 8 // 최대 동시 재생 수
+            samples: new Map(),
+            playingSounds: new Map(),
+            maxPolyphony: 8
         };
 
-        // URL 안전한 파일명 생성 (# -> %23 인코딩)
-        function createSafeFileName(note, octave) {
-            const safeNote = note.replace('#', '%23');
-            return `${safeNote}${octave}.wav`;
-        }
-
-        // 오디오 샘플 프리로드 (악기별 음역대 제한)
+        // 오디오 샘플 프리로드 (원래 방식으로 복구)
         async function preloadAudioSamples(instrument) {
             const samplePaths = [];
             
-            // 각 악기별 필요한 음역대 샘플 경로 생성
             if (instrument === 'piano') {
-                // 피아노: C3부터 B4까지만
                 for (let octave = 3; octave <= 4; octave++) {
                     notes.forEach(note => {
-                        const fileName = createSafeFileName(note, octave);
-                        const originalPath = `sounds/${instrument}/${note}${octave}.wav`;
-                        const safePath = `sounds/${instrument}/${fileName}`;
-                        samplePaths.push({ originalPath, safePath });
+                        samplePaths.push(`sounds/${instrument}/${note}${octave}.wav`);
                     });
                 }
             } else if (instrument === 'bass4') {
-                // 베이스4: E1부터 D#2까지만 (bass4 폴더)
-                const bassNotes = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']; // 1옥타브
-                const bassNotes2 = ['C', 'C#', 'D', 'D#']; // 2옥타브
+                const bassNotes = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const bassNotes2 = ['C', 'C#', 'D', 'D#'];
                 
                 bassNotes.forEach(note => {
-                    const fileName = createSafeFileName(note, 1);
-                    const originalPath = `sounds/bass4/${note}1.wav`;
-                    const safePath = `sounds/bass4/${fileName}`;
-                    samplePaths.push({ originalPath, safePath });
+                    samplePaths.push(`sounds/bass4/${note}1.wav`);
                 });
                 bassNotes2.forEach(note => {
-                    const fileName = createSafeFileName(note, 2);
-                    const originalPath = `sounds/bass4/${note}2.wav`;
-                    const safePath = `sounds/bass4/${fileName}`;
-                    samplePaths.push({ originalPath, safePath });
+                    samplePaths.push(`sounds/bass4/${note}2.wav`);
                 });
             } else if (instrument === 'bass5') {
-                // 베이스5: B0부터 G2까지 (bass5 폴더)
-                const fileName = createSafeFileName('B', 0);
-                const originalPath = `sounds/bass5/B0.wav`;
-                const safePath = `sounds/bass5/${fileName}`;
-                samplePaths.push({ originalPath, safePath });
-                
+                samplePaths.push(`sounds/bass5/B0.wav`);
                 for (let octave = 1; octave <= 2; octave++) {
                     notes.forEach(note => {
-                        const fileName = createSafeFileName(note, octave);
-                        const originalPath = `sounds/bass5/${note}${octave}.wav`;
-                        const safePath = `sounds/bass5/${fileName}`;
-                        samplePaths.push({ originalPath, safePath });
+                        samplePaths.push(`sounds/bass5/${note}${octave}.wav`);
                     });
                 }
             } else {
-                // 기타, 바이올린: 전체 음역대
                 for (let octave = 1; octave <= 6; octave++) {
                     notes.forEach(note => {
-                        const fileName = createSafeFileName(note, octave);
-                        const originalPath = `sounds/${instrument}/${note}${octave}.wav`;
-                        const safePath = `sounds/${instrument}/${fileName}`;
-                        samplePaths.push({ originalPath, safePath });
+                        samplePaths.push(`sounds/${instrument}/${note}${octave}.wav`);
                     });
                 }
             }
             
-            // 병렬로 샘플 로드
-            const loadPromises = samplePaths.map(async (pathObj) => {
+            const loadPromises = samplePaths.map(async (path) => {
                 try {
-                    const audio = new Audio(pathObj.safePath);
+                    const audio = new Audio(path);
                     audio.preload = 'auto';
                     audio.volume = 0.7;
-                    return { path: pathObj.originalPath, audio }; // 원래 경로로 저장
+                    return { path, audio };
                 } catch (error) {
-                    console.log(`Failed to load: ${pathObj.safePath}`);
+                    console.log(`Failed to load: ${path}`);
                     return null;
                 }
             });
@@ -1187,78 +1153,14 @@
             console.log(`Loaded ${results.filter(r => r.status === 'fulfilled' && r.value).length} drum samples`);
         }
 
-        // 필요한 음원만 지연 로딩 (메모리 절약)
-        async function preloadEssentialSamples() {
-            // 드럼 샘플만 먼저 로드 (용량이 작음)
+        // 모든 샘플 프리로드
+        async function preloadAllSamples() {
             await preloadDrumSamples();
-            
-            // 현재 악기의 기본 음역대만 로드
-            const currentInstrumentSamples = getCurrentInstrumentRange();
-            await preloadLimitedSamples(currentInstrument, currentInstrumentSamples);
-            
-            console.log('Essential samples preloaded');
-        }
-        
-        // 현재 악기의 필수 음역대만 반환
-        function getCurrentInstrumentRange() {
-            switch (currentInstrument) {
-                case 'guitar':
-                    return { octaves: [2, 3, 4], maxNotes: 24 }; // 2옥타브만
-                case 'bass4':
-                case 'bass5':
-                    return { octaves: [1, 2], maxNotes: 16 }; // 베이스 음역대만
-                case 'violin':
-                    return { octaves: [3, 4, 5], maxNotes: 24 }; // 바이올린 음역대만
-                default:
-                    return { octaves: [3, 4], maxNotes: 16 };
-            }
-        }
-        
-        // 제한된 샘플만 로드
-        async function preloadLimitedSamples(instrument, range) {
-            const samplePaths = [];
-            let loadedCount = 0;
-            
-            for (const octave of range.octaves) {
-                if (loadedCount >= range.maxNotes) break;
-                
-                for (const note of notes) {
-                    if (loadedCount >= range.maxNotes) break;
-                    
-                    const fileName = createSafeFileName(note, octave);
-                    const originalPath = `sounds/${instrument}/${note}${octave}.wav`;
-                    samplePaths.push({ originalPath, safePath: `sounds/${instrument}/${fileName}` });
-                    loadedCount++;
-                }
-            }
-            
-            // 병렬 로딩 제한 (동시에 최대 4개만)
-            const batchSize = 4;
-            for (let i = 0; i < samplePaths.length; i += batchSize) {
-                const batch = samplePaths.slice(i, i + batchSize);
-                const loadPromises = batch.map(async (pathObj) => {
-                    try {
-                        const audio = new Audio(pathObj.safePath);
-                        audio.preload = 'metadata'; // 'auto' 대신 'metadata'로 변경
-                        audio.volume = 0.7;
-                        return { path: pathObj.originalPath, audio };
-                    } catch (error) {
-                        return null;
-                    }
-                });
-                
-                const results = await Promise.allSettled(loadPromises);
-                results.forEach(result => {
-                    if (result.status === 'fulfilled' && result.value) {
-                        audioPool.samples.set(result.value.path, result.value.audio);
-                    }
-                });
-                
-                // 배치 간 짧은 대기 (브라우저 부하 분산)
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            
-            console.log(`Loaded ${audioPool.samples.size} limited samples for ${instrument}`);
+            await preloadAudioSamples('piano');
+            await preloadAudioSamples('bass4');
+            await preloadAudioSamples('guitar');
+            await preloadAudioSamples('violin');
+            console.log('All samples preloaded');
         }
 
         // 개선된 악기 소리 재생 시스템 (합성음만 사용)
@@ -1584,9 +1486,8 @@
                     break;
             }
             
-            // 새 악기의 필수 샘플만 프리로드 (메모리 절약)
-            const instrumentRange = getCurrentInstrumentRange();
-            preloadLimitedSamples(selectedInstrument, instrumentRange);
+            // 새 악기의 샘플 프리로드
+            preloadAudioSamples(selectedInstrument);
             
             createFretboard();
         }
@@ -1783,7 +1684,7 @@
             createDrumGrid();
         }
 
-        // 메트로놈 재생 - 최적화된 시스템
+        // 메트로놈 재생 (원래 방식으로 복구)
         function startMetronome() {
             if (metronomeInterval) return;
             
@@ -1813,43 +1714,24 @@
                 startChordProgression();
             }
             
-            // requestAnimationFrame 기반 정확한 타이밍 (CPU 효율적)
-            let lastTime = performance.now();
-            let nextBeatTime = lastTime + sixteenthInterval;
-            
-            function metronomeLoop() {
-                const currentTime = performance.now();
+            // setInterval 기반 (안정적인 타이밍)
+            metronomeInterval = setInterval(() => {
+                sixteenthCount = (sixteenthCount + 1) % 16;
                 
-                if (currentTime >= nextBeatTime) {
-                    sixteenthCount = (sixteenthCount + 1) % 16;
-                    
-                    // 메트로놈 소리 재생
-                    playMetronomeSound(sixteenthCount, soundType, subdivisions, isChordMode);
-                    
-                    // 박자 표시기 업데이트 (4분음표마다만)
-                    const currentQuarterBeat = Math.floor(sixteenthCount / 4);
-                    const sixteenthInBeat = sixteenthCount % 4;
-                    
-                    if (sixteenthInBeat === 0) {
-                        // DOM 조작 최소화
-                        requestAnimationFrame(() => {
-                            indicators.forEach(ind => ind.classList.remove('active'));
-                            if (beatStates[currentQuarterBeat]) {
-                                indicators[currentQuarterBeat].classList.add('active');
-                            }
-                        });
+                // 메트로놈 소리 재생
+                playMetronomeSound(sixteenthCount, soundType, subdivisions, isChordMode);
+                
+                // 박자 표시기 업데이트 (4분음표마다만)
+                const currentQuarterBeat = Math.floor(sixteenthCount / 4);
+                const sixteenthInBeat = sixteenthCount % 4;
+                
+                if (sixteenthInBeat === 0) {
+                    indicators.forEach(ind => ind.classList.remove('active'));
+                    if (beatStates[currentQuarterBeat]) {
+                        indicators[currentQuarterBeat].classList.add('active');
                     }
-                    
-                    nextBeatTime += sixteenthInterval;
                 }
-                
-                if (metronomeInterval) {
-                    requestAnimationFrame(metronomeLoop);
-                }
-            }
-            
-            metronomeInterval = true; // 플래그로 사용
-            requestAnimationFrame(metronomeLoop);
+            }, sixteenthInterval);
         }
         
         // 메트로놈 소리 재생 로직 분리
@@ -1931,7 +1813,8 @@
         // 메트로놈 정지
         function stopMetronome() {
             if (metronomeInterval) {
-                metronomeInterval = null; // requestAnimationFrame 루프 중단
+                clearInterval(metronomeInterval);
+                metronomeInterval = null;
                 currentBeat = 0;
                 
                 const indicators = document.querySelectorAll('.beat-indicator');
@@ -2186,25 +2069,22 @@
             if (octave === 3 && notes.indexOf(note) < notes.indexOf('C')) octave = 4;
             if (octave === 4 && notes.indexOf(note) > notes.indexOf('B')) octave = 3;
             
-            // 음원 파일 경로 (원래 경로로 검색)
+            // 음원 파일 경로
             const samplePath = `sounds/piano/${note}${octave}.wav`;
             const sample = audioPool.samples.get(samplePath);
             
             if (sample) {
-                // 음원 파일로 재생
                 try {
                     const pianoVol = document.getElementById('pianoVolume').value / 100;
                     const clonedAudio = sample.cloneNode();
                     clonedAudio.volume = 0.5 * pianoVol;
                     clonedAudio.currentTime = 0;
-                    await clonedAudio.play();
+                    clonedAudio.play();
                 } catch (error) {
                     console.log(`Failed to play piano sample: ${samplePath}`);
-                    // 실패 시 합성음으로 대체
                     playPianoSynthetic(frequency, duration, note, octave);
                 }
             } else {
-                // 음원이 없으면 합성음으로 재생
                 playPianoSynthetic(frequency, duration, note, octave);
             }
         }
@@ -2461,8 +2341,8 @@
             updateChordProgressionUI();
             createDrumGrid();
             
-            // 필수 음원만 프리로드 시작 (메모리 절약)
-            preloadEssentialSamples();
+            // 모든 음원 프리로드 시작
+            preloadAllSamples();
             
             // 악기 변경 이벤트
             document.getElementById('instrumentSelect').addEventListener('change', switchInstrument);
@@ -2608,5 +2488,5 @@
             });
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973b91dd239d3284',t:'MTc1NTk2MjE3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973b97c1d2583284',t:'MTc1NTk2MjQxNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
