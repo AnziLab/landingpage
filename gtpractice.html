@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PRACTICE NOW</title>
+    <title>ScaleFlow - 스케일 연습 도구</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .fret-marker {
@@ -1187,18 +1187,78 @@
             console.log(`Loaded ${results.filter(r => r.status === 'fulfilled' && r.value).length} drum samples`);
         }
 
-        // 모든 음원 프리로드 (백그라운드에서 실행)
-        async function preloadAllSamples() {
-            const instruments = ['piano', 'bass4', 'bass5'];
-            
-            for (const instrument of instruments) {
-                await preloadAudioSamples(instrument);
-            }
-            
-            // 드럼 샘플도 로드
+        // 필요한 음원만 지연 로딩 (메모리 절약)
+        async function preloadEssentialSamples() {
+            // 드럼 샘플만 먼저 로드 (용량이 작음)
             await preloadDrumSamples();
             
-            console.log('All samples preloaded');
+            // 현재 악기의 기본 음역대만 로드
+            const currentInstrumentSamples = getCurrentInstrumentRange();
+            await preloadLimitedSamples(currentInstrument, currentInstrumentSamples);
+            
+            console.log('Essential samples preloaded');
+        }
+        
+        // 현재 악기의 필수 음역대만 반환
+        function getCurrentInstrumentRange() {
+            switch (currentInstrument) {
+                case 'guitar':
+                    return { octaves: [2, 3, 4], maxNotes: 24 }; // 2옥타브만
+                case 'bass4':
+                case 'bass5':
+                    return { octaves: [1, 2], maxNotes: 16 }; // 베이스 음역대만
+                case 'violin':
+                    return { octaves: [3, 4, 5], maxNotes: 24 }; // 바이올린 음역대만
+                default:
+                    return { octaves: [3, 4], maxNotes: 16 };
+            }
+        }
+        
+        // 제한된 샘플만 로드
+        async function preloadLimitedSamples(instrument, range) {
+            const samplePaths = [];
+            let loadedCount = 0;
+            
+            for (const octave of range.octaves) {
+                if (loadedCount >= range.maxNotes) break;
+                
+                for (const note of notes) {
+                    if (loadedCount >= range.maxNotes) break;
+                    
+                    const fileName = createSafeFileName(note, octave);
+                    const originalPath = `sounds/${instrument}/${note}${octave}.wav`;
+                    samplePaths.push({ originalPath, safePath: `sounds/${instrument}/${fileName}` });
+                    loadedCount++;
+                }
+            }
+            
+            // 병렬 로딩 제한 (동시에 최대 4개만)
+            const batchSize = 4;
+            for (let i = 0; i < samplePaths.length; i += batchSize) {
+                const batch = samplePaths.slice(i, i + batchSize);
+                const loadPromises = batch.map(async (pathObj) => {
+                    try {
+                        const audio = new Audio(pathObj.safePath);
+                        audio.preload = 'metadata'; // 'auto' 대신 'metadata'로 변경
+                        audio.volume = 0.7;
+                        return { path: pathObj.originalPath, audio };
+                    } catch (error) {
+                        return null;
+                    }
+                });
+                
+                const results = await Promise.allSettled(loadPromises);
+                results.forEach(result => {
+                    if (result.status === 'fulfilled' && result.value) {
+                        audioPool.samples.set(result.value.path, result.value.audio);
+                    }
+                });
+                
+                // 배치 간 짧은 대기 (브라우저 부하 분산)
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            console.log(`Loaded ${audioPool.samples.size} limited samples for ${instrument}`);
         }
 
         // 개선된 악기 소리 재생 시스템 (합성음만 사용)
@@ -1453,24 +1513,31 @@
             }
         }
 
-        // 드럼 스텝 표시기 업데이트 - 정확한 스텝 추적
+        // 드럼 스텝 표시기 업데이트 - 최적화된 버전
+        let currentDrumStepElement = null;
+        
         function updateDrumStepIndicator(currentStep) {
-            // 이전 표시 모두 제거
-            const allSteps = document.querySelectorAll('.drum-step');
-            allSteps.forEach(step => step.classList.remove('current'));
+            // 이전 표시 제거 (캐시된 요소 사용)
+            if (currentDrumStepElement) {
+                currentDrumStepElement.forEach(el => el.classList.remove('current'));
+            }
             
-            // 현재 스텝만 표시 (모든 드럼 타입에서)
-            const currentSteps = document.querySelectorAll(`[data-step="${currentStep}"]`);
-            currentSteps.forEach(step => step.classList.add('current'));
+            // 현재 스텝 표시 (캐시하여 재사용)
+            currentDrumStepElement = document.querySelectorAll(`[data-step="${currentStep}"]`);
+            currentDrumStepElement.forEach(step => step.classList.add('current'));
             
-            // 16분음표 길이만큼 표시 후 제거
+            // 16분음표 길이만큼 표시 후 제거 (타이머 최적화)
             const bpm = parseInt(document.getElementById('bpm').value);
             const sixteenthDuration = 60000 / bpm / 4;
             
-            setTimeout(() => {
-                const stepsToRemove = document.querySelectorAll(`[data-step="${currentStep}"].current`);
-                stepsToRemove.forEach(step => step.classList.remove('current'));
-            }, sixteenthDuration * 0.8); // 약간 짧게 표시
+            // requestAnimationFrame으로 DOM 조작 최적화
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (currentDrumStepElement) {
+                        currentDrumStepElement.forEach(step => step.classList.remove('current'));
+                    }
+                }, sixteenthDuration * 0.8);
+            });
         }
 
         // 악기 변경 함수
@@ -1517,8 +1584,9 @@
                     break;
             }
             
-            // 새 악기의 샘플 프리로드 (백그라운드에서)
-            preloadAudioSamples(selectedInstrument);
+            // 새 악기의 필수 샘플만 프리로드 (메모리 절약)
+            const instrumentRange = getCurrentInstrumentRange();
+            preloadLimitedSamples(selectedInstrument, instrumentRange);
             
             createFretboard();
         }
@@ -1715,7 +1783,7 @@
             createDrumGrid();
         }
 
-        // 메트로놈 재생 - 완전히 새로운 시스템
+        // 메트로놈 재생 - 최적화된 시스템
         function startMetronome() {
             if (metronomeInterval) return;
             
@@ -1725,9 +1793,9 @@
             const isChordMode = document.getElementById('chordMode').checked;
             const soundType = document.getElementById('metronomeSound').value;
             
-            // 16분음표 기준으로 통일 (가장 세밀한 단위)
-            const sixteenthInterval = 60000 / bpm / 4; // 16분음표 간격
-            let sixteenthCount = 0; // 16분음표 카운터 (0-15 반복)
+            // 16분음표 기준으로 통일
+            const sixteenthInterval = 60000 / bpm / 4;
+            let sixteenthCount = 0;
             
             currentBeat = 0;
             currentChordBar = 0;
@@ -1745,25 +1813,43 @@
                 startChordProgression();
             }
             
-            // 16분음표 단위로 정확한 타이밍 제어
-            metronomeInterval = setInterval(() => {
-                sixteenthCount = (sixteenthCount + 1) % 16; // 0-15 순환
+            // requestAnimationFrame 기반 정확한 타이밍 (CPU 효율적)
+            let lastTime = performance.now();
+            let nextBeatTime = lastTime + sixteenthInterval;
+            
+            function metronomeLoop() {
+                const currentTime = performance.now();
                 
-                // 메트로놈 소리 재생 (모든 16분음표에서 체크)
-                playMetronomeSound(sixteenthCount, soundType, subdivisions, isChordMode);
-                
-                // 박자 표시기 업데이트 (4분음표마다)
-                const currentQuarterBeat = Math.floor(sixteenthCount / 4); // 0, 1, 2, 3
-                const sixteenthInBeat = sixteenthCount % 4; // 박자 내 16분음표 위치
-                
-                if (sixteenthInBeat === 0) {
-                    indicators.forEach(ind => ind.classList.remove('active'));
-                    if (beatStates[currentQuarterBeat]) {
-                        indicators[currentQuarterBeat].classList.add('active');
+                if (currentTime >= nextBeatTime) {
+                    sixteenthCount = (sixteenthCount + 1) % 16;
+                    
+                    // 메트로놈 소리 재생
+                    playMetronomeSound(sixteenthCount, soundType, subdivisions, isChordMode);
+                    
+                    // 박자 표시기 업데이트 (4분음표마다만)
+                    const currentQuarterBeat = Math.floor(sixteenthCount / 4);
+                    const sixteenthInBeat = sixteenthCount % 4;
+                    
+                    if (sixteenthInBeat === 0) {
+                        // DOM 조작 최소화
+                        requestAnimationFrame(() => {
+                            indicators.forEach(ind => ind.classList.remove('active'));
+                            if (beatStates[currentQuarterBeat]) {
+                                indicators[currentQuarterBeat].classList.add('active');
+                            }
+                        });
                     }
+                    
+                    nextBeatTime += sixteenthInterval;
                 }
                 
-            }, sixteenthInterval);
+                if (metronomeInterval) {
+                    requestAnimationFrame(metronomeLoop);
+                }
+            }
+            
+            metronomeInterval = true; // 플래그로 사용
+            requestAnimationFrame(metronomeLoop);
         }
         
         // 메트로놈 소리 재생 로직 분리
@@ -1845,8 +1931,7 @@
         // 메트로놈 정지
         function stopMetronome() {
             if (metronomeInterval) {
-                clearInterval(metronomeInterval);
-                metronomeInterval = null;
+                metronomeInterval = null; // requestAnimationFrame 루프 중단
                 currentBeat = 0;
                 
                 const indicators = document.querySelectorAll('.beat-indicator');
@@ -2376,8 +2461,8 @@
             updateChordProgressionUI();
             createDrumGrid();
             
-            // 모든 음원 백그라운드 프리로드 시작
-            preloadAllSamples();
+            // 필수 음원만 프리로드 시작 (메모리 절약)
+            preloadEssentialSamples();
             
             // 악기 변경 이벤트
             document.getElementById('instrumentSelect').addEventListener('change', switchInstrument);
@@ -2523,5 +2608,5 @@
             });
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973b7335b7c3aa7d',t:'MTc1NTk2MDkxOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973b91dd239d3284',t:'MTc1NTk2MjE3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
