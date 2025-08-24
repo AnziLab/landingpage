@@ -716,14 +716,62 @@
             '#6': '#ec4899'     // 분홍
         };
 
-        // Web Audio API 정밀 타이밍 시스템
+        // Web Audio API 통합 시스템 (모바일 최적화)
+        const audioSystem = {
+            context: null,
+            masterGain: null,
+            buffers: new Map(),
+            activeNodes: new Set(),
+            maxNodes: 4, // 모바일 최적화를 위해 대폭 줄임
+            
+            async init() {
+                if (!this.context) {
+                    this.context = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.context.createGain();
+                    this.masterGain.connect(this.context.destination);
+                    this.masterGain.gain.value = 0.7;
+                }
+                
+                if (this.context.state === 'suspended') {
+                    await this.context.resume();
+                }
+            },
+            
+            cleanup() {
+                // 활성 노드 정리 (모바일 메모리 최적화)
+                this.activeNodes.forEach(node => {
+                    try { 
+                        if (node.stop) node.stop();
+                        if (node.disconnect) node.disconnect();
+                    } catch(e) {}
+                });
+                this.activeNodes.clear();
+            },
+            
+            // 노드 수 제한 (모바일 성능 보호)
+            addNode(node) {
+                if (this.activeNodes.size >= this.maxNodes) {
+                    const oldestNode = this.activeNodes.values().next().value;
+                    try {
+                        if (oldestNode.stop) oldestNode.stop();
+                        if (oldestNode.disconnect) oldestNode.disconnect();
+                    } catch(e) {}
+                    this.activeNodes.delete(oldestNode);
+                }
+                this.activeNodes.add(node);
+            },
+            
+            removeNode(node) {
+                this.activeNodes.delete(node);
+            }
+        };
+        
         let metronomeInterval = null;
         let chordInterval = null;
         let timerInterval = null;
         let currentBeat = 0;
         let beatCount = 4;
         let beatStates = [true, true, true, true];
-        let audioContext = null;
         let timerSeconds = 0;
         let timerBars = 0;
         let currentChordBar = 0;
@@ -753,109 +801,23 @@
         let currentChordIndex = 0;
         let currentChordBeat = 0;
 
-        // 오디오 컨텍스트 초기화
-        function initAudio() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
+        // 오디오 컨텍스트 초기화 (모바일 최적화)
+        async function initAudio() {
+            await audioSystem.init();
         }
 
-        // 최적화된 오디오 풀 관리 시스템
-        const audioPool = {
-            samples: new Map(),
-            playingSounds: new Map(),
-            maxPolyphony: 6 // 모바일 최적화를 위해 줄임
-        };
-
-        // 실제 보유 음원만 프리로드
-        async function preloadAudioSamples() {
-            const samplePaths = [];
-            
-            // 피아노: C3-B4만
-            for (let octave = 3; octave <= 4; octave++) {
-                notes.forEach(note => {
-                    samplePaths.push(`sounds/piano/${note}${octave}.opus`);
-                });
-            }
-            
-            // 베이스: E1-B1, C2-D#2만
-            const bassNotes1 = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-            const bassNotes2 = ['C', 'C#', 'D', 'D#'];
-            
-            bassNotes1.forEach(note => {
-                samplePaths.push(`sounds/bass4/${note}1.opus`);
-            });
-            bassNotes2.forEach(note => {
-                samplePaths.push(`sounds/bass4/${note}2.opus`);
-            });
-            
-            const loadPromises = samplePaths.map(async (path) => {
-                try {
-                    const audio = new Audio(path);
-                    audio.preload = 'auto';
-                    audio.volume = 0.7;
-                    return { path, audio };
-                } catch (error) {
-                    console.log(`Failed to load: ${path}`);
-                    return null;
-                }
-            });
-            
-            const results = await Promise.allSettled(loadPromises);
-            results.forEach(result => {
-                if (result.status === 'fulfilled' && result.value) {
-                    audioPool.samples.set(result.value.path, result.value.audio);
-                }
-            });
-            
-            console.log(`Loaded ${audioPool.samples.size} audio samples`);
-        }
-
-        // 드럼 샘플 프리로드 (실제 보유 음원만)
-        async function preloadDrumSamples() {
-            const drumTypes = ['kick', 'snare', 'hihat', 'crash'];
-            
-            const loadPromises = drumTypes.map(async (drumType) => {
-                try {
-                    const audio = new Audio(`sounds/drums/${drumType}.opus`);
-                    audio.preload = 'auto';
-                    audio.volume = 0.7;
-                    return { path: `sounds/drums/${drumType}.opus`, audio };
-                } catch (error) {
-                    console.log(`Failed to load drum sample: ${drumType}.opus`);
-                    return null;
-                }
-            });
-            
-            const results = await Promise.allSettled(loadPromises);
-            results.forEach(result => {
-                if (result.status === 'fulfilled' && result.value) {
-                    audioPool.samples.set(result.value.path, result.value.audio);
-                }
-            });
-            
-            console.log(`Loaded ${results.filter(r => r.status === 'fulfilled' && r.value).length} drum samples`);
-        }
-
-        // 모든 샘플 프리로드 (실제 보유 음원만)
-        async function preloadAllSamples() {
-            await preloadDrumSamples();
-            await preloadAudioSamples();
-            console.log('All samples preloaded');
-        }
-
-        // Web Audio API 기반 정밀 비프 소리
+        // Web Audio API 기반 정밀 비프 소리 (모바일 최적화)
         async function playBeep(frequency = 800, duration = 100, when = 0) {
-            if (!audioContext) return;
+            if (!audioSystem.context) return;
             
             const metronomeVol = document.getElementById('metronomeVolume').value / 100;
-            const startTime = when || audioContext.currentTime;
+            const startTime = when || audioSystem.context.currentTime;
             
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = audioSystem.context.createOscillator();
+            const gainNode = audioSystem.context.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(audioSystem.masterGain);
             
             oscillator.frequency.value = frequency;
             oscillator.type = 'sine';
@@ -864,48 +826,20 @@
             gainNode.gain.linearRampToValueAtTime(0.3 * metronomeVol, startTime + 0.01);
             gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
             
+            // 노드 관리
+            audioSystem.addNode(oscillator);
+            
             oscillator.start(startTime);
             oscillator.stop(startTime + duration / 1000);
-        }
-
-        // Web Audio API 기반 정밀 드럼 사운드
-        async function playDrumSound(drumType, volume = 1, when = 0) {
-            const samplePath = `sounds/drums/${drumType}.opus`;
-            const sample = audioPool.samples.get(samplePath);
             
-            if (sample) {
-                try {
-                    let drumVol;
-                    switch (drumType) {
-                        case 'kick': drumVol = document.getElementById('kickVolume').value / 100; break;
-                        case 'snare': drumVol = document.getElementById('snareVolume').value / 100; break;
-                        case 'hihat': drumVol = document.getElementById('hihatVolume').value / 100; break;
-                        case 'crash': drumVol = document.getElementById('crashVolume').value / 100; break;
-                        default: drumVol = 0.5;
-                    }
-                    
-                    const drumMasterVol = document.getElementById('drumMasterVolume').value / 100;
-                    const clonedAudio = sample.cloneNode();
-                    clonedAudio.volume = 0.7 * drumVol * drumMasterVol * volume;
-                    clonedAudio.currentTime = 0;
-                    
-                    if (when > 0) {
-                        setTimeout(() => clonedAudio.play(), (when - audioContext.currentTime) * 1000);
-                    } else {
-                        clonedAudio.play();
-                    }
-                } catch (error) {
-                    console.log(`Failed to play drum sample: ${samplePath}`);
-                    playDrumSoundSynthetic(drumType, volume, when);
-                }
-            } else {
-                playDrumSoundSynthetic(drumType, volume, when);
-            }
+            oscillator.addEventListener('ended', () => {
+                audioSystem.removeNode(oscillator);
+            });
         }
 
-        // 드럼 합성음 재생 (Web Audio API 스케줄링)
-        function playDrumSoundSynthetic(drumType, volume = 1, when = 0) {
-            if (!audioContext) return;
+        // Web Audio API 기반 정밀 드럼 사운드 (모바일 최적화)
+        async function playDrumSound(drumType, volume = 1, when = 0) {
+            if (!audioSystem.context) return;
             
             let drumVol;
             switch (drumType) {
@@ -917,15 +851,15 @@
             }
             
             const drumMasterVol = document.getElementById('drumMasterVolume').value / 100;
-            const startTime = when || audioContext.currentTime;
+            const startTime = when || audioSystem.context.currentTime;
             
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            const filterNode = audioContext.createBiquadFilter();
+            const oscillator = audioSystem.context.createOscillator();
+            const gainNode = audioSystem.context.createGain();
+            const filterNode = audioSystem.context.createBiquadFilter();
             
             oscillator.connect(filterNode);
             filterNode.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(audioSystem.masterGain);
             
             switch (drumType) {
                 case 'kick':
@@ -962,8 +896,15 @@
                     break;
             }
             
+            // 노드 관리
+            audioSystem.addNode(oscillator);
+            
             oscillator.start(startTime);
             oscillator.stop(startTime + 1);
+            
+            oscillator.addEventListener('ended', () => {
+                audioSystem.removeNode(oscillator);
+            });
         }
 
         // 드럼 사운드 생성 (기존 함수 - 호환성 유지)
@@ -994,152 +935,69 @@
             };
         }
 
-        // 베이스 소리 생성 (실제 보유 음원 범위만)
+        // 베이스 소리 생성 (Web Audio API 통합)
         async function playBass(frequency = 82, duration = 500, note = null, octave = null) {
-            if (!note || !octave) {
-                const noteData = frequencyToNote(frequency);
-                note = noteData.note;
-                octave = noteData.octave;
-            }
-            
-            // E1-D#2 범위 내로 제한 (실제 보유 음원 범위)
-            if (octave < 1 || (octave === 1 && notes.indexOf(note) < notes.indexOf('E'))) {
-                octave = 1;
-                note = 'E';
-            }
-            if (octave > 2 || (octave === 2 && notes.indexOf(note) > notes.indexOf('D#'))) {
-                octave = 2;
-                note = 'D#';
-            }
-            
-            const samplePath = `sounds/bass4/${note}${octave}.opus`;
-            const sample = audioPool.samples.get(samplePath);
-            
-            if (sample) {
-                try {
-                    const bassVol = document.getElementById('bassVolume').value / 100;
-                    const clonedAudio = sample.cloneNode();
-                    clonedAudio.volume = 0.7 * bassVol;
-                    clonedAudio.currentTime = 0;
-                    clonedAudio.play();
-                } catch (error) {
-                    console.log(`Failed to play bass sample: ${samplePath}`);
-                    playBassSynthetic(frequency, duration, note, octave);
-                }
-            } else {
-                playBassSynthetic(frequency, duration, note, octave);
-            }
-        }
-        
-        // 베이스 합성음 재생
-        function playBassSynthetic(frequency, duration, note, octave) {
-            if (!audioContext) return;
+            if (!audioSystem.context) return;
             
             const bassVol = document.getElementById('bassVolume').value / 100;
+            const startTime = audioSystem.context.currentTime;
             
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = audioSystem.context.createOscillator();
+            const gainNode = audioSystem.context.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(audioSystem.masterGain);
             
             oscillator.frequency.value = frequency;
             oscillator.type = 'sawtooth';
             
-            gainNode.gain.setValueAtTime(0.2 * bassVol, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            gainNode.gain.setValueAtTime(0.2 * bassVol, startTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration / 1000);
+            // 노드 관리
+            audioSystem.addNode(oscillator);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration / 1000);
+            
+            oscillator.addEventListener('ended', () => {
+                audioSystem.removeNode(oscillator);
+            });
         }
 
-        // 피아노 음 재생 (실제 보유 음원 범위만)
+        // 피아노 음 재생 (Web Audio API 통합)
         async function playPianoNote(frequency, duration = 500, note = null, octave = null) {
-            if (!note || !octave) {
-                const noteData = frequencyToNote(frequency);
-                note = noteData.note;
-                octave = noteData.octave;
-            }
-            
-            // C3-B4 범위 내로 제한 (실제 보유 음원 범위)
-            if (octave < 3) octave = 3;
-            if (octave > 4) octave = 4;
-            
-            const samplePath = `sounds/piano/${note}${octave}.opus`;
-            const sample = audioPool.samples.get(samplePath);
-            
-            if (sample) {
-                try {
-                    const pianoVol = document.getElementById('pianoVolume').value / 100;
-                    const clonedAudio = sample.cloneNode();
-                    clonedAudio.volume = 0.5 * pianoVol;
-                    clonedAudio.currentTime = 0;
-                    clonedAudio.play();
-                } catch (error) {
-                    console.log(`Failed to play piano sample: ${samplePath}`);
-                    playPianoSynthetic(frequency, duration, note, octave);
-                }
-            } else {
-                playPianoSynthetic(frequency, duration, note, octave);
-            }
-        }
-        
-        // 피아노 합성음 재생
-        function playPianoSynthetic(frequency, duration, note, octave) {
-            if (!audioContext) return;
+            if (!audioSystem.context) return;
             
             const pianoVol = document.getElementById('pianoVolume').value / 100;
+            const startTime = audioSystem.context.currentTime;
             
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = audioSystem.context.createOscillator();
+            const gainNode = audioSystem.context.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(audioSystem.masterGain);
             
             oscillator.frequency.value = frequency;
             oscillator.type = 'triangle';
             
-            gainNode.gain.setValueAtTime(0.15 * pianoVol, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            gainNode.gain.setValueAtTime(0.15 * pianoVol, startTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration / 1000);
+            // 노드 관리
+            audioSystem.addNode(oscillator);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration / 1000);
+            
+            oscillator.addEventListener('ended', () => {
+                audioSystem.removeNode(oscillator);
+            });
         }
 
-        // 악기 소리 재생 (합성음만 사용 - 프렛보드용)
-        async function playInstrumentNote(note, octave, instrument = currentInstrument, duration = 500) {
-            const trackingKey = `${instrument}_${note}${octave}`;
-            
-            // 이전에 재생 중인 같은 음 정지
-            if (audioPool.playingSounds.has(trackingKey)) {
-                const prevSound = audioPool.playingSounds.get(trackingKey);
-                if (prevSound.oscillator) {
-                    try {
-                        prevSound.oscillator.stop();
-                    } catch (e) {}
-                }
-                audioPool.playingSounds.delete(trackingKey);
-            }
-            
-            // 폴리포니 제한 (모바일 최적화)
-            if (audioPool.playingSounds.size >= audioPool.maxPolyphony) {
-                const oldestKey = audioPool.playingSounds.keys().next().value;
-                const oldestSound = audioPool.playingSounds.get(oldestKey);
-                if (oldestSound.oscillator) {
-                    try {
-                        oldestSound.oscillator.stop();
-                    } catch (e) {}
-                }
-                audioPool.playingSounds.delete(oldestKey);
-            }
-            
-            // 합성음으로 재생
-            playInstrumentNoteSynthetic(note, octave, instrument, duration, trackingKey);
-        }
-
-        // 합성음 재생 (Web Audio API)
-        function playInstrumentNoteSynthetic(note, octave, instrument, duration, trackingKey) {
-            if (!audioContext) return;
+        // 악기 소리 재생 (Web Audio API 통합, 모바일 최적화)
+        async function playInstrumentNote(note, octave, instrument = currentInstrument, duration = 400) {
+            if (!audioSystem.context) return;
             
             const frequency = getNoteFrequency(note, octave);
             
@@ -1165,54 +1023,41 @@
             }
             
             const finalVolume = baseVolume * instrumentVol;
+            const startTime = audioSystem.context.currentTime;
             
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = audioSystem.context.createOscillator();
+            const gainNode = audioSystem.context.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(audioSystem.masterGain);
             
             oscillator.frequency.value = frequency;
             oscillator.type = waveType;
             
             // 부드러운 페이드 인/아웃으로 클릭 노이즈 방지
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(finalVolume, audioContext.currentTime + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(finalVolume, startTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
             
-            // 재생 추적
-            audioPool.playingSounds.set(trackingKey, { oscillator, startTime: Date.now() });
+            // 노드 관리
+            audioSystem.addNode(oscillator);
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration / 1000);
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration / 1000);
             
-            // 자동 정리
             oscillator.addEventListener('ended', () => {
-                if (audioPool.playingSounds.has(trackingKey)) {
-                    audioPool.playingSounds.delete(trackingKey);
-                }
+                audioSystem.removeNode(oscillator);
             });
         }
 
-        // 모든 사운드 정지
+        // 모든 사운드 정지 (모바일 최적화)
         function stopAllSounds() {
-            audioPool.playingSounds.forEach((sound, key) => {
-                if (sound.audio) {
-                    sound.audio.pause();
-                    sound.audio.currentTime = 0;
-                }
-                if (sound.oscillator) {
-                    try {
-                        sound.oscillator.stop();
-                    } catch (e) {}
-                }
-            });
-            audioPool.playingSounds.clear();
+            audioSystem.cleanup();
         }
 
         // Web Audio API 기반 정밀 메트로놈 스케줄러
         function scheduler() {
-            while (nextNoteTime < audioContext.currentTime + scheduleAheadTime) {
+            while (nextNoteTime < audioSystem.context.currentTime + scheduleAheadTime) {
                 scheduleNote(currentDrumStep, nextNoteTime);
                 nextNote();
             }
@@ -1292,7 +1137,7 @@
                 }
                 
                 // UI 업데이트는 실제 재생 시점에 맞춰 스케줄링
-                const delay = (time - audioContext.currentTime) * 1000;
+                const delay = (time - audioSystem.context.currentTime) * 1000;
                 setTimeout(() => {
                     if (isDownbeat) {
                         const indicators = document.querySelectorAll('.beat-indicator');
@@ -1629,11 +1474,9 @@
                         noteEl.style.backgroundColor = intervalColors[intervals[scaleIndex]];
                         noteEl.style.zIndex = '10';
                         
-                        noteEl.addEventListener('click', () => {
-                            initAudio();
-                            const frequency = getNoteFrequency(fretNoteData.note, fretNoteData.octave);
-                            const trackingKey = `fretboard_${fretNoteData.note}${fretNoteData.octave}`;
-                            playInstrumentNoteSynthetic(fretNoteData.note, fretNoteData.octave, currentInstrument, 400, trackingKey);
+                        noteEl.addEventListener('click', async () => {
+                            await initAudio();
+                            playInstrumentNote(fretNoteData.note, fretNoteData.octave, currentInstrument, 400);
                         });
                         
                         fretboard.appendChild(noteEl);
@@ -1668,15 +1511,15 @@
         }
 
         // Web Audio API 기반 정밀 메트로놈 재생
-        function startMetronome() {
+        async function startMetronome() {
             if (isPlaying) return;
             
-            initAudio();
+            await initAudio();
             
             isPlaying = true;
             currentDrumStep = 0;
-            startTime = audioContext.currentTime;
-            nextNoteTime = audioContext.currentTime;
+            startTime = audioSystem.context.currentTime;
+            nextNoteTime = audioSystem.context.currentTime;
             
             const isChordMode = document.getElementById('chordMode').checked;
             if (isChordMode) {
@@ -1708,6 +1551,7 @@
             allSteps.forEach(step => step.classList.remove('current'));
             
             stopChordProgression();
+            stopAllSounds();
         }
 
         // 타이머 업데이트
@@ -1852,7 +1696,7 @@
             return intervals.map(interval => notes[(rootIndex + interval) % 12]);
         }
         
-        // 피아노 보이싱 생성 (실제 보유 음원 범위 고려)
+        // 피아노 보이싱 생성
         function createPianoVoicing(chordNotes) {
             const voicing = [];
             
@@ -1869,39 +1713,24 @@
                     octave = 4;
                 }
                 
-                // C3-B4 범위 내로 제한
-                const noteIndex = notes.indexOf(note);
-                if (octave === 3 && noteIndex < notes.indexOf('C')) {
-                    octave = 4;
-                } else if (octave === 4 && noteIndex > notes.indexOf('B')) {
-                    octave = 3;
-                }
-                
                 voicing.push({ note, octave });
             });
             
             return voicing;
         }
         
-        // 코드 사운드 재생 (실제 보유 음원 범위 고려)
+        // 코드 사운드 재생 (Web Audio API 통합)
         function playChordSound(chordObj) {
-            if (!audioContext) return;
+            if (!audioSystem.context) return;
             
             const chordNotes = getChordNotes(chordObj);
             
-            // 베이스 음 (E1-D#2 범위)
-            let bassOctave = 1;
+            // 베이스 음
             const rootNote = chordObj.root;
-            const rootIndex = notes.indexOf(rootNote);
+            const rootFreq = getNoteFrequency(rootNote, 2);
+            playBass(rootFreq, 800, rootNote, 2);
             
-            if (rootIndex < notes.indexOf('E')) {
-                bassOctave = 2;
-            }
-            
-            const rootFreq = getNoteFrequency(rootNote, bassOctave);
-            playBass(rootFreq, 800, rootNote, bassOctave);
-            
-            // 피아노 보이싱 (C3-B4 범위)
+            // 피아노 보이싱
             const voicing = createPianoVoicing(chordNotes);
             voicing.forEach((noteData, index) => {
                 setTimeout(() => {
@@ -2101,9 +1930,6 @@
 
         // 이벤트 리스너 설정
         document.addEventListener('DOMContentLoaded', function() {
-            // 페이지 로드 시 실제 보유 음원만 프리로드
-            preloadAllSamples();
-            
             // 초기 설정
             updateBeatIndicators();
             createDrumGrid();
@@ -2214,5 +2040,5 @@
             });
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9742b433d705a7c5',t:'MTc1NjAzNjk4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9742d803e5870dbb',t:'MTc1NjAzODQ0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
