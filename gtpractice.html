@@ -716,6 +716,7 @@
             '#6': '#ec4899'     // 분홍
         };
 
+        // Web Audio API 정밀 타이밍 시스템
         let metronomeInterval = null;
         let chordInterval = null;
         let timerInterval = null;
@@ -728,6 +729,11 @@
         let currentChordBar = 0;
         let currentSubdivision = 'quarter';
         let currentDrumStep = 0;
+        let isPlaying = false;
+        let startTime = 0;
+        let nextNoteTime = 0;
+        let lookahead = 25.0; // 25ms 미리보기
+        let scheduleAheadTime = 0.1; // 100ms 미리 스케줄링
         
         // 드럼 패턴 시스템
         let drumPattern = {
@@ -754,47 +760,34 @@
             }
         }
 
-        // 오디오 풀 관리 시스템
+        // 최적화된 오디오 풀 관리 시스템
         const audioPool = {
             samples: new Map(),
             playingSounds: new Map(),
-            maxPolyphony: 8
+            maxPolyphony: 6 // 모바일 최적화를 위해 줄임
         };
 
-        // 오디오 샘플 프리로드 (OPUS 확장자로 변경)
-        async function preloadAudioSamples(instrument) {
+        // 실제 보유 음원만 프리로드
+        async function preloadAudioSamples() {
             const samplePaths = [];
             
-            if (instrument === 'piano') {
-                for (let octave = 3; octave <= 4; octave++) {
-                    notes.forEach(note => {
-                        samplePaths.push(`sounds/${instrument}/${note}${octave}.opus`);
-                    });
-                }
-            } else if (instrument === 'bass4') {
-                const bassNotes = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                const bassNotes2 = ['C', 'C#', 'D', 'D#'];
-                
-                bassNotes.forEach(note => {
-                    samplePaths.push(`sounds/bass4/${note}1.opus`);
+            // 피아노: C3-B4만
+            for (let octave = 3; octave <= 4; octave++) {
+                notes.forEach(note => {
+                    samplePaths.push(`sounds/piano/${note}${octave}.opus`);
                 });
-                bassNotes2.forEach(note => {
-                    samplePaths.push(`sounds/bass4/${note}2.opus`);
-                });
-            } else if (instrument === 'bass5') {
-                samplePaths.push(`sounds/bass5/B0.opus`);
-                for (let octave = 1; octave <= 2; octave++) {
-                    notes.forEach(note => {
-                        samplePaths.push(`sounds/bass5/${note}${octave}.opus`);
-                    });
-                }
-            } else {
-                for (let octave = 1; octave <= 6; octave++) {
-                    notes.forEach(note => {
-                        samplePaths.push(`sounds/${instrument}/${note}${octave}.opus`);
-                    });
-                }
             }
+            
+            // 베이스: E1-B1, C2-D#2만
+            const bassNotes1 = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const bassNotes2 = ['C', 'C#', 'D', 'D#'];
+            
+            bassNotes1.forEach(note => {
+                samplePaths.push(`sounds/bass4/${note}1.opus`);
+            });
+            bassNotes2.forEach(note => {
+                samplePaths.push(`sounds/bass4/${note}2.opus`);
+            });
             
             const loadPromises = samplePaths.map(async (path) => {
                 try {
@@ -815,10 +808,10 @@
                 }
             });
             
-            console.log(`Loaded ${audioPool.samples.size} samples for ${instrument}`);
+            console.log(`Loaded ${audioPool.samples.size} audio samples`);
         }
 
-        // 드럼 샘플 프리로드 (OPUS 확장자로 변경)
+        // 드럼 샘플 프리로드 (실제 보유 음원만)
         async function preloadDrumSamples() {
             const drumTypes = ['kick', 'snare', 'hihat', 'crash'];
             
@@ -844,21 +837,19 @@
             console.log(`Loaded ${results.filter(r => r.status === 'fulfilled' && r.value).length} drum samples`);
         }
 
-        // 모든 샘플 프리로드
+        // 모든 샘플 프리로드 (실제 보유 음원만)
         async function preloadAllSamples() {
             await preloadDrumSamples();
-            await preloadAudioSamples('piano');
-            await preloadAudioSamples('bass4');
-            await preloadAudioSamples('guitar');
-            await preloadAudioSamples('violin');
+            await preloadAudioSamples();
             console.log('All samples preloaded');
         }
 
-        // 비프 소리 생성
-        async function playBeep(frequency = 800, duration = 100) {
+        // Web Audio API 기반 정밀 비프 소리
+        async function playBeep(frequency = 800, duration = 100, when = 0) {
             if (!audioContext) return;
             
             const metronomeVol = document.getElementById('metronomeVolume').value / 100;
+            const startTime = when || audioContext.currentTime;
             
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
@@ -869,16 +860,16 @@
             oscillator.frequency.value = frequency;
             oscillator.type = 'sine';
             
-            gainNode.gain.setValueAtTime(0.3 * metronomeVol, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(0.3 * metronomeVol, startTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration / 1000);
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration / 1000);
         }
 
-        // 드럼 사운드 생성 (음원 우선, 없으면 합성음)
-        async function playDrumSound(drumType, volume = 1) {
-            // 음원 파일 경로 (OPUS로 변경)
+        // Web Audio API 기반 정밀 드럼 사운드
+        async function playDrumSound(drumType, volume = 1, when = 0) {
             const samplePath = `sounds/drums/${drumType}.opus`;
             const sample = audioPool.samples.get(samplePath);
             
@@ -886,59 +877,47 @@
                 try {
                     let drumVol;
                     switch (drumType) {
-                        case 'kick':
-                            drumVol = document.getElementById('kickVolume').value / 100;
-                            break;
-                        case 'snare':
-                            drumVol = document.getElementById('snareVolume').value / 100;
-                            break;
-                        case 'hihat':
-                            drumVol = document.getElementById('hihatVolume').value / 100;
-                            break;
-                        case 'crash':
-                            drumVol = document.getElementById('crashVolume').value / 100;
-                            break;
-                        default:
-                            drumVol = 0.5;
+                        case 'kick': drumVol = document.getElementById('kickVolume').value / 100; break;
+                        case 'snare': drumVol = document.getElementById('snareVolume').value / 100; break;
+                        case 'hihat': drumVol = document.getElementById('hihatVolume').value / 100; break;
+                        case 'crash': drumVol = document.getElementById('crashVolume').value / 100; break;
+                        default: drumVol = 0.5;
                     }
                     
                     const drumMasterVol = document.getElementById('drumMasterVolume').value / 100;
                     const clonedAudio = sample.cloneNode();
                     clonedAudio.volume = 0.7 * drumVol * drumMasterVol * volume;
                     clonedAudio.currentTime = 0;
-                    clonedAudio.play();
+                    
+                    if (when > 0) {
+                        setTimeout(() => clonedAudio.play(), (when - audioContext.currentTime) * 1000);
+                    } else {
+                        clonedAudio.play();
+                    }
                 } catch (error) {
                     console.log(`Failed to play drum sample: ${samplePath}`);
-                    playDrumSoundSynthetic(drumType, volume);
+                    playDrumSoundSynthetic(drumType, volume, when);
                 }
             } else {
-                playDrumSoundSynthetic(drumType, volume);
+                playDrumSoundSynthetic(drumType, volume, when);
             }
         }
 
-        // 드럼 합성음 재생
-        function playDrumSoundSynthetic(drumType, volume = 1) {
+        // 드럼 합성음 재생 (Web Audio API 스케줄링)
+        function playDrumSoundSynthetic(drumType, volume = 1, when = 0) {
             if (!audioContext) return;
             
             let drumVol;
             switch (drumType) {
-                case 'kick':
-                    drumVol = document.getElementById('kickVolume').value / 100;
-                    break;
-                case 'snare':
-                    drumVol = document.getElementById('snareVolume').value / 100;
-                    break;
-                case 'hihat':
-                    drumVol = document.getElementById('hihatVolume').value / 100;
-                    break;
-                case 'crash':
-                    drumVol = document.getElementById('crashVolume').value / 100;
-                    break;
-                default:
-                    drumVol = 0.5;
+                case 'kick': drumVol = document.getElementById('kickVolume').value / 100; break;
+                case 'snare': drumVol = document.getElementById('snareVolume').value / 100; break;
+                case 'hihat': drumVol = document.getElementById('hihatVolume').value / 100; break;
+                case 'crash': drumVol = document.getElementById('crashVolume').value / 100; break;
+                default: drumVol = 0.5;
             }
             
             const drumMasterVol = document.getElementById('drumMasterVolume').value / 100;
+            const startTime = when || audioContext.currentTime;
             
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
@@ -954,37 +933,37 @@
                     oscillator.type = 'sine';
                     filterNode.type = 'lowpass';
                     filterNode.frequency.value = 100;
-                    gainNode.gain.setValueAtTime(0.8 * drumVol * drumMasterVol * volume, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(0.8 * drumVol * drumMasterVol * volume, startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
                     break;
                 case 'snare':
                     oscillator.frequency.value = 200;
                     oscillator.type = 'square';
                     filterNode.type = 'highpass';
                     filterNode.frequency.value = 1000;
-                    gainNode.gain.setValueAtTime(0.5 * drumVol * drumMasterVol * volume, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.5 * drumVol * drumMasterVol * volume, startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.2);
                     break;
                 case 'hihat':
                     oscillator.frequency.value = 8000;
                     oscillator.type = 'square';
                     filterNode.type = 'highpass';
                     filterNode.frequency.value = 5000;
-                    gainNode.gain.setValueAtTime(0.3 * drumVol * drumMasterVol * volume, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3 * drumVol * drumMasterVol * volume, startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
                     break;
                 case 'crash':
                     oscillator.frequency.value = 4000;
                     oscillator.type = 'sawtooth';
                     filterNode.type = 'highpass';
                     filterNode.frequency.value = 2000;
-                    gainNode.gain.setValueAtTime(0.4 * drumVol * drumMasterVol * volume, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+                    gainNode.gain.setValueAtTime(0.4 * drumVol * drumMasterVol * volume, startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.8);
                     break;
             }
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 1);
+            oscillator.start(startTime);
+            oscillator.stop(startTime + 1);
         }
 
         // 드럼 사운드 생성 (기존 함수 - 호환성 유지)
@@ -1015,32 +994,24 @@
             };
         }
 
-        // 베이스 소리 생성 (음원 우선, 없으면 합성음)
+        // 베이스 소리 생성 (실제 보유 음원 범위만)
         async function playBass(frequency = 82, duration = 500, note = null, octave = null) {
-            // 주파수에서 음표와 옥타브 추출 (제공되지 않은 경우)
             if (!note || !octave) {
                 const noteData = frequencyToNote(frequency);
                 note = noteData.note;
                 octave = noteData.octave;
             }
             
-            // E1-D#2 범위 내로 제한 (베이스 음원 범위)
-            if (octave < 1) {
+            // E1-D#2 범위 내로 제한 (실제 보유 음원 범위)
+            if (octave < 1 || (octave === 1 && notes.indexOf(note) < notes.indexOf('E'))) {
                 octave = 1;
                 note = 'E';
             }
-            if (octave > 2) {
+            if (octave > 2 || (octave === 2 && notes.indexOf(note) > notes.indexOf('D#'))) {
                 octave = 2;
                 note = 'D#';
             }
-            if (octave === 1 && notes.indexOf(note) < notes.indexOf('E')) {
-                note = 'E';
-            }
-            if (octave === 2 && notes.indexOf(note) > notes.indexOf('D#')) {
-                note = 'D#';
-            }
             
-            // 음원 파일 경로 (OPUS로 변경)
             const samplePath = `sounds/bass4/${note}${octave}.opus`;
             const sample = audioPool.samples.get(samplePath);
             
@@ -1082,22 +1053,18 @@
             oscillator.stop(audioContext.currentTime + duration / 1000);
         }
 
-        // 피아노 음 재생 (음원 우선, 없으면 합성음)
+        // 피아노 음 재생 (실제 보유 음원 범위만)
         async function playPianoNote(frequency, duration = 500, note = null, octave = null) {
-            // 주파수에서 음표와 옥타브 추출 (제공되지 않은 경우)
             if (!note || !octave) {
                 const noteData = frequencyToNote(frequency);
                 note = noteData.note;
                 octave = noteData.octave;
             }
             
-            // C3-B4 범위 내로 제한
+            // C3-B4 범위 내로 제한 (실제 보유 음원 범위)
             if (octave < 3) octave = 3;
             if (octave > 4) octave = 4;
-            if (octave === 3 && notes.indexOf(note) < notes.indexOf('C')) octave = 4;
-            if (octave === 4 && notes.indexOf(note) > notes.indexOf('B')) octave = 3;
             
-            // 음원 파일 경로 (OPUS로 변경)
             const samplePath = `sounds/piano/${note}${octave}.opus`;
             const sample = audioPool.samples.get(samplePath);
             
@@ -1139,7 +1106,7 @@
             oscillator.stop(audioContext.currentTime + duration / 1000);
         }
 
-        // 악기 소리 재생 (합성음만 사용)
+        // 악기 소리 재생 (합성음만 사용 - 프렛보드용)
         async function playInstrumentNote(note, octave, instrument = currentInstrument, duration = 500) {
             const trackingKey = `${instrument}_${note}${octave}`;
             
@@ -1154,7 +1121,7 @@
                 audioPool.playingSounds.delete(trackingKey);
             }
             
-            // 폴리포니 제한
+            // 폴리포니 제한 (모바일 최적화)
             if (audioPool.playingSounds.size >= audioPool.maxPolyphony) {
                 const oldestKey = audioPool.playingSounds.keys().next().value;
                 const oldestSound = audioPool.playingSounds.get(oldestKey);
@@ -1241,6 +1208,113 @@
                 }
             });
             audioPool.playingSounds.clear();
+        }
+
+        // Web Audio API 기반 정밀 메트로놈 스케줄러
+        function scheduler() {
+            while (nextNoteTime < audioContext.currentTime + scheduleAheadTime) {
+                scheduleNote(currentDrumStep, nextNoteTime);
+                nextNote();
+            }
+        }
+
+        function scheduleNote(stepNumber, time) {
+            const soundType = document.getElementById('metronomeSound').value;
+            const isChordMode = document.getElementById('chordMode').checked;
+            const subdivisions = currentSubdivision;
+            
+            const currentQuarterBeat = Math.floor(stepNumber / 4);
+            const sixteenthInBeat = stepNumber % 4;
+            
+            if (soundType !== 'pattern' && !beatStates[currentQuarterBeat]) return;
+            
+            let shouldPlay = false;
+            let isDownbeat = false;
+            let isFirstBeat = false;
+            
+            if (soundType === 'pattern') {
+                // 드럼 패턴 재생
+                Object.keys(drumPattern).forEach(drumType => {
+                    if (drumPattern[drumType][stepNumber]) {
+                        playDrumSound(drumType, 1, time);
+                    }
+                });
+                updateDrumStepIndicator(stepNumber);
+                return;
+            }
+            
+            switch (subdivisions) {
+                case 'quarter':
+                    shouldPlay = sixteenthInBeat === 0;
+                    isDownbeat = true;
+                    break;
+                case 'eighth':
+                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 2;
+                    isDownbeat = sixteenthInBeat === 0;
+                    break;
+                case 'triplet':
+                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 1 || sixteenthInBeat === 3;
+                    isDownbeat = sixteenthInBeat === 0;
+                    break;
+                case 'tripletGhost':
+                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 3;
+                    isDownbeat = sixteenthInBeat === 0;
+                    break;
+                case 'sixteenth':
+                    shouldPlay = true;
+                    isDownbeat = sixteenthInBeat === 0;
+                    break;
+                case 'sixteenthSparse':
+                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 3;
+                    isDownbeat = sixteenthInBeat === 0;
+                    break;
+            }
+            
+            isFirstBeat = currentQuarterBeat === 0 && isDownbeat;
+            
+            if (shouldPlay) {
+                if (soundType === 'drum') {
+                    if (isFirstBeat) {
+                        playDrumSound('kick', 1, time);
+                    } else if (isDownbeat) {
+                        playDrumSound('snare', 0.8, time);
+                    } else {
+                        playDrumSound('hihat', 0.6, time);
+                    }
+                } else {
+                    if (isFirstBeat) {
+                        playBeep(1000, 50, time);
+                    } else if (isDownbeat) {
+                        playBeep(900, 50, time);
+                    } else {
+                        playBeep(800, 50, time);
+                    }
+                }
+                
+                // UI 업데이트는 실제 재생 시점에 맞춰 스케줄링
+                const delay = (time - audioContext.currentTime) * 1000;
+                setTimeout(() => {
+                    if (isDownbeat) {
+                        const indicators = document.querySelectorAll('.beat-indicator');
+                        indicators.forEach(ind => ind.classList.remove('active'));
+                        if (beatStates[currentQuarterBeat]) {
+                            indicators[currentQuarterBeat].classList.add('active');
+                        }
+                    }
+                }, Math.max(0, delay));
+                
+                if (isFirstBeat && isChordMode && stepNumber === 0) {
+                    playChordSound(chordProgression[0]);
+                }
+            }
+        }
+
+        function nextNote() {
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const sixteenthInterval = 60.0 / bpm / 4;
+            
+            nextNoteTime += sixteenthInterval;
+            currentDrumStep = (currentDrumStep + 1) % 16;
         }
 
         // 드럼 그리드 생성
@@ -1343,19 +1417,6 @@
             createDrumGrid();
         }
 
-        // 드럼 패턴 재생
-        function playDrumPattern(step) {
-            if (step >= 0 && step < 16) {
-                Object.keys(drumPattern).forEach(drumType => {
-                    if (drumPattern[drumType][step]) {
-                        playDrumSound(drumType);
-                    }
-                });
-                
-                updateDrumStepIndicator(step);
-            }
-        }
-
         // 드럼 스텝 표시기 업데이트
         let currentDrumStepElement = null;
         
@@ -1370,13 +1431,11 @@
             const bpm = parseInt(document.getElementById('bpm').value);
             const sixteenthDuration = 60000 / bpm / 4;
             
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    if (currentDrumStepElement) {
-                        currentDrumStepElement.forEach(step => step.classList.remove('current'));
-                    }
-                }, sixteenthDuration * 0.8);
-            });
+            setTimeout(() => {
+                if (currentDrumStepElement) {
+                    currentDrumStepElement.forEach(step => step.classList.remove('current'));
+                }
+            }, sixteenthDuration * 0.8);
         }
 
         // 악기 변경 함수
@@ -1422,7 +1481,6 @@
                     break;
             }
             
-            preloadAudioSamples(selectedInstrument);
             createFretboard();
         }
 
@@ -1609,132 +1667,45 @@
             createDrumGrid();
         }
 
-        // 메트로놈 재생
+        // Web Audio API 기반 정밀 메트로놈 재생
         function startMetronome() {
-            if (metronomeInterval) return;
+            if (isPlaying) return;
             
             initAudio();
-            const bpm = parseInt(document.getElementById('bpm').value);
-            const subdivisions = currentSubdivision;
-            const isChordMode = document.getElementById('chordMode').checked;
-            const soundType = document.getElementById('metronomeSound').value;
             
-            const sixteenthInterval = 60000 / bpm / 4;
-            let sixteenthCount = 0;
+            isPlaying = true;
+            currentDrumStep = 0;
+            startTime = audioContext.currentTime;
+            nextNoteTime = audioContext.currentTime;
+            
+            const isChordMode = document.getElementById('chordMode').checked;
+            if (isChordMode) {
+                startChordProgression();
+            }
+            
+            // 정밀 스케줄러 시작
+            metronomeInterval = setInterval(scheduler, lookahead);
+        }
+
+        // 메트로놈 정지
+        function stopMetronome() {
+            if (!isPlaying) return;
+            
+            isPlaying = false;
+            
+            if (metronomeInterval) {
+                clearInterval(metronomeInterval);
+                metronomeInterval = null;
+            }
             
             currentBeat = 0;
-            currentChordBar = 0;
             currentDrumStep = 0;
             
             const indicators = document.querySelectorAll('.beat-indicator');
             indicators.forEach(ind => ind.classList.remove('active'));
             
-            playMetronomeSound(0, soundType, subdivisions, isChordMode);
-            
-            if (isChordMode) {
-                startChordProgression();
-            }
-            
-            metronomeInterval = setInterval(() => {
-                sixteenthCount = (sixteenthCount + 1) % 16;
-                
-                playMetronomeSound(sixteenthCount, soundType, subdivisions, isChordMode);
-                
-                const currentQuarterBeat = Math.floor(sixteenthCount / 4);
-                const sixteenthInBeat = sixteenthCount % 4;
-                
-                if (sixteenthInBeat === 0) {
-                    indicators.forEach(ind => ind.classList.remove('active'));
-                    if (beatStates[currentQuarterBeat]) {
-                        indicators[currentQuarterBeat].classList.add('active');
-                    }
-                }
-            }, sixteenthInterval);
-        }
-        
-        // 메트로놈 소리 재생 로직
-        function playMetronomeSound(sixteenthCount, soundType, subdivisions, isChordMode) {
-            const currentQuarterBeat = Math.floor(sixteenthCount / 4);
-            const sixteenthInBeat = sixteenthCount % 4;
-            
-            if (soundType !== 'pattern' && !beatStates[currentQuarterBeat]) return;
-            
-            let shouldPlay = false;
-            let isDownbeat = false;
-            let isFirstBeat = false;
-            
-            if (soundType === 'pattern') {
-                playDrumPattern(sixteenthCount);
-                return;
-            }
-            
-            switch (subdivisions) {
-                case 'quarter':
-                    shouldPlay = sixteenthInBeat === 0;
-                    isDownbeat = true;
-                    break;
-                case 'eighth':
-                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 2;
-                    isDownbeat = sixteenthInBeat === 0;
-                    break;
-                case 'triplet':
-                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 1 || sixteenthInBeat === 3;
-                    isDownbeat = sixteenthInBeat === 0;
-                    break;
-                case 'tripletGhost':
-                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 3;
-                    isDownbeat = sixteenthInBeat === 0;
-                    break;
-                case 'sixteenth':
-                    shouldPlay = true;
-                    isDownbeat = sixteenthInBeat === 0;
-                    break;
-                case 'sixteenthSparse':
-                    shouldPlay = sixteenthInBeat === 0 || sixteenthInBeat === 3;
-                    isDownbeat = sixteenthInBeat === 0;
-                    break;
-            }
-            
-            isFirstBeat = currentQuarterBeat === 0 && isDownbeat;
-            
-            if (shouldPlay) {
-                if (soundType === 'drum') {
-                    if (isFirstBeat) {
-                        playDrum('kick', 80);
-                    } else if (isDownbeat) {
-                        playDrum('snare', 60);
-                    } else {
-                        playDrum('hihat', 40);
-                    }
-                } else {
-                    if (isFirstBeat) {
-                        playBeep(1000, 50);
-                    } else if (isDownbeat) {
-                        playBeep(900, 50);
-                    } else {
-                        playBeep(800, 50);
-                    }
-                }
-                
-                if (isFirstBeat && isChordMode && sixteenthCount === 0) {
-                    playChordSound(chordProgression[0]);
-                }
-            }
-        }
-
-        // 메트로놈 정지
-        function stopMetronome() {
-            if (metronomeInterval) {
-                clearInterval(metronomeInterval);
-                metronomeInterval = null;
-                currentBeat = 0;
-                
-                const indicators = document.querySelectorAll('.beat-indicator');
-                indicators.forEach(ind => ind.classList.remove('active'));
-                
-                const allSteps = document.querySelectorAll('.drum-step');
-                allSteps.forEach(step => step.classList.remove('current'));
-            }
+            const allSteps = document.querySelectorAll('.drum-step');
+            allSteps.forEach(step => step.classList.remove('current'));
             
             stopChordProgression();
         }
@@ -1881,7 +1852,7 @@
             return intervals.map(interval => notes[(rootIndex + interval) % 12]);
         }
         
-        // 피아노 보이싱 생성
+        // 피아노 보이싱 생성 (실제 보유 음원 범위 고려)
         function createPianoVoicing(chordNotes) {
             const voicing = [];
             
@@ -1898,6 +1869,7 @@
                     octave = 4;
                 }
                 
+                // C3-B4 범위 내로 제한
                 const noteIndex = notes.indexOf(note);
                 if (octave === 3 && noteIndex < notes.indexOf('C')) {
                     octave = 4;
@@ -1911,12 +1883,13 @@
             return voicing;
         }
         
-        // 코드 사운드 재생
+        // 코드 사운드 재생 (실제 보유 음원 범위 고려)
         function playChordSound(chordObj) {
             if (!audioContext) return;
             
             const chordNotes = getChordNotes(chordObj);
             
+            // 베이스 음 (E1-D#2 범위)
             let bassOctave = 1;
             const rootNote = chordObj.root;
             const rootIndex = notes.indexOf(rootNote);
@@ -1926,9 +1899,9 @@
             }
             
             const rootFreq = getNoteFrequency(rootNote, bassOctave);
-            
             playBass(rootFreq, 800, rootNote, bassOctave);
             
+            // 피아노 보이싱 (C3-B4 범위)
             const voicing = createPianoVoicing(chordNotes);
             voicing.forEach((noteData, index) => {
                 setTimeout(() => {
@@ -2128,7 +2101,7 @@
 
         // 이벤트 리스너 설정
         document.addEventListener('DOMContentLoaded', function() {
-            // 페이지 로드 시 모든 샘플 프리로드
+            // 페이지 로드 시 실제 보유 음원만 프리로드
             preloadAllSamples();
             
             // 초기 설정
@@ -2241,5 +2214,5 @@
             });
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'973f54298106d1db',t:'MTc1NjAwMTU4OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9742b433d705a7c5',t:'MTc1NjAzNjk4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
