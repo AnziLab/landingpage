@@ -1,1012 +1,424 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-							<style>
-								body {
-									background-color: white; /* Ensure the iframe has a white background */
-								}
-
-								
-    :root {
-      --panel: rgba(255,255,255,0.72);
-      --panel-border: rgba(0,0,0,0.06);
-      --panel-shadow: 0 10px 30px rgba(17,24,39,0.12), inset 0 1px 0 rgba(255,255,255,0.4);
-      --surface: #f6f7fb;
-      --text: #0f172a;
-      --muted: #6b7280;
-      --dot: #ef4444;
-      --dot-accent: #f87171;
-    }
-    .dark:root {
-      --panel: rgba(17,24,39,0.72);
-      --panel-border: rgba(255,255,255,0.08);
-      --panel-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-      --surface: #0b0d12;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --dot: #ff3b30;
-      --dot-accent: #ff6b60;
-    }
-    body {
-      min-height: 100vh;
-      background:
-        radial-gradient(1100px 600px at 10% -10%, rgba(99,102,241,0.12), transparent 60%),
-        radial-gradient(900px 600px at 120% 20%, rgba(16,185,129,0.10), transparent 60%),
-        linear-gradient(180deg, var(--surface), var(--surface));
-      color: var(--text);
-      -webkit-tap-highlight-color: transparent;
-    }
-    .glass {
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      backdrop-filter: saturate(180%) blur(10px);
-      box-shadow: var(--panel-shadow);
-    }
-    /* Beat stage */
-    #stage {
-      background: rgba(17,17,17,0.08);
-    }
-    .dark #stage {
-      background: rgba(255,255,255,0.05);
-    }
-    .beat-dot {
-      width: 18px; height: 18px;
-      border-radius: 9999px;
-      background: var(--dot);
-      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
-      transform: scale(0.9);
-      transition: transform 120ms ease, opacity 120ms ease;
-      opacity: 0.5;
-    }
-    .beat-dot.active {
-      opacity: 1;
-      transform: scale(1.2);
-      background: var(--dot-accent);
-      animation: pulse 250ms ease-out;
-    }
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
-      100% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-    }
-    /* Rounded boxes layout like the screenshot */
-    .panel-btn {
-      @apply flex items-center justify-center text-base sm:text-lg font-semibold rounded-xl px-4 py-3 select-none;
-      background: rgba(17,17,17,0.05);
-      border: 1px solid var(--panel-border);
-    }
-    .dark .panel-btn {
-      background: rgba(255,255,255,0.06);
-    }
-    .panel-sm {
-      @apply rounded-xl px-3 py-2 text-sm font-semibold;
-      background: rgba(17,17,17,0.05);
-      border: 1px solid var(--panel-border);
-    }
-    .dark .panel-sm {
-      background: rgba(255,255,255,0.06);
-    }
-    /* Big play button */
-    #playButton {
-      width: 78px; height: 78px;
-      border-radius: 9999px;
-      background: linear-gradient(145deg, #6366f1, #4f46e5);
-      color: white;
-      box-shadow: 0 10px 18px rgba(99,102,241,0.35);
-      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
-    }
-    #playButton:hover { transform: translateY(-1px); }
-    #playButton:active { transform: translateY(0); filter: brightness(0.96); }
-    #playButton.paused {
-      background: linear-gradient(145deg, #10b981, #059669);
-      box-shadow: 0 10px 18px rgba(5,150,105,0.35);
-    }
-    /* Range for volume */
-    .range {
-      -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 9999px; background: #e5e7eb;
-    }
-    .dark .range { background: #374151; }
-    .range::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 2px solid #4f46e5; box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-    }
-    .dark .range::-webkit-slider-thumb { background: #111827; border-color: #818cf8; }
-    .range::-moz-range-thumb {
-      width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 2px solid #4f46e5; box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-    }
-    /* Utility */
-    .icon-btn { @apply p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition; }
-  
-
-							</style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko" class="h-full">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Metronome</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Metronome</title>
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // Tailwind theme tokens for both modes
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50:'#eef2ff', 100:'#e0e7ff', 200:'#c7d2fe', 300:'#a5b4fc',
-              400:'#818cf8', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca',
-              800:'#3730a3', 900:'#312e81'
-            }
-          }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+                            400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+                            800: '#3730a3', 900: '#312e81'
+                        }
+                    }
+                }
+            },
+            darkMode: 'class'
         }
-      },
-      darkMode: 'class'
-    }
-  </script>
+    </script>
 
-  <style>
-    :root {
-      --panel: rgba(255,255,255,0.72);
-      --panel-border: rgba(0,0,0,0.06);
-      --panel-shadow: 0 10px 30px rgba(17,24,39,0.12), inset 0 1px 0 rgba(255,255,255,0.4);
-      --surface: #f6f7fb;
-      --text: #0f172a;
-      --muted: #6b7280;
-      --dot: #ef4444;
-      --dot-accent: #f87171;
-    }
-    .dark:root {
-      --panel: rgba(17,24,39,0.72);
-      --panel-border: rgba(255,255,255,0.08);
-      --panel-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-      --surface: #0b0d12;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --dot: #ff3b30;
-      --dot-accent: #ff6b60;
-    }
-    body {
-      min-height: 100vh;
-      background:
-        radial-gradient(1100px 600px at 10% -10%, rgba(99,102,241,0.12), transparent 60%),
-        radial-gradient(900px 600px at 120% 20%, rgba(16,185,129,0.10), transparent 60%),
-        linear-gradient(180deg, var(--surface), var(--surface));
-      color: var(--text);
-      -webkit-tap-highlight-color: transparent;
-    }
-    .glass {
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      backdrop-filter: saturate(180%) blur(10px);
-      box-shadow: var(--panel-shadow);
-    }
-    /* Beat stage */
-    #stage {
-      background: rgba(17,17,17,0.08);
-    }
-    .dark #stage {
-      background: rgba(255,255,255,0.05);
-    }
-    .beat-dot {
-      width: 18px; height: 18px;
-      border-radius: 9999px;
-      background: var(--dot);
-      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
-      transform: scale(0.9);
-      transition: transform 120ms ease, opacity 120ms ease;
-      opacity: 0.5;
-    }
-    .beat-dot.active {
-      opacity: 1;
-      transform: scale(1.2);
-      background: var(--dot-accent);
-      animation: pulse 250ms ease-out;
-    }
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
-      100% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-    }
-    /* Rounded boxes layout like the screenshot */
-    .panel-btn {
-      @apply flex items-center justify-center text-base sm:text-lg font-semibold rounded-xl px-4 py-3 select-none;
-      background: rgba(17,17,17,0.05);
-      border: 1px solid var(--panel-border);
-    }
-    .dark .panel-btn {
-      background: rgba(255,255,255,0.06);
-    }
-    .panel-sm {
-      @apply rounded-xl px-3 py-2 text-sm font-semibold;
-      background: rgba(17,17,17,0.05);
-      border: 1px solid var(--panel-border);
-    }
-    .dark .panel-sm {
-      background: rgba(255,255,255,0.06);
-    }
-    /* Big play button */
-    #playButton {
-      width: 78px; height: 78px;
-      border-radius: 9999px;
-      background: linear-gradient(145deg, #6366f1, #4f46e5);
-      color: white;
-      box-shadow: 0 10px 18px rgba(99,102,241,0.35);
-      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
-    }
-    #playButton:hover { transform: translateY(-1px); }
-    #playButton:active { transform: translateY(0); filter: brightness(0.96); }
-    #playButton.paused {
-      background: linear-gradient(145deg, #10b981, #059669);
-      box-shadow: 0 10px 18px rgba(5,150,105,0.35);
-    }
-    /* Range for volume */
-    .range {
-      -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 9999px; background: #e5e7eb;
-    }
-    .dark .range { background: #374151; }
-    .range::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 2px solid #4f46e5; box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-    }
-    .dark .range::-webkit-slider-thumb { background: #111827; border-color: #818cf8; }
-    .range::-moz-range-thumb {
-      width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 2px solid #4f46e5; box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-    }
-    /* Utility */
-    .icon-btn { @apply p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition; }
-  </style>
+    <style>
+        :root {
+            --panel: rgba(255, 255, 255, 0.72);
+            --panel-border: rgba(0, 0, 0, 0.06);
+            --panel-shadow: 0 10px 30px rgba(17, 24, 39, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            --surface: #f6f7fb;
+            --text: #0f172a;
+            --muted: #6b7280;
+            --dot: #ef4444;
+            --dot-accent: #f87171;
+        }
+        .dark:root {
+            --panel: rgba(17, 24, 39, 0.72);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --panel-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            --surface: #0b0d12;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --dot: #ff3b30;
+            --dot-accent: #ff6b60;
+        }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(1100px 600px at 10% -10%, rgba(99, 102, 241, 0.12), transparent 60%),
+                        radial-gradient(900px 600px at 120% 20%, rgba(16, 185, 129, 0.10), transparent 60%),
+                        linear-gradient(180deg, var(--surface), var(--surface));
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: saturate(180%) blur(10px);
+            box-shadow: var(--panel-shadow);
+        }
+        #stage {
+            background: rgba(17, 17, 17, 0.08);
+            transition: border-color 200ms ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        .dark #stage { background: rgba(255, 255, 255, 0.05); }
+        #stage.running { border-color: var(--dot-accent); }
+
+        .beat-dot {
+            width: 14px; height: 14px;
+            border-radius: 9999px;
+            background: var(--dot);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+            transform: scale(0.9);
+            transition: transform 120ms ease, opacity 120ms ease;
+            opacity: 0.5;
+        }
+        .beat-dot.active {
+            opacity: 1;
+            transform: scale(1.2);
+            background: var(--dot-accent);
+            animation: pulse 250ms ease-out;
+        }
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+            100% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        .panel-btn {
+            @apply flex items-center justify-center text-sm font-semibold rounded-lg px-3 py-2 select-none;
+            background: rgba(17, 17, 17, 0.05);
+            border: 1px solid var(--panel-border);
+        }
+        .dark .panel-btn { background: rgba(255, 255, 255, 0.06); }
+        .range {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 9999px; background: #e5e7eb;
+        }
+        .dark .range { background: #374151; }
+        .range::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 2px solid #4f46e5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+        }
+        .dark .range::-webkit-slider-thumb { background: #111827; border-color: #818cf8; }
+        .range::-moz-range-thumb {
+            width: 18px; height: 18px; border-radius: 9999px; background: #fff; border: 2px solid #4f46e5; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+        }
+        .icon-btn { @apply p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition; }
+    </style>
 </head>
 
 <body class="min-h-full flex items-start justify-center p-4">
-  <div class="w-full max-w-sm glass rounded-3xl p-4 sm:p-5">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-3">
-      <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">메트로놈</h1>
-      <div class="flex items-center gap-1.5">
-        <button id="tapBtn" class="icon-btn" title="탭 템포">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-80" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11 2a1 1 0 112 0v7a1 1 0 11-2 0V2z"/><path d="M5.636 5.636a1 1 0 011.414 0L12 10.586l4.95-4.95a1 1 0 011.414 1.415l-5.657 5.656a1 1 0 01-1.414 0L5.636 7.05a1 1 0 010-1.414z"/>
-            <path d="M4 19a1 1 0 100 2h16a1 1 0 100-2H4z"/>
-          </svg>
-        </button>
-        <button id="themeToggle" class="icon-btn" title="라이트/다크 전환" aria-label="테마 전환">
-          <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 18a6 6 0 100-12 6 6 0 000 12z"/><path d="M12 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm0 18a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM4.222 5.636a1 1 0 011.414-1.414l.707.707a1 1 0 11-1.414 1.414l-.707-.707zM17.657 19.071a1 1 0 011.414-1.414l.707.707a1 1 0 11-1.414 1.414l-.707-.707zM2 13a1 1 0 110-2h1a1 1 0 110 2H2zm18 0a1 1 0 110-2h1a1 1 0 110 2h-1zM4.222 18.364l.707-.707A1 1 0 116.343 19.07l-.707.708a1 1 0 11-1.414-1.414zM17.657 4.93l.707-.707A1 1 0 1120.778 5.64l-.707.707A1 1 0 1117.657 4.93z"/>
-          </svg>
-          <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Stage (beat dots) -->
-    <div id="stage" class="rounded-3xl h-36 mb-3 flex items-center justify-center p-4">
-      <div id="dots" class="flex items-center justify-center gap-4"></div>
-    </div>
-
-    <!-- Row 1: Time signature + subdivision -->
-    <div class="grid grid-cols-2 gap-2 mb-2">
-      <button id="timeBtn" class="panel-btn">
-        <span id="timeText">4/4</span>
-      </button>
-      <button id="subdivBtn" class="panel-btn">
-        <span class="mr-2">분할</span>
-        <span id="subdivText" class="opacity-80">x1</span>
-      </button>
-    </div>
-
-    <!-- Row 2: Tools -->
-    <div class="grid grid-cols-3 gap-2 mb-3">
-      <button id="numMinus" class="panel-btn" title="박자수 -1">-</button>
-      <button id="numPlus" class="panel-btn" title="박자수 +1">+</button>
-      <button id="resetBtn" class="panel-btn" title="초기화">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 opacity-90" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 5V1L7 6l5 5V7a5 5 0 110 10 5 5 0 01-4.472-2.777 1 1 0 00-1.764.944A7 7 0 1012 5z"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Row 3: Tempo + Play -->
-    <div class="grid grid-cols-[1fr_auto] items-center gap-3">
-      <!-- Tempo card -->
-      <div class="glass rounded-2xl p-3">
-        <div class="flex items-center justify-between mb-2">
-          <div id="tempoLabel" class="text-xs font-semibold text-gray-600 dark:text-gray-300">Moderato</div>
-          <div class="flex items-center gap-2">
-            <button id="muteBtn" class="icon-btn" title="음소거">
-              <svg id="volOn" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 10v4a1 1 0 001 1h3l3.293 3.293A1 1 0 0012 18.586V5.414a1 1 0 00-1.707-.707L7 8H4a1 1 0 00-1 1z"/>
-              </svg>
-              <svg id="volOff" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10.586 12L3.293 4.707a1 1 0 011.414-1.414l16 16a1 1 0 01-1.414 1.414L14 15.414V18.5a1 1 0 01-1.707.707L9 16H6a1 1 0 01-1-1v-3h3.586l2 2z"/>
-                <path d="M14 8.586V5.5a1 1 0 00-1.707-.707L9 7H6a1 1 0 00-1 1v1.586L14 8.586z"/>
-              </svg>
-            </button>
-          </div>
+    <div class="w-full max-w-xs glass rounded-3xl p-3 space-y-3">
+        <div class="flex items-center justify-between">
+            <h1 class="text-lg font-extrabold tracking-tight">메트로놈</h1>
+            <div class="flex items-center gap-1.5">
+                <button id="tapBtn" class="icon-btn" title="탭 템포">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-80" viewBox="0 0 24 24" fill="currentColor"><path d="M11 2a1 1 0 112 0v7a1 1 0 11-2 0V2z"/><path d="M5.636 5.636a1 1 0 011.414 0L12 10.586l4.95-4.95a1 1 0 011.414 1.415l-5.657 5.656a1 1 0 01-1.414 0L5.636 7.05a1 1 0 010-1.414z"/><path d="M4 19a1 1 0 100 2h16a1 1 0 100-2H4z"/></svg>
+                </button>
+                <button id="themeToggle" class="icon-btn" title="라이트/다크 전환" aria-label="테마 전환">
+                    <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18a6 6 0 100-12 6 6 0 000 12z"/><path d="M12 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm0 18a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM4.222 5.636a1 1 0 011.414-1.414l.707.707a1 1 0 11-1.414 1.414l-.707-.707zM17.657 19.071a1 1 0 011.414-1.414l.707.707a1 1 0 11-1.414 1.414l-.707-.707zM2 13a1 1 0 110-2h1a1 1 0 110 2H2zm18 0a1 1 0 110-2h1a1 1 0 110 2h-1zM4.222 18.364l.707-.707A1 1 0 116.343 19.07l-.707.708a1 1 0 11-1.414-1.414zM17.657 4.93l.707-.707A1 1 0 1120.778 5.64l-.707.707A1 1 0 1117.657 4.93z"/></svg>
+                    <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>
+                </button>
+            </div>
         </div>
 
-        <div class="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-          <button id="tempoDown" class="panel-sm">-</button>
-          <div class="text-center">
-            <div class="text-4xl font-extrabold tabular-nums leading-none" id="bpmText">100</div>
-            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">BPM</div>
-          </div>
-          <button id="tempoUp" class="panel-sm">+</button>
+        <div id="stage" class="rounded-2xl h-28 flex items-center justify-center p-4">
+            <div id="dots" class="flex items-center justify-center gap-3"></div>
         </div>
 
-        <div class="mt-2">
-          <input id="volume" type="range" min="0" max="1" step="0.01" value="0.9" class="range">
+        <div class="glass rounded-2xl p-3">
+            <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 mb-2">
+                <button id="tempoDown" class="panel-btn">-</button>
+                <div class="text-center">
+                    <div class="text-4xl font-extrabold tabular-nums leading-none" id="bpmText">100</div>
+                    <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5" id="tempoLabel">Moderato</div>
+                </div>
+                <button id="tempoUp" class="panel-btn">+</button>
+            </div>
+            <input id="tempoSlider" type="range" min="40" max="240" step="1" value="100" class="range">
         </div>
-      </div>
 
-      <!-- Play button -->
-      <button id="playButton" class="flex items-center justify-center">
-        <svg id="iconPlay" xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M8 5v14l11-7L8 5z" />
-        </svg>
-        <svg id="iconPause" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 hidden" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 5h4v14H6zM14 5h4v14h-4z"/>
-        </svg>
-      </button>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="panel-btn flex items-center justify-center gap-2">
+                <button id="numMinus" class="px-1">-</button>
+                <div id="timeText" class="text-lg font-bold tabular-nums">4/4</div>
+                <button id="numPlus" class="px-1">+</button>
+                <div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                <button id="denomBtn" class="text-sm">분모 4</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                 <button id="subdivBtn" class="panel-btn">
+                    <span class="mr-1.5">분할</span>
+                    <span id="subdivText" class="opacity-80">x1</span>
+                </button>
+                <button id="resetBtn" class="panel-btn" title="초기화">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7a5 5 0 110 10 5 5 0 01-4.472-2.777 1 1 0 00-1.764.944A7 7 0 1012 5z"/></svg>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- Fine controls -->
-    <div class="mt-3 grid grid-cols-3 gap-2">
-      <button id="denomBtn" class="panel-btn" title="박 단위 전환">분모 4</button>
-      <button id="bpmFineDown" class="panel-btn" title="-0.1 BPM">-0.1</button>
-      <button id="bpmFineUp" class="panel-btn" title="+0.1 BPM">+0.1</button>
-    </div>
-  </div>
-
-  <script>
-    // Theme handling
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-    const savedTheme = localStorage.getItem('theme');
-    const root = document.documentElement;
-    function applyTheme(mode) {
-      if (mode === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
-      document.getElementById('themeIconSun').classList.toggle('hidden', mode !== 'light');
-      document.getElementById('themeIconMoon').classList.toggle('hidden', mode === 'light');
-    }
-    applyTheme(savedTheme || (prefersDark.matches ? 'dark' : 'light'));
-    document.getElementById('themeToggle').addEventListener('click', () => {
-      const isDark = root.classList.contains('dark');
-      const next = isDark ? 'light' : 'dark';
-      applyTheme(next);
-      localStorage.setItem('theme', next);
-    });
-
-    // Elements
-    const dotsWrap = document.getElementById('dots');
-    const timeBtn = document.getElementById('timeBtn');
-    const timeText = document.getElementById('timeText');
-    const subdivBtn = document.getElementById('subdivBtn');
-    const subdivText = document.getElementById('subdivText');
-    const resetBtn = document.getElementById('resetBtn');
-    const numMinus = document.getElementById('numMinus');
-    const numPlus = document.getElementById('numPlus');
-
-    const bpmText = document.getElementById('bpmText');
-    const tempoLabel = document.getElementById('tempoLabel');
-    const tempoDown = document.getElementById('tempoDown');
-    const tempoUp = document.getElementById('tempoUp');
-    const bpmFineDown = document.getElementById('bpmFineDown');
-    const bpmFineUp = document.getElementById('bpmFineUp');
-    const tapBtn = document.getElementById('tapBtn');
-
-    const playButton = document.getElementById('playButton');
-    const iconPlay = document.getElementById('iconPlay');
-    const iconPause = document.getElementById('iconPause');
-
-    const denomBtn = document.getElementById('denomBtn');
-    const volume = document.getElementById('volume');
-    const muteBtn = document.getElementById('muteBtn');
-    const volOn = document.getElementById('volOn');
-    const volOff = document.getElementById('volOff');
-
-    // State
-    let numerator = 4;           // beats per bar
-    let denominator = 4;         // beat note (2,4,8)
-    let subdivision = 1;         // sub-beats per beat (1..4)
-    let bpm = 100;               // beats (denominator note) per minute
-    let running = false;
-    let currentBeat = 0;         // [0..numerator-1]
-    let subIndex = 0;            // [0..subdivision-1]
-
-    // WebAudio scheduler
-    let ctx = null;
-    let gain = null;
-    let lookahead = 25/1000;      // 25ms tick
-    let scheduleAhead = 0.12;     // schedule 120ms ahead
-    let nextNoteTime = 0;
-    let timerID = null;
-    let muted = false;
-
-    function ensureAudio() {
-      if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
-        gain = ctx.createGain();
-        gain.gain.value = parseFloat(volume.value);
-        gain.connect(ctx.destination);
-      }
-    }
-
-    function playClick(time, kind='normal') {
-      if (!ctx) return;
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      // Accented/normal/sub frequencies and envelope
-      let freq = 1000, peak = 0.6, decay = 0.04;
-      if (kind === 'accent') { freq = 1400; peak = 0.8; decay = 0.05; }
-      if (kind === 'sub')    { freq = 800;  peak = 0.35; decay = 0.03; }
-      if (muted) peak = 0;
-
-      osc.frequency.value = freq;
-      osc.type = 'square';
-      g.gain.setValueAtTime(0.0001, time);
-      g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), time + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, time + decay);
-
-      osc.connect(g);
-      g.connect(gain);
-      osc.start(time);
-      osc.stop(time + decay + 0.005);
-    }
-
-    function secondsPerSubBeat() {
-      const secondsPerBeat = 60 / bpm * (4 / denominator);
-      return secondsPerBeat / subdivision;
-    }
-
-    function scheduleNotes() {
-      while (nextNoteTime < ctx.currentTime + scheduleAhead) {
-        // Determine kind of click at this subIndex
-        let kind = 'sub';
-        if (subIndex === 0) {
-          kind = (currentBeat === 0) ? 'accent' : 'normal';
+    <script>
+        // Theme handling
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+        const savedTheme = localStorage.getItem('theme');
+        const root = document.documentElement;
+        function applyTheme(mode) {
+            if (mode === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
+            document.getElementById('themeIconSun').classList.toggle('hidden', mode !== 'light');
+            document.getElementById('themeIconMoon').classList.toggle('hidden', mode === 'light');
         }
-        playClick(nextNoteTime, kind);
+        applyTheme(savedTheme || (prefersDark.matches ? 'dark' : 'light'));
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const isDark = root.classList.contains('dark');
+            const next = isDark ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('theme', next);
+        });
 
-        // Visual update time near the click
-        requestAnimationFrame(() => highlightBeat(currentBeat, subIndex));
+        // Elements
+        const stage = document.getElementById('stage');
+        const dotsWrap = document.getElementById('dots');
+        const timeText = document.getElementById('timeText');
+        const subdivBtn = document.getElementById('subdivBtn');
+        const subdivText = document.getElementById('subdivText');
+        const resetBtn = document.getElementById('resetBtn');
+        const numMinus = document.getElementById('numMinus');
+        const numPlus = document.getElementById('numPlus');
+        const denomBtn = document.getElementById('denomBtn');
 
-        // Advance musical time
-        advanceNote();
-      }
-    }
+        const bpmText = document.getElementById('bpmText');
+        const tempoLabel = document.getElementById('tempoLabel');
+        const tempoDown = document.getElementById('tempoDown');
+        const tempoUp = document.getElementById('tempoUp');
+        const tempoSlider = document.getElementById('tempoSlider');
+        const tapBtn = document.getElementById('tapBtn');
 
-    function advanceNote() {
-      // Move to next sub beat
-      subIndex++;
-      if (subIndex >= subdivision) {
-        subIndex = 0;
-        currentBeat = (currentBeat + 1) % numerator;
-      }
-      nextNoteTime += secondsPerSubBeat();
-    }
+        // State
+        let numerator = 4;
+        let denominator = 4;
+        let subdivision = 1;
+        let bpm = 100;
+        let running = false;
+        let currentBeat = 0;
+        let subIndex = 0;
 
-    function scheduler() {
-      scheduleNotes();
-      timerID = setTimeout(scheduler, lookahead * 1000);
-    }
+        // WebAudio scheduler
+        let ctx = null;
+        let lookahead = 25 / 1000;
+        let scheduleAhead = 0.12;
+        let nextNoteTime = 0;
+        let timerID = null;
 
-    function start() {
-      ensureAudio();
-      ctx.resume && ctx.resume();
-      running = true;
-      playButton.classList.add('paused');
-      iconPlay.classList.add('hidden');
-      iconPause.classList.remove('hidden');
-
-      currentBeat = 0;
-      subIndex = 0;
-      nextNoteTime = ctx.currentTime + 0.08; // small delay
-      scheduler();
-    }
-
-    function stop() {
-      running = false;
-      iconPlay.classList.remove('hidden');
-      iconPause.classList.add('hidden');
-      playButton.classList.remove('paused');
-      if (timerID) clearTimeout(timerID);
-      timerID = null;
-      clearBeatHighlights();
-    }
-
-    function toggle() {
-      running ? stop() : start();
-    }
-
-    // UI: beats (red dots)
-    function renderDots() {
-      dotsWrap.innerHTML = '';
-      const gap = numerator >= 7 ? 8 : 14;
-      dotsWrap.style.gap = gap + 'px';
-      for (let i = 0; i < numerator; i++) {
-        const d = document.createElement('div');
-        d.className = 'beat-dot';
-        if (i === 0) d.style.transform = 'scale(1.05)'; // slight emphasis
-        dotsWrap.appendChild(d);
-      }
-    }
-    function clearBeatHighlights() {
-      [...dotsWrap.children].forEach(el => el.classList.remove('active'));
-    }
-    function highlightBeat(beatIdx, subIdx) {
-      if (subIdx !== 0) return; // only on main beats
-      clearBeatHighlights();
-      const el = dotsWrap.children[beatIdx];
-      if (el) el.classList.add('active');
-    }
-
-    // Controls
-    function updateUI() {
-      timeText.textContent = `${numerator}/${denominator}`;
-      subdivText.textContent = `x${subdivision}`;
-      denomBtn.textContent = `분모 ${denominator}`;
-      bpmText.textContent = Math.round(bpm * 100) / 100;
-      tempoLabel.textContent = tempoMarking(bpm);
-      renderDots();
-    }
-
-    function tempoMarking(bpm) {
-      // Common markings
-      if (bpm < 40)  return 'Grave';
-      if (bpm < 56)  return 'Largo';
-      if (bpm < 72)  return 'Adagio';
-      if (bpm < 84)  return 'Andante';
-      if (bpm < 100) return 'Andantino';
-      if (bpm < 120) return 'Moderato';
-      if (bpm < 156) return 'Allegro';
-      if (bpm < 176) return 'Vivace';
-      if (bpm < 200) return 'Presto';
-      return 'Prestissimo';
-    }
-
-    // Repeating press helper
-    function holdRepeat(el, onStep, stepDelay=120, accelerate=true) {
-      let t = null, speed = stepDelay, active = false;
-      const start = () => {
-        if (active) return;
-        active = true;
-        onStep();
-        let count = 0;
-        t = setInterval(() => {
-          onStep();
-          if (accelerate && ++count % 6 === 0 && speed > 40) {
-            clearInterval(t);
-            speed -= 10;
-            t = setInterval(onStep, speed);
-          }
-        }, speed);
-      };
-      const stop = () => { active = false; clearInterval(t); t = null; speed = stepDelay; };
-      el.addEventListener('mousedown', start);
-      el.addEventListener('touchstart', (e)=>{e.preventDefault(); start();}, {passive:false});
-      window.addEventListener('mouseup', stop);
-      window.addEventListener('touchend', stop);
-      window.addEventListener('touchcancel', stop);
-      el.addEventListener('click', (e)=>e.preventDefault()); // prevent double
-    }
-
-    // Events
-    playButton.addEventListener('click', toggle);
-    resetBtn.addEventListener('click', () => {
-      numerator = 4; denominator = 4; subdivision = 1; bpm = 100;
-      stop();
-      updateUI();
-    });
-
-    timeBtn.addEventListener('click', () => {
-      // Quick picker: cycle numerator 2..12
-      numerator++;
-      if (numerator > 12) numerator = 2;
-      renderDots();
-      timeText.textContent = `${numerator}/${denominator}`;
-    });
-    numMinus.addEventListener('click', () => { numerator = Math.max(1, numerator-1); updateUI(); });
-    numPlus.addEventListener('click', () => { numerator = Math.min(16, numerator+1); updateUI(); });
-
-    subdivBtn.addEventListener('click', () => {
-      subdivision++;
-      if (subdivision > 4) subdivision = 1; // 1,2,3,4
-      subdivText.textContent = `x${subdivision}`;
-    });
-
-    denomBtn.addEventListener('click', () => {
-      const order = [2,4,8];
-      const idx = order.indexOf(denominator);
-      denominator = order[(idx+1) % order.length];
-      updateUI();
-    });
-
-    function setBpm(v) {
-      bpm = Math.min(300, Math.max(10, v));
-      bpmText.textContent = Math.round(bpm * 100) / 100;
-      tempoLabel.textContent = tempoMarking(bpm);
-    }
-    tempoUp.addEventListener('click', () => setBpm(bpm + 1));
-    tempoDown.addEventListener('click', () => setBpm(bpm - 1));
-    bpmFineUp.addEventListener('click', () => setBpm(bpm + 0.1));
-    bpmFineDown.addEventListener('click', () => setBpm(bpm - 0.1));
-
-    // Hold to repeat on +/- main tempo
-    holdRepeat(tempoUp, () => setBpm(bpm + 1));
-    holdRepeat(tempoDown, () => setBpm(bpm - 1));
-
-    // Tap tempo
-    const taps = [];
-    tapBtn.addEventListener('click', () => {
-      const now = performance.now();
-      taps.push(now);
-      while (taps.length > 6) taps.shift();
-      if (taps.length >= 2) {
-        let sum = 0; let cnt = 0;
-        for (let i=1; i<taps.length; i++) {
-          sum += (taps[i] - taps[i-1]); cnt++;
+        function ensureAudio() {
+            if (!ctx) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
         }
-        const avgMs = sum / cnt;
-        const newBpm = 60000 / avgMs;
-        setBpm(newBpm);
-      }
-      tapBtn.classList.add('ring-2','ring-brand-500');
-      setTimeout(()=>tapBtn.classList.remove('ring-2','ring-brand-500'),120);
-    });
 
-    // Volume
-    volume.addEventListener('input', () => {
-      ensureAudio();
-      gain.gain.value = parseFloat(volume.value);
-    });
-    muteBtn.addEventListener('click', () => {
-      muted = !muted;
-      volOn.classList.toggle('hidden', muted);
-      volOff.classList.toggle('hidden', !muted);
-    });
+        function playClick(time, kind = 'normal') {
+            if (!ctx) return;
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            let freq = 1000, peak = 0.6, decay = 0.04;
+            if (kind === 'accent') { freq = 1400; peak = 0.8; decay = 0.05; }
+            if (kind === 'sub') { freq = 800; peak = 0.35; decay = 0.03; }
 
-    // Init
-    updateUI();
-  </script>
+            osc.frequency.value = freq;
+            osc.type = 'square';
+            g.gain.setValueAtTime(0.0001, time);
+            g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), time + 0.002);
+            g.gain.exponentialRampToValueAtTime(0.0001, time + decay);
+
+            osc.connect(g);
+            g.connect(ctx.destination);
+            osc.start(time);
+            osc.stop(time + decay + 0.005);
+        }
+
+        function secondsPerSubBeat() {
+            const secondsPerBeat = 60 / bpm * (4 / denominator);
+            return secondsPerBeat / subdivision;
+        }
+
+        function scheduleNotes() {
+            while (nextNoteTime < ctx.currentTime + scheduleAhead) {
+                let kind = 'sub';
+                if (subIndex === 0) {
+                    kind = (currentBeat === 0) ? 'accent' : 'normal';
+                }
+                playClick(nextNoteTime, kind);
+                requestAnimationFrame(() => highlightBeat(currentBeat, subIndex));
+                advanceNote();
+            }
+        }
+
+        function advanceNote() {
+            subIndex++;
+            if (subIndex >= subdivision) {
+                subIndex = 0;
+                currentBeat = (currentBeat + 1) % numerator;
+            }
+            nextNoteTime += secondsPerSubBeat();
+        }
+
+        function scheduler() {
+            scheduleNotes();
+            timerID = setTimeout(scheduler, lookahead * 1000);
+        }
+
+        function start() {
+            ensureAudio();
+            ctx.resume && ctx.resume();
+            running = true;
+            stage.classList.add('running');
+            currentBeat = 0;
+            subIndex = 0;
+            nextNoteTime = ctx.currentTime + 0.08;
+            scheduler();
+        }
+
+        function stop() {
+            running = false;
+            stage.classList.remove('running');
+            if (timerID) clearTimeout(timerID);
+            timerID = null;
+            // BUG FIX: Reset state on stop for a clean start next time
+            currentBeat = 0;
+            subIndex = 0;
+            clearBeatHighlights();
+        }
+
+        function toggle() {
+            running ? stop() : start();
+        }
+
+        function renderDots() {
+            dotsWrap.innerHTML = '';
+            const gap = numerator >= 7 ? 6 : 12;
+            dotsWrap.style.gap = gap + 'px';
+            for (let i = 0; i < numerator; i++) {
+                const d = document.createElement('div');
+                d.className = 'beat-dot';
+                dotsWrap.appendChild(d);
+            }
+        }
+
+        function clearBeatHighlights() {
+            [...dotsWrap.children].forEach(el => el.classList.remove('active'));
+        }
+
+        function highlightBeat(beatIdx, subIdx) {
+            if (subIdx !== 0) return;
+            clearBeatHighlights();
+            const el = dotsWrap.children[beatIdx];
+            if (el) el.classList.add('active');
+        }
+
+        function updateUI() {
+            timeText.textContent = `${numerator}/${denominator}`;
+            subdivText.textContent = `x${subdivision}`;
+            denomBtn.textContent = `분모 ${denominator}`;
+            bpmText.textContent = Math.round(bpm);
+            tempoLabel.textContent = tempoMarking(bpm);
+            tempoSlider.value = bpm;
+            renderDots();
+        }
+
+        function tempoMarking(bpm) {
+            if (bpm < 40) return 'Grave';
+            if (bpm < 56) return 'Largo';
+            if (bpm < 72) return 'Adagio';
+            if (bpm < 84) return 'Andante';
+            if (bpm < 100) return 'Andantino';
+            if (bpm < 120) return 'Moderato';
+            if (bpm < 156) return 'Allegro';
+            if (bpm < 176) return 'Vivace';
+            if (bpm < 200) return 'Presto';
+            return 'Prestissimo';
+        }
+
+        function holdRepeat(el, onStep, stepDelay = 120, accelerate = true) {
+            let t = null, speed = stepDelay, active = false;
+            const start = () => {
+                if (active) return;
+                active = true;
+                onStep();
+                let count = 0;
+                t = setInterval(() => {
+                    onStep();
+                    if (accelerate && ++count % 6 === 0 && speed > 40) {
+                        clearInterval(t);
+                        speed -= 10;
+                        t = setInterval(onStep, speed);
+                    }
+                }, speed);
+            };
+            const stop = () => { active = false; clearInterval(t); t = null; speed = stepDelay; };
+            el.addEventListener('mousedown', start);
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); start(); }, { passive: false });
+            window.addEventListener('mouseup', stop);
+            window.addEventListener('touchend', stop);
+            window.addEventListener('touchcancel', stop);
+            el.addEventListener('click', (e) => e.preventDefault());
+        }
+
+        // Events
+        stage.addEventListener('click', toggle);
+
+        resetBtn.addEventListener('click', () => {
+            numerator = 4; denominator = 4; subdivision = 1; setBpm(100);
+            if (running) stop();
+            updateUI();
+        });
+        
+        numMinus.addEventListener('click', () => { numerator = Math.max(1, numerator - 1); updateUI(); });
+        numPlus.addEventListener('click', () => { numerator = Math.min(16, numerator + 1); updateUI(); });
+
+        subdivBtn.addEventListener('click', () => {
+            subdivision++;
+            if (subdivision > 4) subdivision = 1;
+            subdivText.textContent = `x${subdivision}`;
+        });
+
+        denomBtn.addEventListener('click', () => {
+            const order = [2, 4, 8];
+            const idx = order.indexOf(denominator);
+            denominator = order[(idx + 1) % order.length];
+            updateUI();
+        });
+
+        function setBpm(v) {
+            bpm = Math.min(240, Math.max(40, v));
+            bpmText.textContent = Math.round(bpm);
+            tempoLabel.textContent = tempoMarking(bpm);
+            tempoSlider.value = bpm;
+        }
+
+        tempoSlider.addEventListener('input', (e) => setBpm(parseFloat(e.target.value)));
+        holdRepeat(tempoUp, () => setBpm(bpm + 1));
+        holdRepeat(tempoDown, () => setBpm(bpm - 1));
+
+        const taps = [];
+        tapBtn.addEventListener('click', () => {
+            const now = performance.now();
+            taps.push(now);
+            while (taps.length > 6) taps.shift();
+            if (taps.length >= 2) {
+                let sum = 0; let cnt = 0;
+                for (let i = 1; i < taps.length; i++) {
+                    sum += (taps[i] - taps[i - 1]); cnt++;
+                }
+                const avgMs = sum / cnt;
+                setBpm(60000 / avgMs);
+            }
+            tapBtn.classList.add('ring-2', 'ring-brand-500');
+            setTimeout(() => tapBtn.classList.remove('ring-2', 'ring-brand-500'), 120);
+        });
+
+        // Init
+        updateUI();
+    </script>
 </body>
 </html>
-
-
-
-							<script>
-                            	
-    // Tailwind theme tokens for both modes
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50:'#eef2ff', 100:'#e0e7ff', 200:'#c7d2fe', 300:'#a5b4fc',
-              400:'#818cf8', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca',
-              800:'#3730a3', 900:'#312e81'
-            }
-          }
-        }
-      },
-      darkMode: 'class'
-    }
-  
-
-    // Theme handling
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-    const savedTheme = localStorage.getItem('theme');
-    const root = document.documentElement;
-    function applyTheme(mode) {
-      if (mode === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
-      document.getElementById('themeIconSun').classList.toggle('hidden', mode !== 'light');
-      document.getElementById('themeIconMoon').classList.toggle('hidden', mode === 'light');
-    }
-    applyTheme(savedTheme || (prefersDark.matches ? 'dark' : 'light'));
-    document.getElementById('themeToggle').addEventListener('click', () => {
-      const isDark = root.classList.contains('dark');
-      const next = isDark ? 'light' : 'dark';
-      applyTheme(next);
-      localStorage.setItem('theme', next);
-    });
-
-    // Elements
-    const dotsWrap = document.getElementById('dots');
-    const timeBtn = document.getElementById('timeBtn');
-    const timeText = document.getElementById('timeText');
-    const subdivBtn = document.getElementById('subdivBtn');
-    const subdivText = document.getElementById('subdivText');
-    const resetBtn = document.getElementById('resetBtn');
-    const numMinus = document.getElementById('numMinus');
-    const numPlus = document.getElementById('numPlus');
-
-    const bpmText = document.getElementById('bpmText');
-    const tempoLabel = document.getElementById('tempoLabel');
-    const tempoDown = document.getElementById('tempoDown');
-    const tempoUp = document.getElementById('tempoUp');
-    const bpmFineDown = document.getElementById('bpmFineDown');
-    const bpmFineUp = document.getElementById('bpmFineUp');
-    const tapBtn = document.getElementById('tapBtn');
-
-    const playButton = document.getElementById('playButton');
-    const iconPlay = document.getElementById('iconPlay');
-    const iconPause = document.getElementById('iconPause');
-
-    const denomBtn = document.getElementById('denomBtn');
-    const volume = document.getElementById('volume');
-    const muteBtn = document.getElementById('muteBtn');
-    const volOn = document.getElementById('volOn');
-    const volOff = document.getElementById('volOff');
-
-    // State
-    let numerator = 4;           // beats per bar
-    let denominator = 4;         // beat note (2,4,8)
-    let subdivision = 1;         // sub-beats per beat (1..4)
-    let bpm = 100;               // beats (denominator note) per minute
-    let running = false;
-    let currentBeat = 0;         // [0..numerator-1]
-    let subIndex = 0;            // [0..subdivision-1]
-
-    // WebAudio scheduler
-    let ctx = null;
-    let gain = null;
-    let lookahead = 25/1000;      // 25ms tick
-    let scheduleAhead = 0.12;     // schedule 120ms ahead
-    let nextNoteTime = 0;
-    let timerID = null;
-    let muted = false;
-
-    function ensureAudio() {
-      if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
-        gain = ctx.createGain();
-        gain.gain.value = parseFloat(volume.value);
-        gain.connect(ctx.destination);
-      }
-    }
-
-    function playClick(time, kind='normal') {
-      if (!ctx) return;
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      // Accented/normal/sub frequencies and envelope
-      let freq = 1000, peak = 0.6, decay = 0.04;
-      if (kind === 'accent') { freq = 1400; peak = 0.8; decay = 0.05; }
-      if (kind === 'sub')    { freq = 800;  peak = 0.35; decay = 0.03; }
-      if (muted) peak = 0;
-
-      osc.frequency.value = freq;
-      osc.type = 'square';
-      g.gain.setValueAtTime(0.0001, time);
-      g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0001), time + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, time + decay);
-
-      osc.connect(g);
-      g.connect(gain);
-      osc.start(time);
-      osc.stop(time + decay + 0.005);
-    }
-
-    function secondsPerSubBeat() {
-      const secondsPerBeat = 60 / bpm * (4 / denominator);
-      return secondsPerBeat / subdivision;
-    }
-
-    function scheduleNotes() {
-      while (nextNoteTime < ctx.currentTime + scheduleAhead) {
-        // Determine kind of click at this subIndex
-        let kind = 'sub';
-        if (subIndex === 0) {
-          kind = (currentBeat === 0) ? 'accent' : 'normal';
-        }
-        playClick(nextNoteTime, kind);
-
-        // Visual update time near the click
-        requestAnimationFrame(() => highlightBeat(currentBeat, subIndex));
-
-        // Advance musical time
-        advanceNote();
-      }
-    }
-
-    function advanceNote() {
-      // Move to next sub beat
-      subIndex++;
-      if (subIndex >= subdivision) {
-        subIndex = 0;
-        currentBeat = (currentBeat + 1) % numerator;
-      }
-      nextNoteTime += secondsPerSubBeat();
-    }
-
-    function scheduler() {
-      scheduleNotes();
-      timerID = setTimeout(scheduler, lookahead * 1000);
-    }
-
-    function start() {
-      ensureAudio();
-      ctx.resume && ctx.resume();
-      running = true;
-      playButton.classList.add('paused');
-      iconPlay.classList.add('hidden');
-      iconPause.classList.remove('hidden');
-
-      currentBeat = 0;
-      subIndex = 0;
-      nextNoteTime = ctx.currentTime + 0.08; // small delay
-      scheduler();
-    }
-
-    function stop() {
-      running = false;
-      iconPlay.classList.remove('hidden');
-      iconPause.classList.add('hidden');
-      playButton.classList.remove('paused');
-      if (timerID) clearTimeout(timerID);
-      timerID = null;
-      clearBeatHighlights();
-    }
-
-    function toggle() {
-      running ? stop() : start();
-    }
-
-    // UI: beats (red dots)
-    function renderDots() {
-      dotsWrap.innerHTML = '';
-      const gap = numerator >= 7 ? 8 : 14;
-      dotsWrap.style.gap = gap + 'px';
-      for (let i = 0; i < numerator; i++) {
-        const d = document.createElement('div');
-        d.className = 'beat-dot';
-        if (i === 0) d.style.transform = 'scale(1.05)'; // slight emphasis
-        dotsWrap.appendChild(d);
-      }
-    }
-    function clearBeatHighlights() {
-      [...dotsWrap.children].forEach(el => el.classList.remove('active'));
-    }
-    function highlightBeat(beatIdx, subIdx) {
-      if (subIdx !== 0) return; // only on main beats
-      clearBeatHighlights();
-      const el = dotsWrap.children[beatIdx];
-      if (el) el.classList.add('active');
-    }
-
-    // Controls
-    function updateUI() {
-      timeText.textContent = `${numerator}/${denominator}`;
-      subdivText.textContent = `x${subdivision}`;
-      denomBtn.textContent = `분모 ${denominator}`;
-      bpmText.textContent = Math.round(bpm * 100) / 100;
-      tempoLabel.textContent = tempoMarking(bpm);
-      renderDots();
-    }
-
-    function tempoMarking(bpm) {
-      // Common markings
-      if (bpm < 40)  return 'Grave';
-      if (bpm < 56)  return 'Largo';
-      if (bpm < 72)  return 'Adagio';
-      if (bpm < 84)  return 'Andante';
-      if (bpm < 100) return 'Andantino';
-      if (bpm < 120) return 'Moderato';
-      if (bpm < 156) return 'Allegro';
-      if (bpm < 176) return 'Vivace';
-      if (bpm < 200) return 'Presto';
-      return 'Prestissimo';
-    }
-
-    // Repeating press helper
-    function holdRepeat(el, onStep, stepDelay=120, accelerate=true) {
-      let t = null, speed = stepDelay, active = false;
-      const start = () => {
-        if (active) return;
-        active = true;
-        onStep();
-        let count = 0;
-        t = setInterval(() => {
-          onStep();
-          if (accelerate && ++count % 6 === 0 && speed > 40) {
-            clearInterval(t);
-            speed -= 10;
-            t = setInterval(onStep, speed);
-          }
-        }, speed);
-      };
-      const stop = () => { active = false; clearInterval(t); t = null; speed = stepDelay; };
-      el.addEventListener('mousedown', start);
-      el.addEventListener('touchstart', (e)=>{e.preventDefault(); start();}, {passive:false});
-      window.addEventListener('mouseup', stop);
-      window.addEventListener('touchend', stop);
-      window.addEventListener('touchcancel', stop);
-      el.addEventListener('click', (e)=>e.preventDefault()); // prevent double
-    }
-
-    // Events
-    playButton.addEventListener('click', toggle);
-    resetBtn.addEventListener('click', () => {
-      numerator = 4; denominator = 4; subdivision = 1; bpm = 100;
-      stop();
-      updateUI();
-    });
-
-    timeBtn.addEventListener('click', () => {
-      // Quick picker: cycle numerator 2..12
-      numerator++;
-      if (numerator > 12) numerator = 2;
-      renderDots();
-      timeText.textContent = `${numerator}/${denominator}`;
-    });
-    numMinus.addEventListener('click', () => { numerator = Math.max(1, numerator-1); updateUI(); });
-    numPlus.addEventListener('click', () => { numerator = Math.min(16, numerator+1); updateUI(); });
-
-    subdivBtn.addEventListener('click', () => {
-      subdivision++;
-      if (subdivision > 4) subdivision = 1; // 1,2,3,4
-      subdivText.textContent = `x${subdivision}`;
-    });
-
-    denomBtn.addEventListener('click', () => {
-      const order = [2,4,8];
-      const idx = order.indexOf(denominator);
-      denominator = order[(idx+1) % order.length];
-      updateUI();
-    });
-
-    function setBpm(v) {
-      bpm = Math.min(300, Math.max(10, v));
-      bpmText.textContent = Math.round(bpm * 100) / 100;
-      tempoLabel.textContent = tempoMarking(bpm);
-    }
-    tempoUp.addEventListener('click', () => setBpm(bpm + 1));
-    tempoDown.addEventListener('click', () => setBpm(bpm - 1));
-    bpmFineUp.addEventListener('click', () => setBpm(bpm + 0.1));
-    bpmFineDown.addEventListener('click', () => setBpm(bpm - 0.1));
-
-    // Hold to repeat on +/- main tempo
-    holdRepeat(tempoUp, () => setBpm(bpm + 1));
-    holdRepeat(tempoDown, () => setBpm(bpm - 1));
-
-    // Tap tempo
-    const taps = [];
-    tapBtn.addEventListener('click', () => {
-      const now = performance.now();
-      taps.push(now);
-      while (taps.length > 6) taps.shift();
-      if (taps.length >= 2) {
-        let sum = 0; let cnt = 0;
-        for (let i=1; i<taps.length; i++) {
-          sum += (taps[i] - taps[i-1]); cnt++;
-        }
-        const avgMs = sum / cnt;
-        const newBpm = 60000 / avgMs;
-        setBpm(newBpm);
-      }
-      tapBtn.classList.add('ring-2','ring-brand-500');
-      setTimeout(()=>tapBtn.classList.remove('ring-2','ring-brand-500'),120);
-    });
-
-    // Volume
-    volume.addEventListener('input', () => {
-      ensureAudio();
-      gain.gain.value = parseFloat(volume.value);
-    });
-    muteBtn.addEventListener('click', () => {
-      muted = !muted;
-      volOn.classList.toggle('hidden', muted);
-      volOff.classList.toggle('hidden', !muted);
-    });
-
-    // Init
-    updateUI();
-  
-
-							</script>
-                        </body>
-                        </html>
-                    
