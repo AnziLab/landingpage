@@ -1,34 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Big Data Mind Map</title>
+    <title>Big Data Mind Map - Fill in the Blanks</title>
     <style>
         body {
             box-sizing: border-box;
-            font-family: 'Comic Sans MS', cursive, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             min-height: 100vh;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
             background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
         }
 
-        .title {
+        h1 {
             text-align: center;
             color: #4a5568;
-            font-size: 2.5rem;
             margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            font-size: 2.2em;
         }
 
         .mind-map {
@@ -39,240 +39,252 @@
         }
 
         .central-topic {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
             color: white;
-            padding: 25px 40px;
+            padding: 20px 40px;
             border-radius: 50px;
-            font-size: 1.8rem;
+            font-size: 1.5em;
             font-weight: bold;
-            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
-            transform: scale(1);
-            transition: transform 0.3s ease;
-        }
-
-        .central-topic:hover {
-            transform: scale(1.05);
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(255,107,107,0.3);
         }
 
         .branches {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
             width: 100%;
+            max-width: 1000px;
         }
 
         .branch {
-            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .main-branch {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
             color: white;
-            padding: 25px;
-            border-radius: 20px;
-            box-shadow: 0 6px 15px rgba(116, 185, 255, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .branch:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(116, 185, 255, 0.4);
-        }
-
-        .branch-title {
-            font-size: 1.4rem;
+            padding: 15px 30px;
+            border-radius: 25px;
             font-weight: bold;
-            margin-bottom: 15px;
+            font-size: 1.2em;
             text-align: center;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
-            padding-bottom: 10px;
+            box-shadow: 0 6px 20px rgba(78,205,196,0.3);
         }
 
         .sub-branches {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
+            align-items: center;
         }
 
         .sub-branch {
-            background: rgba(255,255,255,0.2);
-            padding: 12px 18px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 12px 20px;
             border-radius: 15px;
-            font-size: 1rem;
-            border-left: 4px solid #fdcb6e;
-            transition: background 0.3s ease;
-        }
-
-        .sub-branch:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-        .blank {
-            background: #fff;
-            color: #333;
-            padding: 4px 12px;
-            border-radius: 8px;
-            border: 2px dashed #74b9ff;
-            display: inline-block;
-            min-width: 80px;
+            min-width: 200px;
             text-align: center;
-            font-weight: bold;
-            cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .blank:hover {
-            background: #f8f9fa;
-            border-color: #0984e3;
+        .sub-branch:hover {
+            border-color: #4ecdc4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .blank {
+            display: inline-block;
+            min-width: 100px;
+            height: 25px;
+            border: none;
+            border-bottom: 2px solid #ff6b6b;
+            margin: 0 5px;
+            background: transparent;
+            font-size: 1em;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.3s ease;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        .blank:focus {
+            border-bottom-color: #4ecdc4;
+            background: rgba(78,205,196,0.1);
         }
 
         .blank.filled {
-            background: #00b894;
-            color: white;
-            border: 2px solid #00a085;
+            border-bottom-color: #27ae60;
+            background: rgba(39,174,96,0.1);
         }
 
-        .examples {
-            background: linear-gradient(135deg, #fd79a8, #e84393);
-            color: white;
-            padding: 25px;
-            border-radius: 20px;
-            box-shadow: 0 6px 15px rgba(253, 121, 168, 0.3);
+        .connecting-line {
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(to bottom, #4ecdc4, #44a08d);
+            margin: 10px 0;
         }
 
-        .reset-btn {
-            background: linear-gradient(45deg, #a29bfe, #6c5ce7);
+        .check-button {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
             color: white;
             border: none;
-            padding: 15px 30px;
+            padding: 12px 30px;
             border-radius: 25px;
-            font-size: 1.1rem;
+            font-size: 1.1em;
             font-weight: bold;
             cursor: pointer;
             margin-top: 30px;
             transition: transform 0.3s ease;
-            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
         }
 
-        .reset-btn:hover {
+        .check-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+            box-shadow: 0 6px 20px rgba(39,174,96,0.3);
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+
+        .feedback.success {
+            background: rgba(39,174,96,0.1);
+            color: #27ae60;
+            border: 2px solid #27ae60;
+        }
+
+        .feedback.partial {
+            background: rgba(255,193,7,0.1);
+            color: #f39c12;
+            border: 2px solid #f39c12;
         }
 
         @media (max-width: 768px) {
-            .title {
-                font-size: 2rem;
-            }
-            
-            .central-topic {
-                font-size: 1.4rem;
-                padding: 20px 30px;
-            }
-            
             .branches {
                 grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="title">📊 Living with Big Data Mind Map</h1>
+        <h1>📊 Living with Big Data - Mind Map</h1>
         
         <div class="mind-map">
             <div class="central-topic">
-                🌐 Big Data
+                Living with <input type="text" class="blank" data-answer="Big Data" placeholder="____">
             </div>
             
             <div class="branches">
                 <div class="branch">
-                    <div class="branch-title">🤔 What is Big Data?</div>
+                    <div class="main-branch">What is it?</div>
+                    <div class="connecting-line"></div>
                     <div class="sub-branches">
                         <div class="sub-branch">
-                            Data sets that are very <span class="blank" onclick="fillBlank(this, 'big')">_____</span> and <span class="blank" onclick="fillBlank(this, 'complex')">_____</span>
+                            <input type="text" class="blank" data-answer="Data sets" placeholder="____"> that are very big and complex
                         </div>
                         <div class="sub-branch">
-                            Amount of data is getting <span class="blank" onclick="fillBlank(this, 'greater')">_____</span> than before
+                            Created by our <input type="text" class="blank" data-answer="online" placeholder="____"> activities
                         </div>
                         <div class="sub-branch">
-                            Everything we do <span class="blank" onclick="fillBlank(this, 'online')">_____</span> leaves a trace
+                            Examples: <input type="text" class="blank" data-answer="photos" placeholder="____"> uploads, purchase <input type="text" class="blank" data-answer="records" placeholder="____">
                         </div>
                     </div>
                 </div>
-
-                <div class="branch examples">
-                    <div class="branch-title">📸 Examples of Big Data</div>
-                    <div class="sub-branches">
-                        <div class="sub-branch">
-                            Photos you <span class="blank" onclick="fillBlank(this, 'upload')">_____</span> on your blog
-                        </div>
-                        <div class="sub-branch">
-                            Records of your <span class="blank" onclick="fillBlank(this, 'purchases')">_____</span> at online stores
-                        </div>
-                        <div class="sub-branch">
-                            Book <span class="blank" onclick="fillBlank(this, 'recommendations')">_____</span> from online bookstores
-                        </div>
-                    </div>
-                </div>
-
+                
                 <div class="branch">
-                    <div class="branch-title">🔍 How Big Data Works</div>
+                    <div class="main-branch">How is it used?</div>
+                    <div class="connecting-line"></div>
                     <div class="sub-branches">
                         <div class="sub-branch">
-                            Big data experts <span class="blank" onclick="fillBlank(this, 'analyze')">_____</span> the data
+                            <input type="text" class="blank" data-answer="Analyzed" placeholder="____"> by experts
                         </div>
                         <div class="sub-branch">
-                            Draw <span class="blank" onclick="fillBlank(this, 'meaningful')">_____</span> results from it
+                            Draw <input type="text" class="blank" data-answer="meaningful" placeholder="____"> results
                         </div>
                         <div class="sub-branch">
-                            Used to make <span class="blank" onclick="fillBlank(this, 'decisions')">_____</span> or predict the future
-                        </div>
-                    </div>
-                </div>
-
-                <div class="branch">
-                    <div class="branch-title">💡 Why is it Important?</div>
-                    <div class="sub-branches">
-                        <div class="sub-branch">
-                            Helps companies understand <span class="blank" onclick="fillBlank(this, 'customers')">_____</span>
+                            Make <input type="text" class="blank" data-answer="decisions" placeholder="____"> or <input type="text" class="blank" data-answer="predict" placeholder="____"> future
                         </div>
                         <div class="sub-branch">
-                            Makes better <span class="blank" onclick="fillBlank(this, 'recommendations')">_____</span>
-                        </div>
-                        <div class="sub-branch">
-                            Improves our daily <span class="blank" onclick="fillBlank(this, 'experience')">_____</span>
+                            Example: <input type="text" class="blank" data-answer="bookstore" placeholder="____"> recommendations
                         </div>
                     </div>
                 </div>
             </div>
             
-            <button class="reset-btn" onclick="resetAllBlanks()">🔄 Reset All Blanks</button>
+            <button class="check-button" onclick="checkAnswers()">답안 확인하기 ✓</button>
+            <div class="feedback" id="feedback"></div>
         </div>
     </div>
 
     <script>
-        function fillBlank(element, answer) {
-            if (!element.classList.contains('filled')) {
-                element.textContent = answer;
-                element.classList.add('filled');
-                
-                // Add a little celebration effect
-                element.style.transform = 'scale(1.2)';
-                setTimeout(() => {
-                    element.style.transform = 'scale(1)';
-                }, 200);
-            }
-        }
-
-        function resetAllBlanks() {
+        function checkAnswers() {
             const blanks = document.querySelectorAll('.blank');
+            let correct = 0;
+            let total = blanks.length;
+            
             blanks.forEach(blank => {
-                blank.textContent = '_____';
-                blank.classList.remove('filled');
+                const userAnswer = blank.value.trim().toLowerCase();
+                const correctAnswer = blank.dataset.answer.toLowerCase();
+                
+                if (userAnswer === correctAnswer) {
+                    blank.classList.add('filled');
+                    blank.style.borderBottomColor = '#27ae60';
+                    blank.style.background = 'rgba(39,174,96,0.1)';
+                    correct++;
+                } else {
+                    blank.style.borderBottomColor = '#e74c3c';
+                    blank.style.background = 'rgba(231,76,60,0.1)';
+                    blank.classList.remove('filled');
+                }
             });
             
-            // Add a little animation to show reset
-            document.querySelector('.mind-map').style.transform = 'scale(0.98)';
-            setTimeout(() => {
-                document.querySelector('.mind-map').style.transform = 'scale(1)';
-            }, 150);
+            const feedback = document.getElementById('feedback');
+            feedback.style.display = 'block';
+            
+            if (correct === total) {
+                feedback.className = 'feedback success';
+                feedback.innerHTML = `🎉 완벽합니다! ${correct}/${total} 정답입니다!<br>Big Data에 대해 잘 이해하셨네요!`;
+            } else {
+                feedback.className = 'feedback partial';
+                feedback.innerHTML = `📝 ${correct}/${total} 정답입니다. 다시 한번 시도해보세요!<br>힌트: 본문을 다시 읽어보세요.`;
+            }
         }
+        
+        // Add enter key support for checking answers
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswers();
+            }
+        });
+        
+        // Auto-resize inputs based on content
+        document.querySelectorAll('.blank').forEach(input => {
+            input.addEventListener('input', function() {
+                this.style.width = Math.max(100, this.value.length * 12) + 'px';
+            });
+        });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9867b2c7546eea0b',t:'MTc1OTEwOTI0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98779e2f7051327d',t:'MTc1OTI3NjE3OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
