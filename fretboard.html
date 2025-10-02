@@ -20,7 +20,7 @@
     .fretboard-sample{
       width:1020px; height:190px;background:#f6b720;border-radius:34px;box-shadow:0 4px 19px #dbca90ab;
       position:relative;margin:0 auto 13px auto;padding-left:60px; padding-right:16px; display:flex; align-items:center;
-      overflow-x:visible; /* 스크롤 제거 */
+      overflow-x:visible;
       overflow-y:hidden;
     }
     body.dark .fretboard-sample { background:#3a3636; box-shadow:0 4px 19px #000a; }
@@ -45,7 +45,7 @@
     @media(max-width:900px){.fretboard-sample{width: 600px;min-width:98vw;} .fret-num{font-size:11px;}}
     @media(max-width:600px){.fretboard-sample{width:412px;min-width:95vw;padding-left:30px;} .note-dot{width:11px;height:11px;font-size:0.64em;}}
     .darkmode-btn{position:absolute;right:24px;top:0; background:#fff7; color:#444; border:none;
-      border-radius:17px; padding:7px 22px;font-size:1.04em;cursor:pointer;z-index:333;transition:background 0.3s;}
+      border-radius:17px; padding:7px 22px;font-size:0.5em;cursor:pointer;z-index:333;transition:background 0.3s;}
     body.dark .darkmode-btn{background:#242a42; color:#ffcdfc;}
   </style>
 </head>
@@ -53,14 +53,15 @@
 <div class="container">
   <h1>
     스케일 연습 프렛보드 
-    <button class="darkmode-btn" id="darkBtn">🌙 다크모드</button>
+    <button class="darkmode-btn" id="darkBtn">🌙</button>
   </h1>
   <div class="controls">
     <select id="instrument"><option value="guitar">기타</option><option value="bass">베이스</option><option value="violin">바이올린</option></select>
     <select id="root"></select>
     <select id="noteType" class="switch"><option value="relative">상대도수</option><option value="absolute">음 이름</option></select>
+    <!-- 스케일 선택 드롭다운 추가 -->
+    <select id="scaleSelect" class="switch"></select>
   </div>
-  <div class="scales" id="scales"></div>
   <div class="fretboard-sample" id="fretboard"><div class="bridge"></div></div>
   <small style="display:block;text-align:center;margin-top:12px;color:#b8acc7;font-size:0.96em;">
    
@@ -111,48 +112,46 @@
     sel.value = def||values[0];
   }
   makeSelect('root', notes, 'C');
-  // 스케일 버튼
-  const scaleBtns=document.getElementById('scales');
-  scales.forEach((s,idx)=>{
-    const btn=document.createElement('button');
-    btn.textContent=s.name;
-    btn.className='scale-btn'+(idx===0?' active':'');
-    btn.onclick=()=>{document.querySelectorAll('.scale-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');drawFretboard();};
-    scaleBtns.appendChild(btn);
-  });
-  document.getElementById('instrument').onchange=drawFretboard;
-  document.getElementById('root').onchange=drawFretboard;
-  document.getElementById('noteType').onchange=drawFretboard;
+
+  // 스케일 드롭다운 생성
+  const scaleSelect = document.getElementById('scaleSelect');
+  scaleSelect.innerHTML = scales.map((s, idx) => `<option value="${idx}">${s.name}</option>`).join('');
+  scaleSelect.value = 0;
+  scaleSelect.onchange = drawFretboard;
+
+  document.getElementById('instrument').onchange = drawFretboard;
+  document.getElementById('root').onchange = drawFretboard;
+  document.getElementById('noteType').onchange = drawFretboard;
 
   // 다크모드 버튼
   document.getElementById('darkBtn').onclick = function() {
     document.body.classList.toggle('dark');
-    this.textContent = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크모드';
+    this.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
   };
 
   // 프렛보드 그리기 함수
   function drawFretboard() {
-    const instrument=document.getElementById('instrument').value;
-    const root=document.getElementById('root').value;
-    const noteType=document.getElementById('noteType').value;
-    const scaleIdx=Array.from(document.querySelectorAll('.scale-btn')).findIndex(b=>b.classList.contains('active'));
-    const scale=scales[scaleIdx];
-    const tuning=tunings[instrument];
-    const frets=fretsByInstrument[instrument];
+    const instrument = document.getElementById('instrument').value;
+    const root = document.getElementById('root').value;
+    const noteType = document.getElementById('noteType').value;
+    const scaleIdx = parseInt(document.getElementById('scaleSelect').value, 10);
+    const scale = scales[scaleIdx];
+    const tuning = tunings[instrument];
+    const frets = fretsByInstrument[instrument];
     const fb = document.getElementById('fretboard');
-    const fbWidth=920;
-    let fretX=[]; // 프렛 기준선 x좌표
-    let fretGap=fbWidth/frets;
+    const fbWidth = 920;
+    let fretX = [];
+    let fretGap = fbWidth / frets;
     for(let i=0;i<=frets;i++) fretX.push(60+i*fretGap);
 
     // 줄, 인레이 위치
-    let strCnt=tuning.length;
+    let strCnt = tuning.length;
     let strGap = 120/(strCnt-1);
     let strYs = []; for(let s=0;s<strCnt;s++) strYs.push(25+s*strGap);
     let inlayF = [3,5,7,9,12,15,17,19,21];
-    let scaleNotes=scale.intervals.map(i=>notes[(notes.indexOf(root)+i)%12]);
-    let scaleMap={};scale.intervals.forEach((ival)=>{scaleMap[notes[(notes.indexOf(root)+ival)%12]]=degreeNames[ival];});
-    let html=`<div class="bridge"></div>`;
+    let scaleNotes = scale.intervals.map(i=>notes[(notes.indexOf(root)+i)%12]);
+    let scaleMap = {}; scale.intervals.forEach((ival)=>{scaleMap[notes[(notes.indexOf(root)+ival)%12]]=degreeNames[ival];});
+    let html = `<div class="bridge"></div>`;
 
     // 줄
     for(let s=0;s<strCnt;s++) html+=`<div class="string" style="top:${strYs[s]}px; left:${fretX[0]}px; width:${fretX[frets]-fretX[0]}px;"></div>`;
@@ -182,15 +181,15 @@
           fx = fretX[0] - (fretX[1]-fretX[0]);
         }
         if(isNaN(fx)) continue;
-        let noteIdx=(notes.indexOf(tuning[s])+f)%12;
-        let noteName=notes[noteIdx];
+        let noteIdx = (notes.indexOf(tuning[s])+f)%12;
+        let noteName = notes[noteIdx];
         if(!scaleNotes.includes(noteName)) continue;
-        let isRoot=noteName===root;
-        let dotText=noteType==='absolute'?noteName:(isRoot?'1':(scaleMap[noteName]||''));
+        let isRoot = noteName===root;
+        let dotText = noteType==='absolute'?noteName:(isRoot?'1':(scaleMap[noteName]||''));
         html+=`<div class="note-dot${isRoot?' root':''}" style="top:${strYs[s]-10}px;left:${fx-12}px;" title="${noteName}">${dotText}</div>`;
       }
     }
-    fb.innerHTML=html;
+    fb.innerHTML = html;
   }
   drawFretboard();
 </script>
