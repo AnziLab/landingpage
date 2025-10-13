@@ -45,7 +45,7 @@
     @media(max-width:900px){.fretboard-sample{width: 600px;min-width:98vw;} .fret-num{font-size:11px;}}
     @media(max-width:600px){.fretboard-sample{width:412px;min-width:95vw;padding-left:30px;} .note-dot{width:11px;height:11px;font-size:0.64em;}}
     .darkmode-btn{position:absolute;right:24px;top:0; background:#fff7; color:#444; border:none;
-      border-radius:17px; padding:7px 22px;font-size:0.5em;cursor:pointer;z-index:333;transition:background 0.3s;}
+      border-radius:17px; padding:7px 22px;font-size:1.04em;cursor:pointer;z-index:333;transition:background 0.3s;}
     body.dark .darkmode-btn{background:#242a42; color:#ffcdfc;}
   </style>
 </head>
@@ -53,13 +53,12 @@
 <div class="container">
   <h1>
     스케일 연습 프렛보드 
-    <button class="darkmode-btn" id="darkBtn">🌙</button>
+    <button class="darkmode-btn" id="darkBtn">🌙 다크모드</button>
   </h1>
   <div class="controls">
     <select id="instrument"><option value="guitar">기타</option><option value="bass">베이스</option><option value="violin">바이올린</option></select>
     <select id="root"></select>
     <select id="noteType" class="switch"><option value="relative">상대도수</option><option value="absolute">음 이름</option></select>
-    <!-- 스케일 선택 드롭다운 추가 -->
     <select id="scaleSelect" class="switch"></select>
   </div>
   <div class="fretboard-sample" id="fretboard"><div class="bridge"></div></div>
@@ -126,7 +125,7 @@
   // 다크모드 버튼
   document.getElementById('darkBtn').onclick = function() {
     document.body.classList.toggle('dark');
-    this.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    this.textContent = document.body.classList.contains('dark') ? '☀️ 라이트' : '🌙 다크모드';
   };
 
   // 프렛보드 그리기 함수
@@ -144,10 +143,12 @@
     let fretGap = fbWidth / frets;
     for(let i=0;i<=frets;i++) fretX.push(60+i*fretGap);
 
-    // 줄, 인레이 위치
+    // "줄, 인레이 위치"에서 줄 배열을 뒤집기 (아래쪽이 6번줄!)
     let strCnt = tuning.length;
     let strGap = 120/(strCnt-1);
-    let strYs = []; for(let s=0;s<strCnt;s++) strYs.push(25+s*strGap);
+    // let strYs = []; for(let s=0;s<strCnt;s++) strYs.push(25+s*strGap);  // 기존: 1번이 아래, 6번이 위
+    let strYs = []; for(let s=0;s<strCnt;s++) strYs.push(25+(strCnt-1-s)*strGap); // 수정: 6번이 아래!
+
     let inlayF = [3,5,7,9,12,15,17,19,21];
     let scaleNotes = scale.intervals.map(i=>notes[(notes.indexOf(root)+i)%12]);
     let scaleMap = {}; scale.intervals.forEach((ival)=>{scaleMap[notes[(notes.indexOf(root)+ival)%12]]=degreeNames[ival];});
@@ -176,7 +177,6 @@
     for(let s=0;s<strCnt;s++){
       for(let f=0;f<=frets;f++){
         let fx = (fretX[f]+fretX[f-1])/2;
-        // 0프렛(브릿지)만 "왼쪽"으로 간격 맞춰 출력:
         if(f === 0){
           fx = fretX[0] - (fretX[1]-fretX[0]);
         }
