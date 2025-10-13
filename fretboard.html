@@ -162,7 +162,7 @@
     // 프렛번호
     for(let f=1;f<=frets;f++) html+=`<div class="fret-num" style="left:${fretX[f]-10}px">${f}</div>`;
     // 인레이 도트: 12, 24프렛은 세로배열
-    let y_inlay = strYs[strCnt-1]+13;
+    let y_inlay = strYs[0]+13;
     for(let f=0;f<=frets;f++){
       if(inlayF.includes(f)){
         if(f===12||f===24){
