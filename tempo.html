@@ -397,8 +397,8 @@
         }
 
         tempoSlider.addEventListener('input', (e) => setBpm(parseFloat(e.target.value)));
-        holdRepeat(tempoUp, () => setBpm(bpm + 1));
-        holdRepeat(tempoDown, () => setBpm(bpm - 1));
+        holdRepeat(tempoUp, () => setBpm(bpm + 10));
+        holdRepeat(tempoDown, () => setBpm(bpm - 10));
 
         const taps = [];
         tapBtn.addEventListener('click', () => {
