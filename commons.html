@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공유지의 비극 수학적 모델링</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 20px; background-color: #f4f6f8; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; }
+        .description { background-color: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; line-height: 1.6; }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        input[type=range] { width: 100%; }
+        .val-display { font-size: 0.9em; color: #007bff; font-weight: bold; }
+
+        .chart-container { position: relative; height: 400px; width: 100%; margin-bottom: 20px; }
+        
+        .analysis-box { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .result-card { padding: 15px; border-radius: 8px; color: white; text-align: center; }
+        .social-opt { background-color: #28a745; } /* Green */
+        .individual-eq { background-color: #dc3545; } /* Red */
+        
+        .math-exp { font-style: italic; color: #ddd; font-size: 0.9em; margin-top: 5px; display: block;}
+
+        .highlight { font-weight: bold; color: #d63384; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌱 공유지의 비극 수학적 모델링</h1>
+    
+    <div class="description">
+        <strong>수학적 원리:</strong><br>
+        1. <b>개인의 이익(P)</b> = $a - bN$ (참가자가 늘수록 줄어듦)<br>
+        2. <b>총 이익(T)</b> = $N \times P = aN - bN^2$ (이차함수)<br>
+        3. <b>사회적 최적(Social Optimum)</b>: 총 이익(T)이 최대가 되는 지점 (미분계수 $dT/dN = 0$)<br>
+        4. <b>개인적 균형(Individual Equilibrium)</b>: 개인 이익(P)이 0이 될 때까지 사람들은 계속 들어옴
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>자원의 풍부함 (a): <span id="val_a" class="val-display">100</span></label>
+            <input type="range" id="slider_a" min="50" max="200" value="100">
+            <small>초기 풀의 양이 많을수록 값이 큼</small>
+        </div>
+        <div class="control-group">
+            <label>고갈 속도 (b): <span id="val_b" class="val-display">1</span></label>
+            <input type="range" id="slider_b" min="0.5" max="5" step="0.1" value="1">
+            <small>사람이 늘어날 때 이익이 줄어드는 속도</small>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="analysis-box">
+        <div class="result-card social-opt">
+            <h3>🌟 사회적 최적 (Social Optimum)</h3>
+            <p>최적 인원수: <span id="res_opt_n" style="font-size:1.5em; font-weight:bold;">50</span>명</p>
+            <p>이때의 총 이익: <span id="res_opt_profit">2500</span></p>
+            <span class="math-exp">미분계수가 0이 되는 지점 ($N = a/2b$)</span>
+        </div>
+        <div class="result-card individual-eq">
+            <h3>⚠️ 개인적 균형 (Equilibrium)</h3>
+            <p>실제 도달 인원수: <span id="res_eq_n" style="font-size:1.5em; font-weight:bold;">100</span>명</p>
+            <p>이때의 총 이익: <span id="res_eq_profit">0</span></p>
+            <span class="math-exp">개인 이익이 0이 되는 지점 ($N = a/b$)</span>
+        </div>
+    </div>
+
+    <div class="description" style="margin-top: 20px; background-color: #fff3cd; border: 1px solid #ffeeba;">
+        <strong>📢 결론 및 환경 문제 연결:</strong><br>
+        사회 전체를 위해서는 <span id="txt_opt">50</span>명에서 멈춰야 하지만, 개인의 욕심 때문에 인원수는 <span id="txt_eq">100</span>명까지 늘어납니다.<br>
+        결국 <b>자원은 고갈되고 총 이익은 0이 되는 비극</b>이 발생합니다. 이것이 바로 규제가 필요한 이유입니다.
+    </div>
+</div>
+
+<script>
+    const ctx = document.getElementById('myChart').getContext('2d');
+    let chart;
+
+    const sliderA = document.getElementById('slider_a');
+    const sliderB = document.getElementById('slider_b');
+    
+    // 초기값
+    let a = 100;
+    let b = 1;
+
+    function calculateData() {
+        const dataN = [];
+        const dataTotalProfit = [];
+        const dataIndivProfit = [];
+        
+        // 개인 이익이 0이 되는 지점 (a/b)의 1.2배까지 그래프를 그림
+        const maxN = Math.floor((a / b) * 1.2);
+
+        for (let n = 0; n <= maxN; n++) {
+            let p = a - (b * n); // 개인 이익
+            let t = n * p;       // 총 이익
+            
+            dataN.push(n);
+            dataTotalProfit.push(t);
+            dataIndivProfit.push(p);
+        }
+
+        return { labels: dataN, total: dataTotalProfit, indiv: dataIndivProfit };
+    }
+
+    function updateChart() {
+        a = parseFloat(sliderA.value);
+        b = parseFloat(sliderB.value);
+
+        document.getElementById('val_a').innerText = a;
+        document.getElementById('val_b').innerText = b;
+
+        const data = calculateData();
+        const n_opt = Math.round(a / (2 * b)); // 최적 (미분값 0)
+        const n_eq = Math.round(a / b);        // 균형 (개인이익 0)
+
+        // 결과 텍스트 업데이트
+        document.getElementById('res_opt_n').innerText = n_opt;
+        document.getElementById('res_opt_profit').innerText = (n_opt * (a - b*n_opt)).toFixed(0);
+        
+        document.getElementById('res_eq_n').innerText = n_eq;
+        document.getElementById('res_eq_profit').innerText = 0;
+
+        document.getElementById('txt_opt').innerText = n_opt;
+        document.getElementById('txt_eq').innerText = n_eq;
+
+        if (chart) {
+            chart.data.labels = data.labels;
+            chart.data.datasets[0].data = data.total;
+            chart.data.datasets[1].data = data.indiv;
+            
+            // Annotation 업데이트 (수직선)
+            chart.options.plugins.annotation.annotations = {
+                line1: {
+                    type: 'line',
+                    xMin: n_opt, xMax: n_opt,
+                    borderColor: 'rgb(40, 167, 69)', borderWidth: 2,
+                    label: { content: '사회적 최적', display: true, position: 'start', backgroundColor: 'rgba(40, 167, 69, 0.8)' }
+                },
+                line2: {
+                    type: 'line',
+                    xMin: n_eq, xMax: n_eq,
+                    borderColor: 'rgb(220, 53, 69)', borderWidth: 2,
+                    label: { content: '개인적 균형', display: true, position: 'end', backgroundColor: 'rgba(220, 53, 69, 0.8)' }
+                }
+            };
+            chart.update();
+        } else {
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: '총 이익 (Total Benefit) - 이차함수',
+                        data: data.total,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        yAxisID: 'y',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: '개인 이익 (Individual Benefit) - 일차함수',
+                        data: data.indiv,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderDash: [5, 5],
+                        yAxisID: 'y1',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { title: { display: true, text: '참가자 수 (N)' } },
+                        y: { 
+                            type: 'linear', display: true, position: 'left', 
+                            title: { display: true, text: '총 이익' } 
+                        },
+                        y1: { 
+                            type: 'linear', display: true, position: 'right', 
+                            title: { display: true, text: '개인 이익' },
+                            grid: { drawOnChartArea: false } 
+                        }
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: {} // 초기화 시 빈 객체, updateChart에서 채움
+                        }
+                    }
+                }
+            });
+            // 초기 annotation 설정
+            updateChart(); 
+        }
+    }
+
+    sliderA.addEventListener('input', updateChart);
+    sliderB.addEventListener('input', updateChart);
+
+    // 초기 실행
+    updateChart();
+</script>
+
+</body>
+</html>
