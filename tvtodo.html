@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>우리집 할 일 현황판 & 음악</title>
+    <title>우리집 현황판</title>
     <style>
         :root {
             --bg-color: #0d1117;
@@ -14,41 +14,51 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Malgun Gothic', sans-serif;
-            margin: 0; padding: 50px; overflow: hidden;
+            margin: 0; padding: 40px; overflow: hidden;
             display: flex; flex-direction: column; height: 100vh;
         }
         .header {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 5px solid var(--point-color);
-            padding-bottom: 20px; margin-bottom: 40px;
+            border-bottom: 3px solid var(--point-color);
+            padding-bottom: 15px; margin-bottom: 30px;
         }
-        .header h1 { font-size: 80px; margin: 0; }
-        .clock { font-size: 50px; color: var(--point-color); font-weight: bold; }
+        .header h1 { font-size: 50px; margin: 0; }
+        .clock { font-size: 40px; color: var(--point-color); font-weight: bold; }
 
-        .content-area { display: flex; gap: 40px; flex: 1; }
-        
-        /* 할 일 목록 영역 */
-        .todo-list { flex: 2; display: grid; grid-template-columns: 1fr; gap: 20px; }
+        /* 목록 영역을 화면 전체로 확장 */
+        .todo-list { 
+            flex: 1; 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 15px; 
+            align-content: start;
+        }
         .todo-item {
             background-color: var(--card-bg);
-            padding: 30px 50px; border-radius: 20px;
+            padding: 25px 40px; border-radius: 15px;
             display: flex; justify-content: space-between; align-items: center;
-            border-left: 15px solid var(--point-color);
+            border-left: 10px solid var(--point-color);
         }
-        .todo-title { font-size: 50px; font-weight: bold; }
+        .todo-title { font-size: 38px; font-weight: bold; }
 
-        /* 음악/플레이어 영역 */
-        .music-area {
-            flex: 1; background: #000; border-radius: 20px;
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; border: 2px solid #333;
+        /* 음악 플레이어를 아주 작게 우측 하단에 배치 */
+        .music-mini-area {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px; /* 아주 작게 설정 */
+            height: 120px;
+            opacity: 0.5; /* 평소엔 반투명하게 */
+            transition: opacity 0.3s;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #333;
         }
-        .music-label { color: #ff0000; font-size: 25px; margin-bottom: 15px; font-weight: bold; }
-        
-        /* 유튜브 뮤직 임베드 (화면에 안 보이게 하거나 작게 배치 가능) */
-        #music-player { border-radius: 15px; width: 90%; height: 250px; }
+        .music-mini-area:hover { opacity: 1; }
+        #music-player { width: 100%; height: 100%; }
 
-        .empty { font-size: 40px; color: #8b949e; text-align: center; margin-top: 50px; }
+        .empty { font-size: 35px; color: #8b949e; text-align: center; margin-top: 100px; }
     </style>
 </head>
 <body>
@@ -58,30 +68,26 @@
     <div class="clock" id="clock">00:00:00</div>
 </div>
 
-<div class="content-area">
-    <div id="todo-list" class="todo-list">
-        <div class="empty">데이터를 불러오는 중...</div>
+<div id="todo-list" class="todo-list">
     </div>
 
-    <div class="music-area">
-        <div class="music-label">🎵 NOW PLAYING (YouTube Music)</div>
-        <iframe id="music-player" 
-            src="https://www.youtube.com/embed/videoseries?list=RDCLAK5uy_m5E65X-p8fJ1E6x6f5W2K4Z&autoplay=0" 
-            frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
-        </iframe>
-        <p style="color:#666; margin-top:10px;">리모컨으로 재생 버튼을 눌러주세요</p>
-    </div>
+<div class="music-mini-area">
+    <iframe id="music-player" 
+        src="https://www.youtube.com/embed/videoseries?list=PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r&autoplay=1&mute=1" 
+        frameborder="0" allow="autoplay; encrypted-media">
+    </iframe>
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzS8V_ACpADQqot8AVNUjT24em4hG0HJjYHY3OVMTWwJeZswsQJ1MItm1HLN65Ue7Lq4g/exec"; // 조회 전용 URL 입력
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzS8V_ACpADQqot8AVNUjT24em4hG0HJjYHY3OVMTWwJeZswsQJ1MItm1HLN65Ue7Lq4g/exec"; // 조회 전용 GAS URL 입력
 
-    // 시간 업데이트
+    // 시계 기능
     setInterval(() => {
-        document.getElementById('clock').innerText = new Date().toLocaleTimeString('ko-KR', {hour12:false});
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString('ko-KR', {hour12:false});
     }, 1000);
 
-    // 할 일 불러오기 (롤백된 조회 전용 로직)
+    // 할 일 불러오기
     async function fetchTasks() {
         try {
             const res = await fetch(GAS_URL);
@@ -89,20 +95,19 @@
             const list = document.getElementById('todo-list');
             
             if (!data || data.length === 0) {
-                list.innerHTML = '<div class="empty">오늘 할 일을 모두 끝냈습니다! 🎉</div>';
+                list.innerHTML = '<div class="empty">🎉 모든 일을 마쳤습니다!</div>';
                 return;
             }
 
             list.innerHTML = '';
-            data.slice(0, 5).forEach(task => {
+            // 이제 리스트가 화면 대부분을 쓰므로 더 많이(최대 10개) 표시 가능
+            data.slice(0, 10).forEach(task => {
                 const item = document.createElement('div');
                 item.className = 'todo-item';
                 item.innerHTML = `<div class="todo-title">${task.title}</div>`;
                 list.appendChild(item);
             });
-        } catch(e) { 
-            console.error("데이터 로드 실패", e); 
-        }
+        } catch(e) { console.error("데이터 로드 실패", e); }
     }
 
     fetchTasks();
