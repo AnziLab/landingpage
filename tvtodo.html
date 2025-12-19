@@ -71,7 +71,7 @@
 <div id="todo-list" class="todo-list"></div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbygMo3HcMgBqAPkeKiHLXtZJUyayh3it_zXezp-ulFFt_tlYdTV1NMcQypDznoiX4fjQg/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx9NQ2z6H812TyORIe8EmO55kWiHmVJXV_e7OdGLc95f4OiMhvm30o2h_5UbP4N2wqs9w/exec";
 
     // 시간 업데이트
     setInterval(() => {
@@ -102,18 +102,30 @@
             });
         } catch(e) { console.error(e); }
     }
-
-    // 할 일 완료 처리 (POST)
     async function markAsDone(taskId) {
         if(!confirm("이 항목을 완료 처리할까요?")) return;
         
         try {
-            await fetch(GAS_URL, {
+            // GAS URL 뒤에 파라미터를 붙여서 보내는 것이 가장 확실할 때가 있습니다.
+            const response = await fetch(GAS_URL, {
                 method: 'POST',
+                mode: 'no-cors', // CORS 정책으로 인한 차단 방지
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({ taskId: taskId })
             });
-            fetchTasks(); // 갱신
-        } catch(e) { alert("연결 실패"); }
+    
+            // no-cors 모드에서는 응답 내용을 읽을 수 없으므로 
+            // 약간의 시간차(0.5초)를 두고 목록을 새로고침합니다.
+            setTimeout(() => {
+                fetchTasks(); 
+            }, 500);
+    
+        } catch(e) { 
+            console.error("연결 에러:", e);
+            alert("서버 연결에 실패했습니다.");
+        }
     }
 
     fetchTasks();
