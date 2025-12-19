@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>집안일 현황판</title>
+    <style>
+        /* TV 최적화 스타일 */
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --point-color: #58a6ff; /* 신뢰감을 주는 블루 (병원 느낌) */
+            --text-color: #ffffff;
+            --status-color: #3fb950; /* 대기/진행중 표시 그린 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            margin: 0;
+            padding: 40px;
+            overflow: hidden; /* 스크롤 방지 */
+        }
+
+        /* 상단 헤더: 제목과 현재 시각 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 5px solid var(--point-color);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 80px; /* 아주 크게 */
+            margin: 0;
+            font-weight: 900;
+            letter-spacing: -2px;
+        }
+
+        .header .time {
+            font-size: 50px;
+            color: var(--point-color);
+            font-weight: bold;
+        }
+
+        /* 명단 스타일 */
+        .todo-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .todo-item {
+            background-color: var(--card-bg);
+            padding: 30px 50px;
+            border-radius: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 15px solid var(--point-color);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .todo-title {
+            font-size: 60px; /* 멀리서도 잘 보이게 */
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80%;
+        }
+
+        .todo-status {
+            font-size: 35px;
+            background-color: var(--status-color);
+            color: white;
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* 애니메이션 */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* 할 일이 없을 때 */
+        .empty-msg {
+            font-size: 50px;
+            text-align: center;
+            margin-top: 100px;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <div style="font-size: 30px; color: var(--point-color); margin-bottom: 10px;">HOUSE CHORE STATUS</div>
+            <h1>실시간 할 일 목록</h1>
+        </div>
+        <div class="time" id="current-time">00:00:00</div>
+    </div>
+
+    <div id="todo-list" class="todo-list">
+        </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxyFkJqXc3_g9oifz5WznOOzyJNIK2Vu2YeuEaLGxHHXWpRqf6qfDT40vroAXQRDEw_/exec"; // <--- 본인의 GAS URL을 넣어주세요!
+
+        // 시간 업데이트
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+            document.getElementById('current-time').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 데이터 가져오기
+        async function fetchTasks() {
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+                
+                const container = document.getElementById('todo-list');
+                container.innerHTML = '';
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">모든 할 일을 마쳤습니다! 🎉</div>';
+                    return;
+                }
+
+                data.slice(0, 6).forEach(task => { // 화면 크기상 상위 6개만 표시
+                    const div = document.createElement('div');
+                    div.className = 'todo-item';
+                    div.innerHTML = `
+                        <div class="todo-title">${task.title}</div>
+                        <div class="todo-status">대기</div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error("데이터 로드 실패", e);
+            }
+        }
+
+        // 1분마다 자동 새로고침
+        fetchTasks();
+        setInterval(fetchTasks, 60000);
+    </script>
+</body>
+</html>
