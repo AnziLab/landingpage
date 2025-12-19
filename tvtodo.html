@@ -2,158 +2,122 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>집안일 현황판</title>
+    <title>실시간 집안일 현황판</title>
     <style>
-        /* TV 최적화 스타일 */
         :root {
             --bg-color: #0d1117;
             --card-bg: #161b22;
-            --point-color: #58a6ff; /* 신뢰감을 주는 블루 (병원 느낌) */
+            --point-color: #58a6ff;
             --text-color: #ffffff;
-            --status-color: #3fb950; /* 대기/진행중 표시 그린 */
+            --focus-color: #f0ad4e; /* 선택 시 강조 색상 */
         }
-
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            font-family: 'Malgun Gothic', sans-serif;
+            padding: 50px;
             margin: 0;
-            padding: 40px;
-            overflow: hidden; /* 스크롤 방지 */
+            overflow: hidden;
         }
-
-        /* 상단 헤더: 제목과 현재 시각 */
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
             border-bottom: 5px solid var(--point-color);
             padding-bottom: 20px;
-            margin-bottom: 40px;
+            margin-bottom: 50px;
         }
+        .header h1 { font-size: 80px; margin: 0; }
+        .clock { font-size: 50px; color: var(--point-color); font-weight: bold; }
 
-        .header h1 {
-            font-size: 80px; /* 아주 크게 */
-            margin: 0;
-            font-weight: 900;
-            letter-spacing: -2px;
-        }
-
-        .header .time {
-            font-size: 50px;
-            color: var(--point-color);
-            font-weight: bold;
-        }
-
-        /* 명단 스타일 */
-        .todo-list {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
+        .todo-list { display: grid; grid-template-columns: 1fr; gap: 25px; }
+        
+        /* 리모컨 포커스를 위한 스타일 */
         .todo-item {
             background-color: var(--card-bg);
-            padding: 30px 50px;
-            border-radius: 20px;
+            padding: 40px 60px;
+            border-radius: 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-left: 15px solid var(--point-color);
-            animation: slideIn 0.5s ease-out;
+            transition: 0.2s;
+            cursor: pointer;
         }
-
-        .todo-title {
-            font-size: 60px; /* 멀리서도 잘 보이게 */
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 80%;
+        .todo-item:focus {
+            border: 6px solid var(--focus-color);
+            transform: scale(1.03);
+            outline: none;
+            background-color: #21262d;
         }
-
-        .todo-status {
-            font-size: 35px;
-            background-color: var(--status-color);
-            color: white;
+        .todo-title { font-size: 55px; font-weight: bold; }
+        .todo-btn {
+            font-size: 30px;
+            background: #238636;
             padding: 10px 30px;
             border-radius: 50px;
             font-weight: bold;
-            text-transform: uppercase;
         }
-
-        /* 애니메이션 */
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-50px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        /* 할 일이 없을 때 */
-        .empty-msg {
-            font-size: 50px;
-            text-align: center;
-            margin-top: 100px;
-            color: #8b949e;
-        }
+        .empty { font-size: 50px; text-align: center; color: #8b949e; margin-top: 100px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div>
-            <div style="font-size: 30px; color: var(--point-color); margin-bottom: 10px;">HOUSE CHORE STATUS</div>
-            <h1>실시간 할 일 목록</h1>
-        </div>
-        <div class="time" id="current-time">00:00:00</div>
-    </div>
+<div class="header">
+    <h1>📋 집안일 대기 명단</h1>
+    <div class="clock" id="clock">00:00:00</div>
+</div>
 
-    <div id="todo-list" class="todo-list">
-        </div>
+<div id="todo-list" class="todo-list"></div>
 
-    <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyvhdjFLlTcvCLpGEqafG4em7qB9cM1s1z1a514hY1KtI6bGQYyo_NE2R0dYiwV_da2Hw/exec"; // <--- 본인의 GAS URL을 넣어주세요!
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbygMo3HcMgBqAPkeKiHLXtZJUyayh3it_zXezp-ulFFt_tlYdTV1NMcQypDznoiX4fjQg/exec";
 
-        // 시간 업데이트
-        function updateClock() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
-            document.getElementById('current-time').innerText = timeStr;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+    // 시간 업데이트
+    setInterval(() => {
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('ko-KR', {hour12:false});
+    }, 1000);
 
-        // 데이터 가져오기
-        async function fetchTasks() {
-            try {
-                const response = await fetch(GAS_URL);
-                const data = await response.json();
+    // 할 일 불러오기
+    async function fetchTasks() {
+        try {
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            const list = document.getElementById('todo-list');
+            list.innerHTML = data.length ? '' : '<div class="empty">모든 할 일을 마쳤습니다! 🎉</div>';
+
+            data.slice(0, 5).forEach((task, idx) => {
+                const item = document.createElement('div');
+                item.className = 'todo-item';
+                item.tabIndex = 0; // 리모컨 포커스 허용
+                item.innerHTML = `<div class="todo-title">${task.title}</div><div class="todo-btn">확인시 완료</div>`;
                 
-                const container = document.getElementById('todo-list');
-                container.innerHTML = '';
+                // 클릭 또는 리모컨 엔터키 이벤트
+                const complete = () => markAsDone(task.id);
+                item.onclick = complete;
+                item.onkeydown = (e) => { if(e.key === 'Enter') complete(); };
+                
+                list.appendChild(item);
+                if(idx === 0) item.focus(); // 첫 번째 항목에 자동 포커스
+            });
+        } catch(e) { console.error(e); }
+    }
 
-                if (data.length === 0) {
-                    container.innerHTML = '<div class="empty-msg">모든 할 일을 마쳤습니다! 🎉</div>';
-                    return;
-                }
+    // 할 일 완료 처리 (POST)
+    async function markAsDone(taskId) {
+        if(!confirm("이 항목을 완료 처리할까요?")) return;
+        
+        try {
+            await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ taskId: taskId })
+            });
+            fetchTasks(); // 갱신
+        } catch(e) { alert("연결 실패"); }
+    }
 
-                data.slice(0, 6).forEach(task => { // 화면 크기상 상위 6개만 표시
-                    const div = document.createElement('div');
-                    div.className = 'todo-item';
-                    div.innerHTML = `
-                        <div class="todo-title">${task.title}</div>
-                        <div class="todo-status">대기</div>
-                    `;
-                    container.appendChild(div);
-                });
-            } catch (e) {
-                console.error("데이터 로드 실패", e);
-            }
-        }
-
-        // 1분마다 자동 새로고침
-        fetchTasks();
-        setInterval(fetchTasks, 60000);
-    </script>
+    fetchTasks();
+    setInterval(fetchTasks, 60000); // 1분마다 자동 새로고침
+</script>
 </body>
 </html>
