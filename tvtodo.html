@@ -4,44 +4,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Dashboard</title>
+    <title>Home Dashboard Premium</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Outfit:wght@300;500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
     <style>
-        /* Global Styles */
+        /* --- Global Variables --- */
         :root {
-            --bg-color: #0f0f13;
-            --text-color: #ffffff;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-color: #7c4dff;
-            --secondary-text: rgba(255, 255, 255, 0.6);
+            /* Midnight Aurora Theme */
+            --bg-color: #0F0C29;
+            --bg-gradient: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.85);
+
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            /* Lighter, more glassy */
+            --glass-border: rgba(255, 255, 255, 0.15);
+
+            --accent-color: #ff00cc;
+            /* Hot Pink */
+            --accent-secondary: #333399;
+            /* Deep Purple */
+            --accent-glow: rgba(255, 0, 204, 0.5);
+
+            --focus-border: #00d2ff;
+            /* Cyan for focus */
+
             --font-heading: 'Outfit', sans-serif;
             --font-body: 'Noto Sans KR', sans-serif;
+            --icon-font: 'Material Symbols Rounded';
+
+            /* Layout */
+            --top-bar-height: 100px;
+            --panel-padding: 2.5rem;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            user-select: none;
         }
 
         body {
-            background-color: var(--bg-color);
+            background: var(--bg-gradient);
+            /* Aurora Boreal Effects */
             background-image:
-                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
-                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
-            color: var(--text-color);
+                radial-gradient(circle at 10% 20%, rgba(255, 0, 204, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 210, 255, 0.15) 0%, transparent 40%),
+                var(--bg-gradient);
+            color: var(--text-primary);
             font-family: var(--font-body);
             height: 100vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            padding: 2rem;
+            padding: 3rem;
+            /* Safer area for TV */
         }
 
         /* --- Top Bar --- */
@@ -49,236 +73,257 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 80px;
+            height: var(--top-bar-height);
             margin-bottom: 2rem;
-            padding: 0 1rem;
         }
 
-        /* Info Area: Weather & Clock */
-        .info-area {
+        /* Weather & Clock */
+        .info-group {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 3rem;
+        }
+
+        .clock {
             font-family: var(--font-heading);
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            /* Gradient Text */
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .weather-widget {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1.5rem;
-            color: var(--text-color);
-        }
-
-        .clock {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #fff, #a0a0ff);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Music Controls */
-        .music-controls {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            padding: 0.8rem 2rem;
-            border-radius: 50px;
-        }
-
-        .control-btn {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: transform 0.2s, color 0.2s;
-            display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
         }
 
-        .control-btn:hover {
-            color: var(--accent-color);
-            transform: scale(1.1);
-        }
-
-        .control-btn.active {
-            color: var(--accent-color);
-            text-shadow: 0 0 10px var(--accent-color);
-        }
-
-        .volume-container {
+        .weather-main {
+            font-size: 1.8rem;
+            font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-left: 1rem;
+            gap: 0.8rem;
         }
 
-        input[type=range] {
-            width: 80px;
-            accent-color: var(--accent-color);
+        .weather-sub {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
         }
 
-
-        /* --- Main Content: Task Grid --- */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+        /* --- Premium Music Player (Top Right) --- */
+        .music-player-panel {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            background: rgba(20, 10, 40, 0.4);
             border: 1px solid var(--glass-border);
+            backdrop-filter: blur(25px);
+            padding: 1rem 2rem;
             border-radius: 24px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            flex-grow: 1;
+            width: 600px;
+            /* Fixed width for stability */
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .music-info {
+            flex: 1;
             overflow: hidden;
-            padding: 2rem;
             display: flex;
             flex-direction: column;
+            justify-content: center;
         }
 
-        .tasks-header {
+        .music-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.3rem;
+            color: var(--text-primary);
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent-color);
+            width: 0%;
+            transition: width 0.5s linear;
+        }
+
+        .music-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.05);
+            /* Slight fill */
+            border: none;
+            color: var(--text-secondary);
+            /* Icons */
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .material-symbols-rounded {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+            /* Standard Size */
+        }
+
+        .control-btn.main-action {
+            width: 56px;
+            height: 56px;
+            color: #fff;
+            background: var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .control-btn.main-action .material-symbols-rounded {
+            font-size: 32px;
+        }
+
+
+        /* Focus States for TV Remote */
+        :focus {
+            outline: none;
+        }
+
+        .task-item:focus,
+        .control-btn:focus,
+        .music-player-panel:focus-within {
+            border-color: var(--focus-border);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .control-btn:focus {
+            background: var(--accent-color);
+            color: #fff;
+        }
+
+
+        /* --- Main Content: Tasks --- */
+        .dashboard-body {
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            backdrop-filter: blur(30px);
+            padding: var(--panel-padding);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-title {
+            font-family: var(--font-heading);
+            font-size: 2.2rem;
+            font-weight: 600;
             margin-bottom: 2rem;
+            color: var(--text-secondary);
             border-bottom: 1px solid var(--glass-border);
             padding-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
         }
 
-        .tasks-header h1 {
-            font-family: var(--font-heading);
-            font-size: 2rem;
-            color: var(--secondary-text);
-        }
-
-        .tasks-container {
+        .tasks-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            /* 2 Column Layout */
-            grid-auto-rows: min-content;
+            /* 3 Columns for TV */
+            grid-template-columns: repeat(3, 1fr);
             gap: 1.5rem;
+            /* Tighter gap */
             overflow-y: auto;
-            padding-right: 0.5rem;
+            padding: 0.5rem;
             height: 100%;
             align-content: start;
         }
 
-        /* Scrollbar */
-        .tasks-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .tasks-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-
-        /* Individual Task Item */
         .task-item {
-            background: rgba(255, 255, 255, 0.03);
-            padding: 1.5rem;
-            border-radius: 16px;
-            border: 1px solid transparent;
-            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            /* Prepare for focus */
+            border-radius: 20px;
+            padding: 1.5rem 1.8rem;
+            font-size: 1.8rem;
+            /* Large text for TV */
+            font-weight: 500;
+            line-height: 1.4;
             display: flex;
             align-items: flex-start;
-            font-size: 1.3rem;
-            line-height: 1.6;
-            animation: fadeIn 0.5s ease-out;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             cursor: pointer;
         }
 
-        .task-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
         .task-bullet {
-            min-width: 12px;
-            height: 12px;
-            background-color: var(--accent-color);
+            min-width: 14px;
+            height: 14px;
             border-radius: 50%;
-            margin-top: 0.5rem;
-            /* Align with text */
-            margin-right: 1rem;
-            box-shadow: 0 0 10px var(--accent-color);
+            background: var(--accent-color);
+            margin-top: 0.6rem;
+            margin-right: 1.2rem;
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
-        .task-title {
-            word-break: break-word;
-            /* Wrap long text */
-        }
-
-        /* Completed Animation */
-        .task-item.mod-completed {
+        .task-completed {
             opacity: 0.5;
             text-decoration: line-through;
-            transform: scale(0.95);
+            filter: grayscale(0.8);
+            transform: scale(0.98);
+        }
+
+        /* Hidden Player Fix */
+        #player-container {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 200px;
+            /* Keep small window for stability similar to prev working version */
+            height: 150px;
+            opacity: 0.01;
+            /* Almost invisible */
+            z-index: -1;
             pointer-events: none;
         }
 
-        /* Mini Player (Visible to ensure playback, matching user's working example) */
-        #player-container {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 200px;
-            height: 120px;
-            opacity: 0.8;
-            /* Make it visible */
-            z-index: 1000;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s;
+        /* Scrollbar Hide */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
         }
 
-        #player-container:hover {
-            opacity: 1;
-        }
-
-        /* Utility */
-        .loading-spinner {
+        /* Loading State */
+        .loading {
             grid-column: 1 / -1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 4rem;
-            color: var(--secondary-text);
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--accent-color);
-            animation: spin 1s infinite linear;
-            margin-bottom: 1rem;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            text-align: center;
+            font-size: 2rem;
+            color: var(--text-secondary);
+            margin-top: 5rem;
         }
     </style>
 </head>
@@ -287,156 +332,163 @@
 
     <!-- Top Bar -->
     <header class="top-bar">
-        <!-- Info: Weather & Clock -->
-        <div class="info-area">
+        <div class="info-group">
             <div id="clock" class="clock">00:00</div>
-            <div id="weather" class="weather-widget">
-                <span>Loading...</span>
+            <div class="weather-widget">
+                <div id="weather-main" class="weather-main">
+                    <span>--°C</span>
+                </div>
+                <div class="weather-sub">창원시 마산합포구</div>
             </div>
         </div>
 
-        <!-- Music Controls -->
-        <div class="music-controls">
-            <button class="control-btn" id="btn-shuffle" title="Shuffle">🔀</button>
-            <button class="control-btn" id="btn-prev" title="Previous">⏮️</button>
-            <button class="control-btn" id="btn-play" title="Play/Pause">⏯️</button>
-            <button class="control-btn" id="btn-next" title="Next">⏭️</button>
-
-            <div class="volume-container">
-                <span style="font-size: 1.2rem;">🔊</span>
-                <input type="range" id="vol-slider" min="0" max="100" value="100">
+        <!-- Music Custom Player -->
+        <div class="music-player-panel" id="music-panel">
+            <div class="music-info">
+                <div class="music-title" id="music-title">Loading Music...</div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="music-progress"></div>
+                </div>
+            </div>
+            <div class="music-controls">
+                <button class="control-btn" id="btn-prev" tabindex="0">
+                    <span class="material-symbols-rounded">skip_previous</span>
+                </button>
+                <button class="control-btn main-action" id="btn-play" tabindex="0">
+                    <span class="material-symbols-rounded">play_arrow</span>
+                </button>
+                <button class="control-btn" id="btn-next" tabindex="0">
+                    <span class="material-symbols-rounded">skip_next</span>
+                </button>
+                <button class="control-btn" id="btn-shuffle" tabindex="0">
+                    <span class="material-symbols-rounded">shuffle</span>
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="glass-panel">
-        <header class="tasks-header">
-            <h1>오늘의 할 일</h1>
-        </header>
-        <div id="tasks-container" class="tasks-container">
-            <div class="loading-spinner">
-                <div class="spinner"></div>
-                <span>목록 불러오는 중...</span>
-            </div>
+    <!-- Main Board -->
+    <main class="dashboard-body">
+        <div class="section-title">
+            <span>오늘의 할 일</span>
+            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK 버튼으로 완료</span>
+        </div>
+
+        <div id="tasks-grid" class="tasks-grid">
+            <div class="loading">할 일을 불러오는 중...</div>
         </div>
     </main>
 
-    <!-- Hidden Player Container -->
+    <!-- Hidden YouTube Player -->
     <div id="player-container">
         <div id="player"></div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
+        /* --- Config --- */
         const CONFIG = {
             GAS_URL: "https://script.google.com/macros/s/AKfycbwDfpm8zj9UMWK1kgJBObyx27nYrwZ6foNQXemSpvFG2NAo55VncY0tJaYUX6IWjkOKDg/exec",
-            YOUTUBE_PLAYLIST_ID: "PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r",
-            REFRESH_INTERVAL_MS: 5 * 60 * 1000 // 5 minutes
+            PLAYLIST_ID: "PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r",
+            WEATHER_URL: "https://api.open-meteo.com/v1/forecast?latitude=35.2157&longitude=128.5676&current_weather=true&timezone=Asia%2FSeoul"
         };
 
-        // --- 1. Clock ---
+        /* --- 1. Clock --- */
         function updateClock() {
             const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            document.getElementById('clock').textContent = `${hours}:${minutes}`;
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            document.getElementById('clock').textContent = timeStr;
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- 2. Weather (Open-Meteo API) ---
-        async function fetchWeather() {
+        /* --- 2. Weather (Changwon) --- */
+        async function updateWeather() {
             try {
-                // Seoul Coordinates
-                const url = "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true&timezone=Asia%2FSeoul";
-                const res = await fetch(url);
+                const res = await fetch(CONFIG.WEATHER_URL);
                 const data = await res.json();
-
                 if (data.current_weather) {
                     const temp = Math.round(data.current_weather.temperature);
                     const code = data.current_weather.weathercode;
-                    let icon = "☀️";
+                    let icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; background: linear-gradient(to bottom, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">sunny</span>';
 
-                    // Simple WMO Code mapping
-                    if (code >= 1 && code <= 3) icon = "⛅";
-                    else if (code >= 45 && code <= 48) icon = "🌫️";
-                    else if (code >= 51 && code <= 67) icon = "🌧️";
-                    else if (code >= 71 && code <= 77) icon = "❄️";
-                    else if (code >= 80 && code <= 99) icon = "⛈️";
+                    // Icon Mapping (Material Symbols)
+                    if (code > 2) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #ccc;">cloud</span>'; // Cloudy
+                    if (code > 45) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #aaa;">foggy</span>'; // Fog
+                    if (code > 50) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #4facfe;">rainy</span>'; // Drizzle/Rain
+                    if (code > 70) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #fff;">ac_unit</span>'; // Snow
+                    if (code > 90) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #ffeb3b;">thunderstorm</span>'; // Thunderstorm
 
-                    document.getElementById('weather').innerHTML = `${icon} ${temp}°C`;
+                    document.getElementById('weather-main').innerHTML = `${icon} ${temp}°C`;
                 }
-            } catch (e) {
-                console.error("Weather fetch failed", e);
-                document.getElementById('weather').textContent = "";
-            }
+            } catch (e) { console.error("Weather Error", e); }
         }
-        fetchWeather();
-        setInterval(fetchWeather, 30 * 60 * 1000); // 30 mins
+        updateWeather();
+        setInterval(updateWeather, 1800000); // 30 mins
 
-        // --- 3. Google Tasks ---
+        /* --- 3. Google Tasks --- */
         async function fetchTasks() {
-            const container = document.getElementById('tasks-container');
-            // Show loading only on first load
-            if (!container.querySelector('.task-item') && !container.querySelector('.loading-spinner')) {
-                // container.innerHTML = ...
-            }
-
+            const grid = document.getElementById('tasks-grid');
             try {
-                const response = await fetch(CONFIG.GAS_URL);
-                const data = await response.json();
-                renderTasks(data);
-            } catch (error) {
-                console.error('Error fetching tasks:', error);
-                if (container.querySelector('.loading-spinner')) {
-                    container.innerHTML = `<div class="loading-spinner">
-                        <p>⚠️ 로딩 실패. <span onclick="fetchTasks()" style="text-decoration:underline;cursor:pointer;">재시도</span></p>
-                    </div>`;
+                const res = await fetch(CONFIG.GAS_URL);
+                const data = await res.json();
+
+                if (data.error) {
+                    console.error("Task Error", data.error);
+                    return;
                 }
+
+                grid.innerHTML = ''; // Clear
+                if (!data || data.length === 0) {
+                    grid.innerHTML = '<div class="loading">할 일이 없습니다 🎉</div>';
+                    return;
+                }
+
+                data.forEach((task, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'task-item';
+                    el.tabIndex = 0; // FOCUSABLE
+                    el.dataset.id = task.id;
+                    el.innerHTML = `<div class="task-bullet"></div><span>${escapeHtml(task.title)}</span>`;
+
+                    // Click / Enter Handler
+                    const action = () => completeTask(el, task.id);
+                    el.onclick = action;
+                    el.onkeydown = (e) => {
+                        if (e.key === 'Enter') action();
+                    };
+
+                    grid.appendChild(el);
+                });
+
+            } catch (e) {
+                console.error("Fetch Error", e);
+                // Don't clear if network glitch on refresh
             }
         }
 
-        function renderTasks(data) {
-            const container = document.getElementById('tasks-container');
-            if (data.error) {
-                console.error("GAS Error:", data.error);
-                return;
-            }
-            if (!Array.isArray(data)) return;
+        function completeTask(el, id) {
+            if (el.classList.contains('task-completed')) return;
+            el.classList.add('task-completed');
 
-            container.innerHTML = '';
-            if (data.length === 0) {
-                container.innerHTML = `<div class="loading-spinner"><p>할 일이 없습니다 ✨</p></div>`;
-                return;
-            }
-
-            data.forEach(task => {
-                const el = document.createElement('div');
-                el.className = 'task-item';
-                el.onclick = () => completeTask(el, task.id);
-                el.innerHTML = `<div class="task-bullet"></div><span class="task-title">${escapeHtml(task.title)}</span>`;
-                container.appendChild(el);
-            });
-        }
-
-        function completeTask(element, taskId) {
-            element.classList.add('mod-completed');
+            // Send to Server
             fetch(CONFIG.GAS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({ action: 'complete', taskId: taskId })
-            }).then(res => res.json()).then(data => {
-                if (!data.success) {
-                    element.classList.remove('mod-completed');
-                    alert("완료 실패: " + data.error);
+                body: JSON.stringify({ action: 'complete', taskId: id })
+            }).then(r => r.json()).then(d => {
+                if (!d.success) {
+                    el.classList.remove('task-completed');
+                    alert("오류 발생");
                 } else {
-                    setTimeout(() => element.style.display = 'none', 500);
+                    // Remove from DOM after delay for smooth UX
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        setTimeout(() => el.remove(), 300);
+                        // Focus next item if strict spatial nav is needed, 
+                        // but browser default usually handles focus loss ok-ish.
+                    }, 500);
                 }
-            }).catch(() => {
-                element.classList.remove('mod-completed');
-                alert("네트워크 오류");
             });
         }
 
@@ -445,96 +497,107 @@
         }
 
         fetchTasks();
-        setInterval(fetchTasks, CONFIG.REFRESH_INTERVAL_MS);
+        setInterval(fetchTasks, 5 * 60 * 1000); // 5 mins
 
-
-        // --- 4. YouTube Player & Controls ---
+        /* --- 4. Music Player & TV Remote Nav --- */
         let player;
-        let isShuffle = true;
+        let updateTimer;
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '100%',
                 width: '100%',
                 playerVars: {
-                    'listType': 'playlist',
-                    'list': CONFIG.YOUTUBE_PLAYLIST_ID,
-                    'autoplay': 1,
-                    'controls': 1, // Show controls as backup
-                    'loop': 1,
-                    'mute': 0,     // User confirmed mute=0 works
-                    'rel': 0,
-                    'origin': window.location.origin
+                    listType: 'playlist',
+                    list: CONFIG.PLAYLIST_ID,
+                    autoplay: 1,
+                    controls: 0,
+                    loop: 1,
+                    mute: 0,
+                    origin: window.location.origin
                 },
                 events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange,
-                    'onError': onPlayerError
+                    onReady: onPlayerReady,
+                    onStateChange: onPlayerStateChange
                 }
             });
         }
 
         function onPlayerReady(event) {
-            // Shuffle and Play Muted first
-            if (isShuffle) {
-                event.target.setShuffle(true);
-                event.target.playVideoAt(0);
-            } else {
-                event.target.playVideo();
-            }
-            setupControls();
+            event.target.setShuffle(true);
+            event.target.playVideoAt(0);
+
+            // Setup Buttons
+            bindBtn('btn-play', () => {
+                if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo();
+                else player.playVideo();
+            });
+            bindBtn('btn-next', () => player.nextVideo());
+            bindBtn('btn-prev', () => player.previousVideo());
+            bindBtn('btn-shuffle', () => {
+                player.setShuffle(true);
+                // Visual feedback only
+                const btn = document.getElementById('btn-shuffle');
+                btn.style.color = '#fff';
+                setTimeout(() => btn.style.color = '', 500);
+            });
+
+            startProgressLoop();
         }
 
-        function onPlayerStateChange(event) {
+        function onPlayerStateChange(e) {
+            // Update Play Button Icon
             const btn = document.getElementById('btn-play');
-
-            // 1. Update Button Icon
-            if (event.data == YT.PlayerState.PLAYING) {
-                btn.textContent = "⏸️";
-
-                // 2. Attempt to Unmute on First Play
-                // Browsers might block this if no user interaction yet.
-                if (player.isMuted()) {
-                    player.unMute();
-                    // Double check volume
-                    player.setVolume(50);
-                }
+            // Toggle Icon inside
+            const iconSpan = btn.querySelector('.material-symbols-rounded');
+            if (e.data === YT.PlayerState.PLAYING) {
+                iconSpan.textContent = 'pause';
             } else {
-                btn.textContent = "⏯️";
+                iconSpan.textContent = 'play_arrow';
+            }
+
+            // Update Title
+            if (player && player.getVideoData) {
+                const data = player.getVideoData();
+                if (data && data.title) {
+                    document.getElementById('music-title').textContent = data.title;
+                }
             }
         }
 
-        function onPlayerError(event) {
-            console.error("YouTube Player Error:", event.data);
-        }
-
-        function setupControls() {
-            document.getElementById('btn-prev').onclick = () => player.previousVideo();
-            document.getElementById('btn-next').onclick = () => player.nextVideo();
-            document.getElementById('btn-play').onclick = () => {
-                const state = player.getPlayerState();
-                if (state == YT.PlayerState.PLAYING) {
-                    player.pauseVideo();
-                } else {
-                    player.playVideo();
+        function startProgressLoop() {
+            setInterval(() => {
+                if (!player || !player.getCurrentTime) return;
+                const current = player.getCurrentTime();
+                const duration = player.getDuration();
+                if (duration > 0) {
+                    const pct = (current / duration) * 100;
+                    document.getElementById('music-progress').style.width = pct + "%";
                 }
-            };
-
-            const shuffleBtn = document.getElementById('btn-shuffle');
-            shuffleBtn.classList.add('active'); // Default ON
-            shuffleBtn.onclick = () => {
-                isShuffle = !isShuffle;
-                player.setShuffle(isShuffle);
-                // Visual feedback
-                if (isShuffle) shuffleBtn.classList.add('active');
-                else shuffleBtn.classList.remove('active');
-            };
-
-            const volSlider = document.getElementById('vol-slider');
-            volSlider.oninput = (e) => {
-                if (player) player.setVolume(e.target.value);
-            };
+            }, 1000);
         }
+
+        function bindBtn(id, action) {
+            const btn = document.getElementById(id);
+            btn.onclick = action;
+            // TV Remote Enter Key
+            btn.onkeydown = (e) => { if (e.key === 'Enter') action(); };
+        }
+
+        /* --- 5. Spatial Navigation Helper (Basic) --- */
+        // Keydown listener for Arrow keys to ensure focus moves logically if default behavior fails
+        // Modern browsers on TVs are usually okay with grid layouts + arrow keys given tabindex="0"
+        document.addEventListener('keydown', (e) => {
+            // Optional: Implement custom grid navigation logic here if testing reveals issues.
+            // For now, relying on native spatial navigation supported by LG/Samsung WebOS/Tizen
+            // which works well with focusable elements arranged in visual grids.
+
+            // Back button handling?
+            if (e.key === 'Escape' || e.key === 'Back') {
+                // Focus something safe
+                document.getElementById('btn-play').focus();
+            }
+        });
 
     </script>
 </body>
