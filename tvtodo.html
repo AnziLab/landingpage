@@ -1,117 +1,542 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
-    <title>우리집 현황판</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Outfit:wght@300;500;700&display=swap"
+        rel="stylesheet">
     <style>
+        /* Global Styles */
         :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --point-color: #58a6ff;
+            --bg-color: #0f0f13;
             --text-color: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-color: #7c4dff;
+            --secondary-text: rgba(255, 255, 255, 0.6);
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Noto Sans KR', sans-serif;
         }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
             color: var(--text-color);
-            font-family: 'Malgun Gothic', sans-serif;
-            margin: 0; padding: 40px; overflow: hidden;
-            display: flex; flex-direction: column; height: 100vh;
+            font-family: var(--font-body);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem;
         }
-        .header {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 3px solid var(--point-color);
-            padding-bottom: 15px; margin-bottom: 30px;
-        }
-        .header h1 { font-size: 50px; margin: 0; }
-        .clock { font-size: 40px; color: var(--point-color); font-weight: bold; }
 
-        /* 목록 영역을 화면 전체로 확장 */
-        .todo-list { 
-            flex: 1; 
-            display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 15px; 
+        /* --- Top Bar --- */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 80px;
+            margin-bottom: 2rem;
+            padding: 0 1rem;
+        }
+
+        /* Info Area: Weather & Clock */
+        .info-area {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            font-family: var(--font-heading);
+        }
+
+        .weather-widget {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .clock {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #fff, #a0a0ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Music Controls */
+        .music-controls {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            color: var(--accent-color);
+            transform: scale(1.1);
+        }
+
+        .control-btn.active {
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        input[type=range] {
+            width: 80px;
+            accent-color: var(--accent-color);
+        }
+
+
+        /* --- Main Content: Task Grid --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            flex-grow: 1;
+            overflow: hidden;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tasks-header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 1rem;
+        }
+
+        .tasks-header h1 {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            color: var(--secondary-text);
+        }
+
+        .tasks-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* 2 Column Layout */
+            grid-auto-rows: min-content;
+            gap: 1.5rem;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            height: 100%;
             align-content: start;
         }
-        .todo-item {
-            background-color: var(--card-bg);
-            padding: 25px 40px; border-radius: 15px;
-            display: flex; justify-content: space-between; align-items: center;
-            border-left: 10px solid var(--point-color);
-        }
-        .todo-title { font-size: 38px; font-weight: bold; }
 
-        /* 음악 플레이어를 아주 작게 우측 하단에 배치 */
-        .music-mini-area {
+        /* Scrollbar */
+        .tasks-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tasks-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        /* Individual Task Item */
+        .task-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            font-size: 1.3rem;
+            line-height: 1.6;
+            animation: fadeIn 0.5s ease-out;
+            cursor: pointer;
+        }
+
+        .task-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .task-bullet {
+            min-width: 12px;
+            height: 12px;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            margin-top: 0.5rem;
+            /* Align with text */
+            margin-right: 1rem;
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .task-title {
+            word-break: break-word;
+            /* Wrap long text */
+        }
+
+        /* Completed Animation */
+        .task-item.mod-completed {
+            opacity: 0.5;
+            text-decoration: line-through;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        /* Mini Player (Visible to ensure playback, matching user's working example) */
+        #player-container {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 200px; /* 아주 작게 설정 */
+            bottom: 2rem;
+            right: 2rem;
+            width: 200px;
             height: 120px;
-            opacity: 0.5; /* 평소엔 반투명하게 */
-            transition: opacity 0.3s;
-            background: #000;
-            border-radius: 10px;
+            opacity: 0.8;
+            /* Make it visible */
+            z-index: 1000;
+            border-radius: 12px;
             overflow: hidden;
-            border: 1px solid #333;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s;
         }
-        .music-mini-area:hover { opacity: 1; }
-        #music-player { width: 100%; height: 100%; }
 
-        .empty { font-size: 35px; color: #8b949e; text-align: center; margin-top: 100px; }
+        #player-container:hover {
+            opacity: 1;
+        }
+
+        /* Utility */
+        .loading-spinner {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: var(--secondary-text);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent-color);
+            animation: spin 1s infinite linear;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
+
 <body>
 
-<div class="header">
-    <h1>📋 집안일 현황판</h1>
-    <div class="clock" id="clock">00:00:00</div>
-</div>
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <!-- Info: Weather & Clock -->
+        <div class="info-area">
+            <div id="clock" class="clock">00:00</div>
+            <div id="weather" class="weather-widget">
+                <span>Loading...</span>
+            </div>
+        </div>
 
-<div id="todo-list" class="todo-list">
+        <!-- Music Controls -->
+        <div class="music-controls">
+            <button class="control-btn" id="btn-shuffle" title="Shuffle">🔀</button>
+            <button class="control-btn" id="btn-prev" title="Previous">⏮️</button>
+            <button class="control-btn" id="btn-play" title="Play/Pause">⏯️</button>
+            <button class="control-btn" id="btn-next" title="Next">⏭️</button>
+
+            <div class="volume-container">
+                <span style="font-size: 1.2rem;">🔊</span>
+                <input type="range" id="vol-slider" min="0" max="100" value="100">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="glass-panel">
+        <header class="tasks-header">
+            <h1>오늘의 할 일</h1>
+        </header>
+        <div id="tasks-container" class="tasks-container">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <span>목록 불러오는 중...</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden Player Container -->
+    <div id="player-container">
+        <div id="player"></div>
     </div>
 
-<div class="music-mini-area">
-    <iframe id="music-player" 
-        src="https://www.youtube.com/embed/videoseries?list=PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r&autoplay=1&mute=0&shuffle=1&loop=1" 
-        frameborder="0" allow="autoplay; encrypted-media">
-    </html>
-</div>
+    <!-- Scripts -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        const CONFIG = {
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDfpm8zj9UMWK1kgJBObyx27nYrwZ6foNQXemSpvFG2NAo55VncY0tJaYUX6IWjkOKDg/exec",
+            YOUTUBE_PLAYLIST_ID: "PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r",
+            REFRESH_INTERVAL_MS: 5 * 60 * 1000 // 5 minutes
+        };
 
-<script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzS8V_ACpADQqot8AVNUjT24em4hG0HJjYHY3OVMTWwJeZswsQJ1MItm1HLN65Ue7Lq4g/exec"; // 조회 전용 GAS URL 입력
+        // --- 1. Clock ---
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-    // 시계 기능
-    setInterval(() => {
-        const now = new Date();
-        document.getElementById('clock').innerText = now.toLocaleTimeString('ko-KR', {hour12:false});
-    }, 1000);
+        // --- 2. Weather (Open-Meteo API) ---
+        async function fetchWeather() {
+            try {
+                // Seoul Coordinates
+                const url = "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true&timezone=Asia%2FSeoul";
+                const res = await fetch(url);
+                const data = await res.json();
 
-    // 할 일 불러오기
-    async function fetchTasks() {
-        try {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            const list = document.getElementById('todo-list');
-            
-            if (!data || data.length === 0) {
-                list.innerHTML = '<div class="empty">🎉 모든 일을 마쳤습니다!</div>';
+                if (data.current_weather) {
+                    const temp = Math.round(data.current_weather.temperature);
+                    const code = data.current_weather.weathercode;
+                    let icon = "☀️";
+
+                    // Simple WMO Code mapping
+                    if (code >= 1 && code <= 3) icon = "⛅";
+                    else if (code >= 45 && code <= 48) icon = "🌫️";
+                    else if (code >= 51 && code <= 67) icon = "🌧️";
+                    else if (code >= 71 && code <= 77) icon = "❄️";
+                    else if (code >= 80 && code <= 99) icon = "⛈️";
+
+                    document.getElementById('weather').innerHTML = `${icon} ${temp}°C`;
+                }
+            } catch (e) {
+                console.error("Weather fetch failed", e);
+                document.getElementById('weather').textContent = "";
+            }
+        }
+        fetchWeather();
+        setInterval(fetchWeather, 30 * 60 * 1000); // 30 mins
+
+        // --- 3. Google Tasks ---
+        async function fetchTasks() {
+            const container = document.getElementById('tasks-container');
+            // Show loading only on first load
+            if (!container.querySelector('.task-item') && !container.querySelector('.loading-spinner')) {
+                // container.innerHTML = ...
+            }
+
+            try {
+                const response = await fetch(CONFIG.GAS_URL);
+                const data = await response.json();
+                renderTasks(data);
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                if (container.querySelector('.loading-spinner')) {
+                    container.innerHTML = `<div class="loading-spinner">
+                        <p>⚠️ 로딩 실패. <span onclick="fetchTasks()" style="text-decoration:underline;cursor:pointer;">재시도</span></p>
+                    </div>`;
+                }
+            }
+        }
+
+        function renderTasks(data) {
+            const container = document.getElementById('tasks-container');
+            if (data.error) {
+                console.error("GAS Error:", data.error);
+                return;
+            }
+            if (!Array.isArray(data)) return;
+
+            container.innerHTML = '';
+            if (data.length === 0) {
+                container.innerHTML = `<div class="loading-spinner"><p>할 일이 없습니다 ✨</p></div>`;
                 return;
             }
 
-            list.innerHTML = '';
-            // 이제 리스트가 화면 대부분을 쓰므로 더 많이(최대 10개) 표시 가능
-            data.slice(0, 10).forEach(task => {
-                const item = document.createElement('div');
-                item.className = 'todo-item';
-                item.innerHTML = `<div class="todo-title">${task.title}</div>`;
-                list.appendChild(item);
+            data.forEach(task => {
+                const el = document.createElement('div');
+                el.className = 'task-item';
+                el.onclick = () => completeTask(el, task.id);
+                el.innerHTML = `<div class="task-bullet"></div><span class="task-title">${escapeHtml(task.title)}</span>`;
+                container.appendChild(el);
             });
-        } catch(e) { console.error("데이터 로드 실패", e); }
-    }
+        }
 
-    fetchTasks();
-    setInterval(fetchTasks, 60000); // 1분마다 갱신
-</script>
+        function completeTask(element, taskId) {
+            element.classList.add('mod-completed');
+            fetch(CONFIG.GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'complete', taskId: taskId })
+            }).then(res => res.json()).then(data => {
+                if (!data.success) {
+                    element.classList.remove('mod-completed');
+                    alert("완료 실패: " + data.error);
+                } else {
+                    setTimeout(() => element.style.display = 'none', 500);
+                }
+            }).catch(() => {
+                element.classList.remove('mod-completed');
+                alert("네트워크 오류");
+            });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#039;' }[m]));
+        }
+
+        fetchTasks();
+        setInterval(fetchTasks, CONFIG.REFRESH_INTERVAL_MS);
+
+
+        // --- 4. YouTube Player & Controls ---
+        let player;
+        let isShuffle = true;
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    'listType': 'playlist',
+                    'list': CONFIG.YOUTUBE_PLAYLIST_ID,
+                    'autoplay': 1,
+                    'controls': 1, // Show controls as backup
+                    'loop': 1,
+                    'mute': 0,     // User confirmed mute=0 works
+                    'rel': 0,
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            // Shuffle and Play Muted first
+            if (isShuffle) {
+                event.target.setShuffle(true);
+                event.target.playVideoAt(0);
+            } else {
+                event.target.playVideo();
+            }
+            setupControls();
+        }
+
+        function onPlayerStateChange(event) {
+            const btn = document.getElementById('btn-play');
+
+            // 1. Update Button Icon
+            if (event.data == YT.PlayerState.PLAYING) {
+                btn.textContent = "⏸️";
+
+                // 2. Attempt to Unmute on First Play
+                // Browsers might block this if no user interaction yet.
+                if (player.isMuted()) {
+                    player.unMute();
+                    // Double check volume
+                    player.setVolume(50);
+                }
+            } else {
+                btn.textContent = "⏯️";
+            }
+        }
+
+        function onPlayerError(event) {
+            console.error("YouTube Player Error:", event.data);
+        }
+
+        function setupControls() {
+            document.getElementById('btn-prev').onclick = () => player.previousVideo();
+            document.getElementById('btn-next').onclick = () => player.nextVideo();
+            document.getElementById('btn-play').onclick = () => {
+                const state = player.getPlayerState();
+                if (state == YT.PlayerState.PLAYING) {
+                    player.pauseVideo();
+                } else {
+                    player.playVideo();
+                }
+            };
+
+            const shuffleBtn = document.getElementById('btn-shuffle');
+            shuffleBtn.classList.add('active'); // Default ON
+            shuffleBtn.onclick = () => {
+                isShuffle = !isShuffle;
+                player.setShuffle(isShuffle);
+                // Visual feedback
+                if (isShuffle) shuffleBtn.classList.add('active');
+                else shuffleBtn.classList.remove('active');
+            };
+
+            const volSlider = document.getElementById('vol-slider');
+            volSlider.oninput = (e) => {
+                if (player) player.setVolume(e.target.value);
+            };
+        }
+
+    </script>
 </body>
+
 </html>
