@@ -20,7 +20,7 @@
             --glass-border: rgba(255, 255, 255, 0.15);
             --accent-color: #ff00cc;
             --accent-glow: rgba(255, 0, 204, 0.5);
-            --focus-border: #00d2ff; /* 포커스 색상 */
+            --focus-border: #00d2ff; /* 리모컨 포커스 색상 */
             --font-heading: 'Outfit', sans-serif;
             --font-body: 'Noto Sans KR', sans-serif;
         }
@@ -37,9 +37,7 @@
             font-family: var(--font-body);
             height: 100vh;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            padding: 3rem;
+            display: flex; flex-direction: column; padding: 3rem;
         }
 
         /* --- Top Bar --- */
@@ -61,7 +59,7 @@
         .weather-main { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.8rem; }
         .weather-sub { font-size: 1.1rem; color: var(--text-secondary); margin-top: 2px; }
 
-        /* --- Music Player (Modified for Marquee) --- */
+        /* --- Music Player Panel --- */
         .music-player-panel {
             display: flex; align-items: center; gap: 2rem;
             background: rgba(20, 10, 40, 0.4);
@@ -74,47 +72,32 @@
 
         .music-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 
-        /* [수정됨] 흐르는 텍스트 컨테이너 */
+        /* 흐르는 텍스트 (Marquee) */
         .marquee-container {
-            width: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            margin-bottom: 0.5rem;
+            width: 100%; overflow: hidden; white-space: nowrap; margin-bottom: 0.5rem;
             mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
         }
-
-        /* [수정됨] 실제 움직이는 텍스트 */
         .music-title {
-            display: inline-block;
-            font-size: 1.4rem; font-weight: 700;
-            color: var(--text-primary);
-            padding-left: 0;
-            /* 애니메이션은 JS로 제어 (곡 길이에 따라 다름) */
-            animation: none; 
+            display: inline-block; font-size: 1.4rem; font-weight: 700; color: var(--text-primary);
+            padding-left: 0; animation: none; /* JS로 제어 */
         }
-        
-        /* 흐르는 효과 애니메이션 정의 */
         @keyframes scroll-left {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); } /* 텍스트 길이만큼 이동 */
+            100% { transform: translateX(-100%); }
         }
 
+        /* 음악 진행바 */
         .progress-container {
-            width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px; overflow: hidden;
+            width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;
         }
-
         .progress-bar { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.5s linear; }
 
         .music-controls { display: flex; align-items: center; gap: 1rem; }
-
         .control-btn {
             background: rgba(255, 255, 255, 0.05); border: none; color: var(--text-secondary);
             width: 48px; height: 48px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
         }
-
         .material-symbols-rounded { font-size: 24px; }
         .control-btn.main-action {
             width: 56px; height: 56px; color: #fff;
@@ -125,58 +108,67 @@
         /* --- Main Content --- */
         .dashboard-body {
             flex: 1;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 32px;
-            backdrop-filter: blur(30px);
-            padding: 2.5rem;
-            overflow: hidden;
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 32px; backdrop-filter: blur(30px);
+            padding: 2.5rem; overflow: hidden;
             display: flex; flex-direction: column;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
 
         .section-title {
             font-family: var(--font-heading); font-size: 2.2rem; font-weight: 600;
-            margin-bottom: 2rem; color: var(--text-secondary);
+            margin-bottom: 1.5rem; color: var(--text-secondary);
             border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;
-            display: flex; justify-content: space-between;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* [NEW] 집안일 진행률 바 (초록색) */
+        .task-progress-wrapper {
+            width: 100%; height: 26px;
+            background: rgba(255, 255, 255, 0.1); border-radius: 13px;
+            margin-bottom: 1.5rem; position: relative; overflow: hidden;
+            border: 1px solid var(--glass-border);
+        }
+        .task-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #238636, #2ea043); /* 초록색 */
+            width: 0%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 15px rgba(46, 160, 67, 0.5);
+        }
+        .task-progress-text {
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.95rem; font-weight: 700; color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
         }
 
         .tasks-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3열 그리드 */
-            gap: 1.5rem;
-            overflow-y: auto; padding: 0.5rem;
-            align-content: start;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+            overflow-y: auto; padding: 0.5rem; align-content: start;
         }
 
         .task-item {
             background: rgba(255, 255, 255, 0.05);
             border: 2px solid transparent; border-radius: 20px;
-            padding: 1.5rem 1.8rem;
-            font-size: 1.8rem; font-weight: 500;
-            display: flex; align-items: center;
-            transition: all 0.1s;
+            padding: 1.5rem 1.8rem; font-size: 1.8rem; font-weight: 500;
+            display: flex; align-items: center; transition: all 0.1s;
         }
-
         .task-bullet {
             min-width: 14px; height: 14px; border-radius: 50%;
             background: var(--accent-color); margin-right: 1.2rem;
             box-shadow: 0 0 15px var(--accent-glow);
         }
-
         .task-completed { opacity: 0.5; text-decoration: line-through; filter: grayscale(0.8); }
 
-        /* [수정됨] 강제 포커스 스타일 (리모컨 내비게이션용) */
+        /* 리모컨 포커스 스타일 */
         .task-item.active-focus, .control-btn.active-focus {
             border-color: var(--focus-border);
             background: rgba(255, 255, 255, 0.15);
             transform: scale(1.02);
-            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
-            z-index: 10;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3); z-index: 10;
         }
 
-        /* Hidden Player */
+        /* 숨겨진 플레이어 & 스크롤바 */
         #player-container { position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         .loading { grid-column: 1 / -1; text-align: center; font-size: 2rem; color: var(--text-secondary); margin-top: 5rem; }
@@ -214,8 +206,14 @@
     <main class="dashboard-body">
         <div class="section-title">
             <span>오늘의 할 일</span>
-            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK 버튼으로 완료 / 채널키로 음악제어</span>
+            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK: 완료 / 채널키: 음악넘김</span>
         </div>
+
+        <div class="task-progress-wrapper">
+            <div id="task-progress-fill" class="task-progress-fill"></div>
+            <div id="task-progress-text" class="task-progress-text">로딩 중...</div>
+        </div>
+
         <div id="tasks-grid" class="tasks-grid">
             <div class="loading">할 일을 불러오는 중...</div>
         </div>
@@ -226,18 +224,19 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwp0eLrqDoLFAXeyAh9_dQZiHpX3vIYvprYwzQujhnq_4Zmow1fRQLLf1dc3vTUN8qcwQ/exec", // 기존 URL 유지
+            // 여기에 새로 배포한 GAS URL을 넣으세요!
+            GAS_URL: "https://script.google.com/macros/s/AKfycbzUyM0SeSq9FFK43e6ZcevhP3XMy4pqT6y64Azl2bA_YiRN4tDTKzHEYsBz8TwVgiA7Ww/exec", 
             PLAYLIST_ID: "PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r",
             WEATHER_URL: "https://api.open-meteo.com/v1/forecast?latitude=35.2157&longitude=128.5676&current_weather=true&timezone=Asia%2FSeoul"
         };
 
-        // --- 1. Clock ---
+        // 1. 시계
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
         }, 1000);
 
-        // --- 2. Weather ---
+        // 2. 날씨
         async function updateWeather() {
             try {
                 const res = await fetch(CONFIG.WEATHER_URL);
@@ -246,78 +245,74 @@
                     const temp = Math.round(data.current_weather.temperature);
                     const code = data.current_weather.weathercode;
                     let icon = 'sunny';
-                    // Simple mapping
                     if (code > 2) icon = 'cloud';
                     if (code > 45) icon = 'foggy';
                     if (code > 50) icon = 'rainy';
                     if (code > 70) icon = 'ac_unit';
                     if (code > 90) icon = 'thunderstorm';
-                    
                     let color = icon === 'sunny' ? '#FFD700' : (icon === 'rainy' ? '#4facfe' : '#ccc');
-                    
-                    document.getElementById('weather-main').innerHTML = 
-                        `<span class="material-symbols-rounded" style="font-size: 2.5rem; color: ${color};">${icon}</span> ${temp}°C`;
+                    document.getElementById('weather-main').innerHTML = `<span class="material-symbols-rounded" style="font-size: 2.5rem; color: ${color};">${icon}</span> ${temp}°C`;
                 }
             } catch (e) {}
         }
         updateWeather();
 
-        // --- 3. Google Tasks ---
-/* --- 3. Google Tasks (수정됨) --- */
+        // 3. 할 일 목록 및 진행률 (완전 수정됨)
         let tasksData = [];
-        let currentFocusIndex = 0; 
-        
+        let currentFocusIndex = 0;
+
         async function fetchTasks() {
             const grid = document.getElementById('tasks-grid');
+            const progressFill = document.getElementById('task-progress-fill');
+            const progressText = document.getElementById('task-progress-text');
+
             try {
                 const res = await fetch(CONFIG.GAS_URL);
                 const data = await res.json();
-        
-                // [핵심 수정] GAS가 보내주는 데이터가 '배열'인지 '객체'인지 확인하여 처리
+
                 let taskList = [];
-                
+                let percent = 0;
+                let doneCount = 0;
+                let totalCount = 0;
+
+                // 데이터 구조 판별
                 if (Array.isArray(data)) {
-                    // 예전 GAS 버전일 경우 (그냥 목록)
                     taskList = data;
                 } else if (data.tasks) {
-                    // 진행률 포함된 새 GAS 버전일 경우 (tasks만 꺼냄)
                     taskList = data.tasks;
-                    
-                    // 만약 나중에 '초록색 진행률 바'도 넣고 싶으시면 여기서 data.percent를 쓰면 됩니다.
-                    // console.log("진행률:", data.percent); 
+                    percent = data.percent || 0;
+                    doneCount = data.doneCount || 0;
+                    totalCount = data.totalCount || 0;
                 }
-        
-                // 데이터가 없거나 에러인 경우 처리
+
+                // 진행률 바 업데이트 (초록색)
+                if (progressFill && progressText) {
+                    progressFill.style.width = percent + "%";
+                    progressText.textContent = `오늘의 달성률: ${percent}% (${doneCount}/${totalCount} 완료)`;
+                }
+
+                // 목록 업데이트
                 if (!taskList || taskList.length === 0) {
                     grid.innerHTML = '<div class="loading">할 일을 모두 마쳤습니다! 🎉</div>';
                     tasksData = [];
                     return;
                 }
-        
-                // 정상적으로 데이터 담기
+
                 tasksData = taskList;
                 renderTasks();
-                
-            } catch (e) { 
-                console.error("데이터 로딩 실패:", e); 
-                // 에러가 나도 화면이 멈추지 않게 로그만 남김
-            }
+            } catch (e) { console.error(e); }
         }
 
         function renderTasks() {
             const grid = document.getElementById('tasks-grid');
             grid.innerHTML = '';
-            
             tasksData.forEach((task, index) => {
                 const el = document.createElement('div');
                 el.className = 'task-item';
                 el.id = `task-${index}`;
-                // 리모컨 포커스는 JS로 제어하므로 tabindex 제거 (혼선 방지)
                 el.innerHTML = `<div class="task-bullet"></div><span>${task.title}</span>`;
                 grid.appendChild(el);
             });
-
-            // 포커스 복구
             updateFocus();
         }
 
@@ -325,7 +320,6 @@
             const task = tasksData[index];
             const el = document.getElementById(`task-${index}`);
             if (!task || !el) return;
-
             el.classList.add('task-completed');
             
             fetch(CONFIG.GAS_URL, {
@@ -333,22 +327,16 @@
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify({ action: 'complete', taskId: task.id })
             }).then(() => {
-                // 완료 후 시각적 처리
-                setTimeout(() => {
-                    fetchTasks(); // 목록 갱신
-                }, 500);
+                setTimeout(() => { fetchTasks(); }, 500);
             });
         }
 
-        // --- 4. Navigation & Remote Control (핵심 수정) ---
+        // 4. 리모컨 내비게이션 & 음악 제어
         function updateFocus() {
-            // 모든 포커스 제거
             document.querySelectorAll('.active-focus').forEach(el => el.classList.remove('active-focus'));
-            
             if (tasksData.length > 0) {
                 if (currentFocusIndex >= tasksData.length) currentFocusIndex = tasksData.length - 1;
                 if (currentFocusIndex < 0) currentFocusIndex = 0;
-
                 const target = document.getElementById(`task-${currentFocusIndex}`);
                 if (target) {
                     target.classList.add('active-focus');
@@ -358,60 +346,39 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            const key = e.keyCode; // KeyCode 사용 (TV 호환성)
+            const key = e.keyCode;
             
-            // [방향키 내비게이션] - 3열 그리드 기준
+            // 방향키 (3열 그리드 이동)
             if (tasksData.length > 0) {
-                if (key === 37) { // Left
-                    if (currentFocusIndex > 0) currentFocusIndex--;
-                    updateFocus();
-                } 
-                else if (key === 39) { // Right
-                    if (currentFocusIndex < tasksData.length - 1) currentFocusIndex++;
-                    updateFocus();
-                } 
-                else if (key === 38) { // Up
-                    if (currentFocusIndex >= 3) currentFocusIndex -= 3;
-                    updateFocus();
-                } 
-                else if (key === 40) { // Down
-                    if (currentFocusIndex + 3 < tasksData.length) currentFocusIndex += 3;
-                    updateFocus();
-                }
-                else if (key === 13) { // Enter (OK Button)
-                    completeTask(currentFocusIndex);
-                }
+                if (key === 37) { if (currentFocusIndex > 0) currentFocusIndex--; updateFocus(); } // Left
+                else if (key === 39) { if (currentFocusIndex < tasksData.length - 1) currentFocusIndex++; updateFocus(); } // Right
+                else if (key === 38) { if (currentFocusIndex >= 3) currentFocusIndex -= 3; updateFocus(); } // Up
+                else if (key === 40) { if (currentFocusIndex + 3 < tasksData.length) currentFocusIndex += 3; updateFocus(); } // Down
+                else if (key === 13) { completeTask(currentFocusIndex); } // OK Button
             }
 
-            // [채널 키 매핑 - 음악 제어]
-            // 427: CH UP, 33: PageUp -> 다음 곡
-            if (key === 427 || key === 33) {
-                if (player) player.nextVideo();
-            }
-            // 428: CH DOWN, 34: PageDown -> 이전 곡
-            else if (key === 428 || key === 34) {
-                if (player) player.previousVideo();
-            }
+            // 채널키 (음악 제어)
+            if (key === 427 || key === 33) { if (player) player.nextVideo(); } // CH Up / PageUp
+            else if (key === 428 || key === 34) { if (player) player.previousVideo(); } // CH Down / PageDown
         });
 
         fetchTasks();
-        setInterval(fetchTasks, 60000); // 1분마다 갱신
+        setInterval(fetchTasks, 60000);
 
-        // --- 5. Music Player (API) ---
+        // 5. 음악 플레이어 (API)
         let player;
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '100%', width: '100%',
                 playerVars: {
-                    listType: 'playlist',
-                    list: CONFIG.PLAYLIST_ID,
-                    autoplay: 1, controls: 0, loop: 1, mute: 0 // 소리 켜짐
+                    listType: 'playlist', list: CONFIG.PLAYLIST_ID,
+                    autoplay: 1, controls: 0, loop: 1, mute: 0
                 },
                 events: {
                     onReady: (e) => {
                         e.target.setShuffle(true);
                         e.target.playVideoAt(0);
-                        setupMarquee(); // 제목 흐르기 시작
+                        setupMarquee();
                     },
                     onStateChange: onPlayerStateChange
                 }
@@ -419,61 +386,45 @@
         }
 
         function onPlayerStateChange(e) {
-            // 제목 업데이트
             if (player && player.getVideoData) {
                 const data = player.getVideoData();
                 const titleEl = document.getElementById('music-title');
                 if (data && data.title) {
                     titleEl.textContent = data.title;
-                    setupMarquee(); // 제목 바뀔 때마다 애니메이션 리셋
+                    setupMarquee();
                 }
             }
-            
-            // 재생/일시정지 아이콘 변경
             const icon = document.querySelector('#btn-play span');
             if (e.data === YT.PlayerState.PLAYING) icon.textContent = 'pause';
             else icon.textContent = 'play_arrow';
         }
 
-        // [핵심] 제목이 길면 흐르게 만드는 함수
         function setupMarquee() {
             const container = document.querySelector('.marquee-container');
             const text = document.getElementById('music-title');
-            
-            // 애니메이션 초기화
             text.style.animation = 'none';
-            text.offsetHeight; /* trigger reflow */
-            
-            // 텍스트가 컨테이너보다 길 때만 애니메이션 적용
+            text.offsetHeight; 
             if (text.scrollWidth > container.clientWidth) {
-                const duration = text.scrollWidth / 50; // 속도 조절 (픽셀당 시간)
+                const duration = text.scrollWidth / 50; 
                 text.style.animation = `scroll-left ${duration}s linear infinite`;
-                // 부드러운 연결을 위해 뒤에 공백 추가하거나 복제할 수 있으나 단순 이동으로 처리
-                // 텍스트가 왼쪽으로 완전히 사라졌다가 오른쪽에서 다시 나오게 하려면
-                // padding-left: 100% 를 주고 keyframes를 수정해야 함.
-                // 현재 CSS는 단순 왼쪽 이동이므로, 여기서는 CSS Keyframes와 맞춰 
-                // padding-left: 100% 방식을 적용해 봅니다.
                 text.style.paddingLeft = "100%";
             } else {
                 text.style.paddingLeft = "0";
             }
         }
 
-        // 화면상 버튼 클릭 이벤트 (마우스용)
-        document.getElementById('btn-play').onclick = () => {
-            if (player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo();
-        };
+        // 마우스 클릭 이벤트
+        document.getElementById('btn-play').onclick = () => { if (player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo(); };
         document.getElementById('btn-next').onclick = () => player.nextVideo();
         document.getElementById('btn-prev').onclick = () => player.previousVideo();
 
-        // 진행바 업데이트
+        // 음악 진행바 업데이트
         setInterval(() => {
             if (player && player.getCurrentTime) {
                 const pct = (player.getCurrentTime() / player.getDuration()) * 100;
                 document.getElementById('music-progress').style.width = pct + "%";
             }
         }, 1000);
-
     </script>
 </body>
 </html>
