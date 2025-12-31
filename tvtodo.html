@@ -20,7 +20,7 @@
             --glass-border: rgba(255, 255, 255, 0.15);
             --accent-color: #ff00cc;
             --accent-glow: rgba(255, 0, 204, 0.5);
-            --focus-border: #00d2ff; /* 리모컨 포커스 색상 */
+            --focus-border: #00d2ff;
             --font-heading: 'Outfit', sans-serif;
             --font-body: 'Noto Sans KR', sans-serif;
         }
@@ -72,21 +72,19 @@
 
         .music-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 
-        /* 흐르는 텍스트 (Marquee) */
         .marquee-container {
             width: 100%; overflow: hidden; white-space: nowrap; margin-bottom: 0.5rem;
             mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
         }
         .music-title {
             display: inline-block; font-size: 1.4rem; font-weight: 700; color: var(--text-primary);
-            padding-left: 0; animation: none; /* JS로 제어 */
+            padding-left: 0; animation: none;
         }
         @keyframes scroll-left {
             0% { transform: translateX(0); }
             100% { transform: translateX(-100%); }
         }
 
-        /* 음악 진행바 */
         .progress-container {
             width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;
         }
@@ -97,6 +95,7 @@
             background: rgba(255, 255, 255, 0.05); border: none; color: var(--text-secondary);
             width: 48px; height: 48px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+            cursor: pointer; /* 마우스 커서 추가 */
         }
         .material-symbols-rounded { font-size: 24px; }
         .control-btn.main-action {
@@ -122,7 +121,7 @@
             display: flex; justify-content: space-between; align-items: center;
         }
 
-        /* [NEW] 집안일 진행률 바 (초록색) */
+        /* 집안일 진행률 바 */
         .task-progress-wrapper {
             width: 100%; height: 26px;
             background: rgba(255, 255, 255, 0.1); border-radius: 13px;
@@ -131,7 +130,7 @@
         }
         .task-progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #238636, #2ea043); /* 초록색 */
+            background: linear-gradient(90deg, #238636, #2ea043);
             width: 0%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 0 15px rgba(46, 160, 67, 0.5);
         }
@@ -152,6 +151,7 @@
             border: 2px solid transparent; border-radius: 20px;
             padding: 1.5rem 1.8rem; font-size: 1.8rem; font-weight: 500;
             display: flex; align-items: center; transition: all 0.1s;
+            cursor: pointer; /* [복구됨] 클릭 가능한 커서 표시 */
         }
         .task-bullet {
             min-width: 14px; height: 14px; border-radius: 50%;
@@ -160,7 +160,6 @@
         }
         .task-completed { opacity: 0.5; text-decoration: line-through; filter: grayscale(0.8); }
 
-        /* 리모컨 포커스 스타일 */
         .task-item.active-focus, .control-btn.active-focus {
             border-color: var(--focus-border);
             background: rgba(255, 255, 255, 0.15);
@@ -168,7 +167,6 @@
             box-shadow: 0 0 20px rgba(0, 210, 255, 0.3); z-index: 10;
         }
 
-        /* 숨겨진 플레이어 & 스크롤바 */
         #player-container { position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         .loading { grid-column: 1 / -1; text-align: center; font-size: 2rem; color: var(--text-secondary); margin-top: 5rem; }
@@ -206,7 +204,7 @@
     <main class="dashboard-body">
         <div class="section-title">
             <span>오늘의 할 일</span>
-            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK: 완료 / 채널키: 음악넘김</span>
+            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK 버튼 / 클릭으로 완료</span>
         </div>
 
         <div class="task-progress-wrapper">
@@ -224,7 +222,7 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         const CONFIG = {
-            // 여기에 새로 배포한 GAS URL을 넣으세요!
+            // 본인의 GAS URL을 여기에 입력하세요
             GAS_URL: "https://script.google.com/macros/s/AKfycbzUyM0SeSq9FFK43e6ZcevhP3XMy4pqT6y64Azl2bA_YiRN4tDTKzHEYsBz8TwVgiA7Ww/exec", 
             PLAYLIST_ID: "PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r",
             WEATHER_URL: "https://api.open-meteo.com/v1/forecast?latitude=35.2157&longitude=128.5676&current_weather=true&timezone=Asia%2FSeoul"
@@ -257,7 +255,7 @@
         }
         updateWeather();
 
-        // 3. 할 일 목록 및 진행률 (완전 수정됨)
+        // 3. 할 일 목록 및 진행률
         let tasksData = [];
         let currentFocusIndex = 0;
 
@@ -275,7 +273,6 @@
                 let doneCount = 0;
                 let totalCount = 0;
 
-                // 데이터 구조 판별
                 if (Array.isArray(data)) {
                     taskList = data;
                 } else if (data.tasks) {
@@ -285,13 +282,11 @@
                     totalCount = data.totalCount || 0;
                 }
 
-                // 진행률 바 업데이트 (초록색)
                 if (progressFill && progressText) {
                     progressFill.style.width = percent + "%";
                     progressText.textContent = `오늘의 달성률: ${percent}% (${doneCount}/${totalCount} 완료)`;
                 }
 
-                // 목록 업데이트
                 if (!taskList || taskList.length === 0) {
                     grid.innerHTML = '<div class="loading">할 일을 모두 마쳤습니다! 🎉</div>';
                     tasksData = [];
@@ -311,6 +306,10 @@
                 el.className = 'task-item';
                 el.id = `task-${index}`;
                 el.innerHTML = `<div class="task-bullet"></div><span>${task.title}</span>`;
+                
+                // [핵심 수정] 마우스 클릭 이벤트 복구!
+                el.onclick = () => completeTask(index);
+                
                 grid.appendChild(el);
             });
             updateFocus();
@@ -348,18 +347,16 @@
         document.addEventListener('keydown', (e) => {
             const key = e.keyCode;
             
-            // 방향키 (3열 그리드 이동)
             if (tasksData.length > 0) {
-                if (key === 37) { if (currentFocusIndex > 0) currentFocusIndex--; updateFocus(); } // Left
-                else if (key === 39) { if (currentFocusIndex < tasksData.length - 1) currentFocusIndex++; updateFocus(); } // Right
-                else if (key === 38) { if (currentFocusIndex >= 3) currentFocusIndex -= 3; updateFocus(); } // Up
-                else if (key === 40) { if (currentFocusIndex + 3 < tasksData.length) currentFocusIndex += 3; updateFocus(); } // Down
-                else if (key === 13) { completeTask(currentFocusIndex); } // OK Button
+                if (key === 37) { if (currentFocusIndex > 0) currentFocusIndex--; updateFocus(); } 
+                else if (key === 39) { if (currentFocusIndex < tasksData.length - 1) currentFocusIndex++; updateFocus(); } 
+                else if (key === 38) { if (currentFocusIndex >= 3) currentFocusIndex -= 3; updateFocus(); } 
+                else if (key === 40) { if (currentFocusIndex + 3 < tasksData.length) currentFocusIndex += 3; updateFocus(); } 
+                else if (key === 13) { completeTask(currentFocusIndex); } 
             }
 
-            // 채널키 (음악 제어)
-            if (key === 427 || key === 33) { if (player) player.nextVideo(); } // CH Up / PageUp
-            else if (key === 428 || key === 34) { if (player) player.previousVideo(); } // CH Down / PageDown
+            if (key === 427 || key === 33) { if (player) player.nextVideo(); } 
+            else if (key === 428 || key === 34) { if (player) player.previousVideo(); } 
         });
 
         fetchTasks();
@@ -413,12 +410,10 @@
             }
         }
 
-        // 마우스 클릭 이벤트
         document.getElementById('btn-play').onclick = () => { if (player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo(); };
         document.getElementById('btn-next').onclick = () => player.nextVideo();
         document.getElementById('btn-prev').onclick = () => player.previousVideo();
 
-        // 음악 진행바 업데이트
         setInterval(() => {
             if (player && player.getCurrentTime) {
                 const pct = (player.getCurrentTime() / player.getDuration()) * 100;
