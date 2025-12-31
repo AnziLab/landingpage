@@ -263,26 +263,45 @@
         updateWeather();
 
         // --- 3. Google Tasks ---
+/* --- 3. Google Tasks (수정됨) --- */
         let tasksData = [];
-        let currentFocusIndex = 0; // 현재 포커스 위치
-
+        let currentFocusIndex = 0; 
+        
         async function fetchTasks() {
             const grid = document.getElementById('tasks-grid');
             try {
                 const res = await fetch(CONFIG.GAS_URL);
                 const data = await res.json();
-
-                if (!data || data.length === 0 || data.error) {
-                    grid.innerHTML = '<div class="loading">할 일이 없습니다 🎉</div>';
+        
+                // [핵심 수정] GAS가 보내주는 데이터가 '배열'인지 '객체'인지 확인하여 처리
+                let taskList = [];
+                
+                if (Array.isArray(data)) {
+                    // 예전 GAS 버전일 경우 (그냥 목록)
+                    taskList = data;
+                } else if (data.tasks) {
+                    // 진행률 포함된 새 GAS 버전일 경우 (tasks만 꺼냄)
+                    taskList = data.tasks;
+                    
+                    // 만약 나중에 '초록색 진행률 바'도 넣고 싶으시면 여기서 data.percent를 쓰면 됩니다.
+                    // console.log("진행률:", data.percent); 
+                }
+        
+                // 데이터가 없거나 에러인 경우 처리
+                if (!taskList || taskList.length === 0) {
+                    grid.innerHTML = '<div class="loading">할 일을 모두 마쳤습니다! 🎉</div>';
                     tasksData = [];
                     return;
                 }
-
-                // 기존 항목 유지하면서 업데이트 (UX 깜빡임 방지)
-                tasksData = data;
+        
+                // 정상적으로 데이터 담기
+                tasksData = taskList;
                 renderTasks();
                 
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error("데이터 로딩 실패:", e); 
+                // 에러가 나도 화면이 멈추지 않게 로그만 남김
+            }
         }
 
         function renderTasks() {
