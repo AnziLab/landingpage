@@ -4,56 +4,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Dashboard Premium</title>
+    <title>Home Dashboard Premium Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
     <style>
         /* --- Global Variables --- */
         :root {
-            /* Midnight Aurora Theme */
             --bg-color: #0F0C29;
             --bg-gradient: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-
             --text-primary: #ffffff;
             --text-secondary: rgba(255, 255, 255, 0.85);
-
             --glass-bg: rgba(255, 255, 255, 0.08);
-            /* Lighter, more glassy */
             --glass-border: rgba(255, 255, 255, 0.15);
-
             --accent-color: #ff00cc;
-            /* Hot Pink */
-            --accent-secondary: #333399;
-            /* Deep Purple */
             --accent-glow: rgba(255, 0, 204, 0.5);
-
-            --focus-border: #00d2ff;
-            /* Cyan for focus */
-
+            --focus-border: #00d2ff; /* 포커스 색상 */
             --font-heading: 'Outfit', sans-serif;
             --font-body: 'Noto Sans KR', sans-serif;
-            --icon-font: 'Material Symbols Rounded';
-
-            /* Layout */
-            --top-bar-height: 100px;
-            --panel-padding: 2.5rem;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
         body {
             background: var(--bg-gradient);
-            /* Aurora Boreal Effects */
             background-image:
                 radial-gradient(circle at 10% 20%, rgba(255, 0, 204, 0.15) 0%, transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(0, 210, 255, 0.15) 0%, transparent 40%),
@@ -65,344 +40,204 @@
             display: flex;
             flex-direction: column;
             padding: 3rem;
-            /* Safer area for TV */
         }
 
         /* --- Top Bar --- */
         .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: var(--top-bar-height);
-            margin-bottom: 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            height: 100px; margin-bottom: 2rem;
         }
 
-        /* Weather & Clock */
-        .info-group {
-            display: flex;
-            align-items: center;
-            gap: 3rem;
-        }
+        .info-group { display: flex; align-items: center; gap: 3rem; }
 
         .clock {
             font-family: var(--font-heading);
-            font-size: 3.5rem;
-            font-weight: 800;
-            letter-spacing: -1px;
-            /* Gradient Text */
+            font-size: 3.5rem; font-weight: 800; letter-spacing: -1px;
             background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
         }
 
-        .weather-widget {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+        .weather-widget { display: flex; flex-direction: column; justify-content: center; }
+        .weather-main { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.8rem; }
+        .weather-sub { font-size: 1.1rem; color: var(--text-secondary); margin-top: 2px; }
 
-        .weather-main {
-            font-size: 1.8rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .weather-sub {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        /* --- Premium Music Player (Top Right) --- */
+        /* --- Music Player (Modified for Marquee) --- */
         .music-player-panel {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
+            display: flex; align-items: center; gap: 2rem;
             background: rgba(20, 10, 40, 0.4);
             border: 1px solid var(--glass-border);
             backdrop-filter: blur(25px);
             padding: 1rem 2rem;
             border-radius: 24px;
             width: 600px;
-            /* Fixed width for stability */
-            transition: transform 0.2s, border-color 0.2s;
         }
 
-        .music-info {
-            flex: 1;
+        .music-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+
+        /* [수정됨] 흐르는 텍스트 컨테이너 */
+        .marquee-container {
+            width: 100%;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .music-title {
-            font-size: 1.4rem;
-            font-weight: 700;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.5rem;
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        }
+
+        /* [수정됨] 실제 움직이는 텍스트 */
+        .music-title {
+            display: inline-block;
+            font-size: 1.4rem; font-weight: 700;
             color: var(--text-primary);
+            padding-left: 0;
+            /* 애니메이션은 JS로 제어 (곡 길이에 따라 다름) */
+            animation: none; 
+        }
+        
+        /* 흐르는 효과 애니메이션 정의 */
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); } /* 텍스트 길이만큼 이동 */
         }
 
         .progress-container {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            position: relative;
+            width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px; overflow: hidden;
         }
 
-        .progress-bar {
-            height: 100%;
-            background: var(--accent-color);
-            width: 0%;
-            transition: width 0.5s linear;
-        }
+        .progress-bar { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.5s linear; }
 
-        .music-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+        .music-controls { display: flex; align-items: center; gap: 1rem; }
 
         .control-btn {
-            background: rgba(255, 255, 255, 0.05);
-            /* Slight fill */
-            border: none;
-            color: var(--text-secondary);
-            /* Icons */
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(255, 255, 255, 0.05); border: none; color: var(--text-secondary);
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
         }
 
-        .material-symbols-rounded {
-            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            font-size: 24px;
-            /* Standard Size */
-        }
-
+        .material-symbols-rounded { font-size: 24px; }
         .control-btn.main-action {
-            width: 56px;
-            height: 56px;
-            color: #fff;
-            background: var(--accent-color);
-            box-shadow: 0 0 20px var(--accent-glow);
+            width: 56px; height: 56px; color: #fff;
+            background: var(--accent-color); box-shadow: 0 0 20px var(--accent-glow);
         }
+        .control-btn.main-action .material-symbols-rounded { font-size: 32px; }
 
-        .control-btn.main-action .material-symbols-rounded {
-            font-size: 32px;
-        }
-
-
-        /* Focus States for TV Remote */
-        :focus {
-            outline: none;
-        }
-
-        .task-item:focus,
-        .control-btn:focus,
-        .music-player-panel:focus-within {
-            border-color: var(--focus-border);
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
-            transform: scale(1.02);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .control-btn:focus {
-            background: var(--accent-color);
-            color: #fff;
-        }
-
-
-        /* --- Main Content: Tasks --- */
+        /* --- Main Content --- */
         .dashboard-body {
             flex: 1;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
             border-radius: 32px;
             backdrop-filter: blur(30px);
-            padding: var(--panel-padding);
+            padding: 2.5rem;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
 
         .section-title {
-            font-family: var(--font-heading);
-            font-size: 2.2rem;
-            font-weight: 600;
-            margin-bottom: 2rem;
-            color: var(--text-secondary);
-            border-bottom: 1px solid var(--glass-border);
-            padding-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
+            font-family: var(--font-heading); font-size: 2.2rem; font-weight: 600;
+            margin-bottom: 2rem; color: var(--text-secondary);
+            border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;
+            display: flex; justify-content: space-between;
         }
 
         .tasks-grid {
             display: grid;
-            /* 3 Columns for TV */
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, 1fr); /* 3열 그리드 */
             gap: 1.5rem;
-            /* Tighter gap */
-            overflow-y: auto;
-            padding: 0.5rem;
-            height: 100%;
+            overflow-y: auto; padding: 0.5rem;
             align-content: start;
         }
 
         .task-item {
             background: rgba(255, 255, 255, 0.05);
-            border: 2px solid transparent;
-            /* Prepare for focus */
-            border-radius: 20px;
+            border: 2px solid transparent; border-radius: 20px;
             padding: 1.5rem 1.8rem;
-            font-size: 1.8rem;
-            /* Large text for TV */
-            font-weight: 500;
-            line-height: 1.4;
-            display: flex;
-            align-items: flex-start;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            cursor: pointer;
+            font-size: 1.8rem; font-weight: 500;
+            display: flex; align-items: center;
+            transition: all 0.1s;
         }
 
         .task-bullet {
-            min-width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--accent-color);
-            margin-top: 0.6rem;
-            margin-right: 1.2rem;
+            min-width: 14px; height: 14px; border-radius: 50%;
+            background: var(--accent-color); margin-right: 1.2rem;
             box-shadow: 0 0 15px var(--accent-glow);
         }
 
-        .task-completed {
-            opacity: 0.5;
-            text-decoration: line-through;
-            filter: grayscale(0.8);
-            transform: scale(0.98);
+        .task-completed { opacity: 0.5; text-decoration: line-through; filter: grayscale(0.8); }
+
+        /* [수정됨] 강제 포커스 스타일 (리모컨 내비게이션용) */
+        .task-item.active-focus, .control-btn.active-focus {
+            border-color: var(--focus-border);
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+            z-index: 10;
         }
 
-        /* Hidden Player Fix */
-        #player-container {
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            width: 200px;
-            /* Keep small window for stability similar to prev working version */
-            height: 150px;
-            opacity: 0.01;
-            /* Almost invisible */
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        /* Scrollbar Hide */
-        ::-webkit-scrollbar {
-            width: 0px;
-            background: transparent;
-        }
-
-        /* Loading State */
-        .loading {
-            grid-column: 1 / -1;
-            text-align: center;
-            font-size: 2rem;
-            color: var(--text-secondary);
-            margin-top: 5rem;
-        }
+        /* Hidden Player */
+        #player-container { position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .loading { grid-column: 1 / -1; text-align: center; font-size: 2rem; color: var(--text-secondary); margin-top: 5rem; }
     </style>
 </head>
 
 <body>
 
-    <!-- Top Bar -->
     <header class="top-bar">
         <div class="info-group">
             <div id="clock" class="clock">00:00</div>
             <div class="weather-widget">
-                <div id="weather-main" class="weather-main">
-                    <span>--°C</span>
-                </div>
+                <div id="weather-main" class="weather-main"><span>--°C</span></div>
                 <div class="weather-sub">창원시 마산합포구</div>
             </div>
         </div>
 
-        <!-- Music Custom Player -->
         <div class="music-player-panel" id="music-panel">
             <div class="music-info">
-                <div class="music-title" id="music-title">Loading Music...</div>
+                <div class="marquee-container">
+                    <div class="music-title" id="music-title">Loading Music...</div>
+                </div>
                 <div class="progress-container">
                     <div class="progress-bar" id="music-progress"></div>
                 </div>
             </div>
             <div class="music-controls">
-                <button class="control-btn" id="btn-prev" tabindex="0">
-                    <span class="material-symbols-rounded">skip_previous</span>
-                </button>
-                <button class="control-btn main-action" id="btn-play" tabindex="0">
-                    <span class="material-symbols-rounded">play_arrow</span>
-                </button>
-                <button class="control-btn" id="btn-next" tabindex="0">
-                    <span class="material-symbols-rounded">skip_next</span>
-                </button>
-                <button class="control-btn" id="btn-shuffle" tabindex="0">
-                    <span class="material-symbols-rounded">shuffle</span>
-                </button>
+                <div class="control-btn" id="btn-prev"><span class="material-symbols-rounded">skip_previous</span></div>
+                <div class="control-btn main-action" id="btn-play"><span class="material-symbols-rounded">play_arrow</span></div>
+                <div class="control-btn" id="btn-next"><span class="material-symbols-rounded">skip_next</span></div>
             </div>
         </div>
     </header>
 
-    <!-- Main Board -->
     <main class="dashboard-body">
         <div class="section-title">
             <span>오늘의 할 일</span>
-            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK 버튼으로 완료</span>
+            <span style="font-size: 1.2rem; font-weight: 400; align-self: flex-end;">OK 버튼으로 완료 / 채널키로 음악제어</span>
         </div>
-
         <div id="tasks-grid" class="tasks-grid">
             <div class="loading">할 일을 불러오는 중...</div>
         </div>
     </main>
 
-    <!-- Hidden YouTube Player -->
-    <div id="player-container">
-        <div id="player"></div>
-    </div>
+    <div id="player-container"><div id="player"></div></div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        /* --- Config --- */
         const CONFIG = {
-            GAS_URL: "https://script.google.com/macros/s/AKfycbwDfpm8zj9UMWK1kgJBObyx27nYrwZ6foNQXemSpvFG2NAo55VncY0tJaYUX6IWjkOKDg/exec",
+            GAS_URL: "https://script.google.com/macros/s/AKfycbwDfpm8zj9UMWK1kgJBObyx27nYrwZ6foNQXemSpvFG2NAo55VncY0tJaYUX6IWjkOKDg/exec", // 기존 URL 유지
             PLAYLIST_ID: "PLJVvibrFbS3djZBF-cs-aW1oUFQFvXv0r",
             WEATHER_URL: "https://api.open-meteo.com/v1/forecast?latitude=35.2157&longitude=128.5676&current_weather=true&timezone=Asia%2FSeoul"
         };
 
-        /* --- 1. Clock --- */
-        function updateClock() {
+        // --- 1. Clock ---
+        setInterval(() => {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
-            document.getElementById('clock').textContent = timeStr;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
+        }, 1000);
 
-        /* --- 2. Weather (Changwon) --- */
+        // --- 2. Weather ---
         async function updateWeather() {
             try {
                 const res = await fetch(CONFIG.WEATHER_URL);
@@ -410,196 +245,216 @@
                 if (data.current_weather) {
                     const temp = Math.round(data.current_weather.temperature);
                     const code = data.current_weather.weathercode;
-                    let icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; background: linear-gradient(to bottom, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">sunny</span>';
-
-                    // Icon Mapping (Material Symbols)
-                    if (code > 2) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #ccc;">cloud</span>'; // Cloudy
-                    if (code > 45) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #aaa;">foggy</span>'; // Fog
-                    if (code > 50) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #4facfe;">rainy</span>'; // Drizzle/Rain
-                    if (code > 70) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #fff;">ac_unit</span>'; // Snow
-                    if (code > 90) icon = '<span class="material-symbols-rounded" style="font-size: 2.5rem; color: #ffeb3b;">thunderstorm</span>'; // Thunderstorm
-
-                    document.getElementById('weather-main').innerHTML = `${icon} ${temp}°C`;
+                    let icon = 'sunny';
+                    // Simple mapping
+                    if (code > 2) icon = 'cloud';
+                    if (code > 45) icon = 'foggy';
+                    if (code > 50) icon = 'rainy';
+                    if (code > 70) icon = 'ac_unit';
+                    if (code > 90) icon = 'thunderstorm';
+                    
+                    let color = icon === 'sunny' ? '#FFD700' : (icon === 'rainy' ? '#4facfe' : '#ccc');
+                    
+                    document.getElementById('weather-main').innerHTML = 
+                        `<span class="material-symbols-rounded" style="font-size: 2.5rem; color: ${color};">${icon}</span> ${temp}°C`;
                 }
-            } catch (e) { console.error("Weather Error", e); }
+            } catch (e) {}
         }
         updateWeather();
-        setInterval(updateWeather, 1800000); // 30 mins
 
-        /* --- 3. Google Tasks --- */
+        // --- 3. Google Tasks ---
+        let tasksData = [];
+        let currentFocusIndex = 0; // 현재 포커스 위치
+
         async function fetchTasks() {
             const grid = document.getElementById('tasks-grid');
             try {
                 const res = await fetch(CONFIG.GAS_URL);
                 const data = await res.json();
 
-                if (data.error) {
-                    console.error("Task Error", data.error);
-                    return;
-                }
-
-                grid.innerHTML = ''; // Clear
-                if (!data || data.length === 0) {
+                if (!data || data.length === 0 || data.error) {
                     grid.innerHTML = '<div class="loading">할 일이 없습니다 🎉</div>';
+                    tasksData = [];
                     return;
                 }
 
-                data.forEach((task, index) => {
-                    const el = document.createElement('div');
-                    el.className = 'task-item';
-                    el.tabIndex = 0; // FOCUSABLE
-                    el.dataset.id = task.id;
-                    el.innerHTML = `<div class="task-bullet"></div><span>${escapeHtml(task.title)}</span>`;
-
-                    // Click / Enter Handler
-                    const action = () => completeTask(el, task.id);
-                    el.onclick = action;
-                    el.onkeydown = (e) => {
-                        if (e.key === 'Enter') action();
-                    };
-
-                    grid.appendChild(el);
-                });
-
-            } catch (e) {
-                console.error("Fetch Error", e);
-                // Don't clear if network glitch on refresh
-            }
+                // 기존 항목 유지하면서 업데이트 (UX 깜빡임 방지)
+                tasksData = data;
+                renderTasks();
+                
+            } catch (e) { console.error(e); }
         }
 
-        function completeTask(el, id) {
-            if (el.classList.contains('task-completed')) return;
-            el.classList.add('task-completed');
+        function renderTasks() {
+            const grid = document.getElementById('tasks-grid');
+            grid.innerHTML = '';
+            
+            tasksData.forEach((task, index) => {
+                const el = document.createElement('div');
+                el.className = 'task-item';
+                el.id = `task-${index}`;
+                // 리모컨 포커스는 JS로 제어하므로 tabindex 제거 (혼선 방지)
+                el.innerHTML = `<div class="task-bullet"></div><span>${task.title}</span>`;
+                grid.appendChild(el);
+            });
 
-            // Send to Server
+            // 포커스 복구
+            updateFocus();
+        }
+
+        function completeTask(index) {
+            const task = tasksData[index];
+            const el = document.getElementById(`task-${index}`);
+            if (!task || !el) return;
+
+            el.classList.add('task-completed');
+            
             fetch(CONFIG.GAS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({ action: 'complete', taskId: id })
-            }).then(r => r.json()).then(d => {
-                if (!d.success) {
-                    el.classList.remove('task-completed');
-                    alert("오류 발생");
-                } else {
-                    // Remove from DOM after delay for smooth UX
-                    setTimeout(() => {
-                        el.style.opacity = '0';
-                        setTimeout(() => el.remove(), 300);
-                        // Focus next item if strict spatial nav is needed, 
-                        // but browser default usually handles focus loss ok-ish.
-                    }, 500);
-                }
+                body: JSON.stringify({ action: 'complete', taskId: task.id })
+            }).then(() => {
+                // 완료 후 시각적 처리
+                setTimeout(() => {
+                    fetchTasks(); // 목록 갱신
+                }, 500);
             });
         }
 
-        function escapeHtml(text) {
-            return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#039;' }[m]));
+        // --- 4. Navigation & Remote Control (핵심 수정) ---
+        function updateFocus() {
+            // 모든 포커스 제거
+            document.querySelectorAll('.active-focus').forEach(el => el.classList.remove('active-focus'));
+            
+            if (tasksData.length > 0) {
+                if (currentFocusIndex >= tasksData.length) currentFocusIndex = tasksData.length - 1;
+                if (currentFocusIndex < 0) currentFocusIndex = 0;
+
+                const target = document.getElementById(`task-${currentFocusIndex}`);
+                if (target) {
+                    target.classList.add('active-focus');
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
         }
 
+        document.addEventListener('keydown', (e) => {
+            const key = e.keyCode; // KeyCode 사용 (TV 호환성)
+            
+            // [방향키 내비게이션] - 3열 그리드 기준
+            if (tasksData.length > 0) {
+                if (key === 37) { // Left
+                    if (currentFocusIndex > 0) currentFocusIndex--;
+                    updateFocus();
+                } 
+                else if (key === 39) { // Right
+                    if (currentFocusIndex < tasksData.length - 1) currentFocusIndex++;
+                    updateFocus();
+                } 
+                else if (key === 38) { // Up
+                    if (currentFocusIndex >= 3) currentFocusIndex -= 3;
+                    updateFocus();
+                } 
+                else if (key === 40) { // Down
+                    if (currentFocusIndex + 3 < tasksData.length) currentFocusIndex += 3;
+                    updateFocus();
+                }
+                else if (key === 13) { // Enter (OK Button)
+                    completeTask(currentFocusIndex);
+                }
+            }
+
+            // [채널 키 매핑 - 음악 제어]
+            // 427: CH UP, 33: PageUp -> 다음 곡
+            if (key === 427 || key === 33) {
+                if (player) player.nextVideo();
+            }
+            // 428: CH DOWN, 34: PageDown -> 이전 곡
+            else if (key === 428 || key === 34) {
+                if (player) player.previousVideo();
+            }
+        });
+
         fetchTasks();
-        setInterval(fetchTasks, 5 * 60 * 1000); // 5 mins
+        setInterval(fetchTasks, 60000); // 1분마다 갱신
 
-        /* --- 4. Music Player & TV Remote Nav --- */
+        // --- 5. Music Player (API) ---
         let player;
-        let updateTimer;
-
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
+                height: '100%', width: '100%',
                 playerVars: {
                     listType: 'playlist',
                     list: CONFIG.PLAYLIST_ID,
-                    autoplay: 1,
-                    controls: 0,
-                    loop: 1,
-                    mute: 0,
-                    origin: window.location.origin
+                    autoplay: 1, controls: 0, loop: 1, mute: 0 // 소리 켜짐
                 },
                 events: {
-                    onReady: onPlayerReady,
+                    onReady: (e) => {
+                        e.target.setShuffle(true);
+                        e.target.playVideoAt(0);
+                        setupMarquee(); // 제목 흐르기 시작
+                    },
                     onStateChange: onPlayerStateChange
                 }
             });
         }
 
-        function onPlayerReady(event) {
-            event.target.setShuffle(true);
-            event.target.playVideoAt(0);
-
-            // Setup Buttons
-            bindBtn('btn-play', () => {
-                if (player.getPlayerState() === YT.PlayerState.PLAYING) player.pauseVideo();
-                else player.playVideo();
-            });
-            bindBtn('btn-next', () => player.nextVideo());
-            bindBtn('btn-prev', () => player.previousVideo());
-            bindBtn('btn-shuffle', () => {
-                player.setShuffle(true);
-                // Visual feedback only
-                const btn = document.getElementById('btn-shuffle');
-                btn.style.color = '#fff';
-                setTimeout(() => btn.style.color = '', 500);
-            });
-
-            startProgressLoop();
-        }
-
         function onPlayerStateChange(e) {
-            // Update Play Button Icon
-            const btn = document.getElementById('btn-play');
-            // Toggle Icon inside
-            const iconSpan = btn.querySelector('.material-symbols-rounded');
-            if (e.data === YT.PlayerState.PLAYING) {
-                iconSpan.textContent = 'pause';
-            } else {
-                iconSpan.textContent = 'play_arrow';
-            }
-
-            // Update Title
+            // 제목 업데이트
             if (player && player.getVideoData) {
                 const data = player.getVideoData();
+                const titleEl = document.getElementById('music-title');
                 if (data && data.title) {
-                    document.getElementById('music-title').textContent = data.title;
+                    titleEl.textContent = data.title;
+                    setupMarquee(); // 제목 바뀔 때마다 애니메이션 리셋
                 }
+            }
+            
+            // 재생/일시정지 아이콘 변경
+            const icon = document.querySelector('#btn-play span');
+            if (e.data === YT.PlayerState.PLAYING) icon.textContent = 'pause';
+            else icon.textContent = 'play_arrow';
+        }
+
+        // [핵심] 제목이 길면 흐르게 만드는 함수
+        function setupMarquee() {
+            const container = document.querySelector('.marquee-container');
+            const text = document.getElementById('music-title');
+            
+            // 애니메이션 초기화
+            text.style.animation = 'none';
+            text.offsetHeight; /* trigger reflow */
+            
+            // 텍스트가 컨테이너보다 길 때만 애니메이션 적용
+            if (text.scrollWidth > container.clientWidth) {
+                const duration = text.scrollWidth / 50; // 속도 조절 (픽셀당 시간)
+                text.style.animation = `scroll-left ${duration}s linear infinite`;
+                // 부드러운 연결을 위해 뒤에 공백 추가하거나 복제할 수 있으나 단순 이동으로 처리
+                // 텍스트가 왼쪽으로 완전히 사라졌다가 오른쪽에서 다시 나오게 하려면
+                // padding-left: 100% 를 주고 keyframes를 수정해야 함.
+                // 현재 CSS는 단순 왼쪽 이동이므로, 여기서는 CSS Keyframes와 맞춰 
+                // padding-left: 100% 방식을 적용해 봅니다.
+                text.style.paddingLeft = "100%";
+            } else {
+                text.style.paddingLeft = "0";
             }
         }
 
-        function startProgressLoop() {
-            setInterval(() => {
-                if (!player || !player.getCurrentTime) return;
-                const current = player.getCurrentTime();
-                const duration = player.getDuration();
-                if (duration > 0) {
-                    const pct = (current / duration) * 100;
-                    document.getElementById('music-progress').style.width = pct + "%";
-                }
-            }, 1000);
-        }
+        // 화면상 버튼 클릭 이벤트 (마우스용)
+        document.getElementById('btn-play').onclick = () => {
+            if (player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo();
+        };
+        document.getElementById('btn-next').onclick = () => player.nextVideo();
+        document.getElementById('btn-prev').onclick = () => player.previousVideo();
 
-        function bindBtn(id, action) {
-            const btn = document.getElementById(id);
-            btn.onclick = action;
-            // TV Remote Enter Key
-            btn.onkeydown = (e) => { if (e.key === 'Enter') action(); };
-        }
-
-        /* --- 5. Spatial Navigation Helper (Basic) --- */
-        // Keydown listener for Arrow keys to ensure focus moves logically if default behavior fails
-        // Modern browsers on TVs are usually okay with grid layouts + arrow keys given tabindex="0"
-        document.addEventListener('keydown', (e) => {
-            // Optional: Implement custom grid navigation logic here if testing reveals issues.
-            // For now, relying on native spatial navigation supported by LG/Samsung WebOS/Tizen
-            // which works well with focusable elements arranged in visual grids.
-
-            // Back button handling?
-            if (e.key === 'Escape' || e.key === 'Back') {
-                // Focus something safe
-                document.getElementById('btn-play').focus();
+        // 진행바 업데이트
+        setInterval(() => {
+            if (player && player.getCurrentTime) {
+                const pct = (player.getCurrentTime() / player.getDuration()) * 100;
+                document.getElementById('music-progress').style.width = pct + "%";
             }
-        });
+        }, 1000);
 
     </script>
 </body>
-
 </html>
