@@ -57,3 +57,8 @@ Pages pull libraries from CDNs at load time — there is no lockfile. Common one
 - Keep each app self-contained — inline CSS and JS in the same `.html` file. Don't introduce a shared stylesheet or module system.
 - Preserve the existing Korean UI strings unless explicitly asked to translate.
 - When adding a new app, also add a card to `index.html` so it's reachable.
+
+## Working style for Claude Code on this repo
+
+- **Orchestration**: Opus plans and directs; actual coding/review work is delegated to Sonnet subagents (via the Agent tool). Opus should not write large code edits directly.
+- **Deployment target**: This site is served from the `main` branch via GitHub Pages. After each change set, merge and push to `main` so updates go live at `dev.anzilab.com`.
