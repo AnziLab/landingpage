@@ -533,6 +533,84 @@
             color: var(--accent);
             margin-left: 8px;
         }
+
+        /* 탭 스위처 */
+        .tab-bar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            transition: background .12s ease, border-color .12s ease, color .12s ease;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { border-color: var(--accent); }
+        .tab-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .dark-theme .tab-btn {
+            border-color: var(--border-dark);
+        }
+        .dark-theme .tab-btn:hover { border-color: var(--accent); }
+
+        /* 백킹트랙 패널 */
+        #ytPlayerContainer {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        #ytPlayerContainer iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .bt-favorites-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border-light);
+            background: var(--surface-light);
+            font-size: 13px;
+            cursor: pointer;
+            transition: border-color .12s, background .12s;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .bt-favorites-chip:hover { border-color: var(--accent); }
+        .dark-theme .bt-favorites-chip {
+            border-color: var(--border-dark);
+            background: var(--surface-dark);
+        }
+        .bt-favorites-chip .chip-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1 1 auto;
+        }
+        .bt-favorites-chip .chip-remove {
+            flex-shrink: 0;
+            font-size: 14px;
+            line-height: 1;
+            opacity: 0.6;
+        }
+        .bt-favorites-chip .chip-remove:hover { opacity: 1; color: #ef4444; }
     </style>
 </head>
 <body class="light-theme min-h-screen p-4 transition-colors duration-300" id="body">
@@ -579,6 +657,15 @@
             </div>
         </div>
         
+        <!-- 탭 스위처: 메트로놈 ↔ 백킹트랙 -->
+        <div class="tab-bar" id="mainTabBar">
+            <button class="tab-btn active" id="tabMetronome" onclick="switchMainTab('metronome')">메트로놈</button>
+            <button class="tab-btn" id="tabBackingTrack" onclick="switchMainTab('backingtrack')">백킹트랙</button>
+        </div>
+
+        <!-- 메트로놈/코드진행 탭 컨텐츠 -->
+        <div id="tabContentMetronome">
+
         <!-- 메트로놈 & 박자 표시기 -->
         <div class="panel-bg rounded-lg p-4 mb-4 border">
             <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
@@ -759,6 +846,37 @@
                 <div id="chordContainer" class="flex gap-3 min-w-max">
                     <!-- 코드들이 동적으로 추가됩니다 -->
                 </div>
+            </div>
+        </div>
+
+        </div><!-- /#tabContentMetronome -->
+
+        <!-- 백킹트랙 탭 컨텐츠 -->
+        <div id="tabContentBackingTrack" style="display:none;" class="mb-4">
+            <div class="panel-bg rounded-lg p-4 border">
+                <h3 class="text-lg font-semibold mb-3">▶ 백킹트랙 플레이어</h3>
+                <!-- URL 입력 -->
+                <div class="flex gap-2 mb-3">
+                    <input id="ytUrlInput" type="text" placeholder="YouTube URL 또는 영상 ID를 입력하세요"
+                           class="input-bg rounded px-3 py-2 border flex-1 text-sm" />
+                    <button id="ytLoadBtn" class="btn-primary rounded px-4 py-2 text-sm">불러오기</button>
+                </div>
+                <!-- 플레이어 -->
+                <div id="ytPlayerContainer" style="display:none;">
+                    <div id="ytPlayer"></div>
+                </div>
+                <!-- 속도 조절 -->
+                <div class="flex items-center gap-3 mb-3" id="ytSpeedRow" style="display:none!important;">
+                    <label class="text-sm font-medium whitespace-nowrap">재생 속도</label>
+                    <input id="ytSpeedSlider" type="range" min="0" max="6" value="2" step="1" class="flex-1">
+                    <span id="ytSpeedLabel" class="text-sm font-semibold w-10 text-right">1x</span>
+                </div>
+                <!-- 즐겨찾기 -->
+                <div class="flex items-center justify-between mb-2 mt-1">
+                    <span class="text-sm font-medium">즐겨찾기</span>
+                    <button id="ytAddFavorite" class="mini-btn" style="display:none;">즐겨찾기 추가</button>
+                </div>
+                <div id="ytFavoritesList" class="flex flex-wrap gap-2"></div>
             </div>
         </div>
 
@@ -1929,6 +2047,13 @@
         async function startMetronome() {
             if (isPlaying) return;
 
+            // 상호 배제: 메트로놈 시작 시 유튜브 플레이어 일시정지
+            try {
+                if (player && typeof player.pauseVideo === 'function') {
+                    player.pauseVideo();
+                }
+            } catch(e) {}
+
             await initAudio();
 
             isPlaying = true;
@@ -2387,6 +2512,7 @@
             chordProgression = parsed;
             currentChordIndex = 0;
             currentChordBeat = 0;
+            lastScaleKey = document.getElementById('keyCenter').value;
             updateChordProgressionUI();
         }
         
@@ -2496,10 +2622,207 @@
             });
         }
 
+        // ===== 키 전조 추적 =====
+        let lastScaleKey = 'C';
+
+        // ===== 탭 스위처 =====
+        let ytApiLoaded = false;
+        let ytApiLoading = false;
+        let player = null; // YouTube IFrame Player 인스턴스
+
+        function switchMainTab(tab) {
+            const metEl = document.getElementById('tabContentMetronome');
+            const btEl  = document.getElementById('tabContentBackingTrack');
+            const btnM  = document.getElementById('tabMetronome');
+            const btnBT = document.getElementById('tabBackingTrack');
+
+            if (tab === 'metronome') {
+                metEl.style.display = '';
+                btEl.style.display  = 'none';
+                btnM.classList.add('active');
+                btnBT.classList.remove('active');
+            } else {
+                metEl.style.display = 'none';
+                btEl.style.display  = '';
+                btnM.classList.remove('active');
+                btnBT.classList.add('active');
+                ensureYtApi();
+            }
+            // 설정 저장
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                const data = raw ? JSON.parse(raw) : {};
+                data.activeTab = tab;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch(e) {}
+        }
+
+        // ===== YouTube IFrame API 지연 로드 =====
+        function ensureYtApi() {
+            if (ytApiLoaded || ytApiLoading) return;
+            ytApiLoading = true;
+            const script = document.createElement('script');
+            script.src = 'https://www.youtube.com/iframe_api';
+            document.head.appendChild(script);
+        }
+
+        // YouTube API 준비 콜백 (전역 함수명 고정)
+        window.onYouTubeIframeAPIReady = function() {
+            ytApiLoaded = true;
+            ytApiLoading = false;
+        };
+
+        // YouTube ID 파싱 유틸리티
+        function parseYouTubeId(url) {
+            try {
+                const u = new URL(url.trim());
+                if (u.hostname === 'youtu.be') return u.pathname.slice(1) || null;
+                if (/youtube\.com$|youtube-nocookie\.com$/.test(u.hostname)) {
+                    const v = u.searchParams.get('v');
+                    if (v) return v;
+                    const parts = u.pathname.split('/').filter(Boolean);
+                    const idx = parts.indexOf('embed');
+                    if (idx !== -1 && parts[idx+1]) return parts[idx+1];
+                }
+            } catch (e) {
+                if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
+            }
+            return null;
+        }
+
+        // YouTube 플레이어 생성/교체
+        function loadYouTubeVideo(videoId) {
+            const container = document.getElementById('ytPlayerContainer');
+            const speedRow  = document.getElementById('ytSpeedRow');
+            const addFavBtn = document.getElementById('ytAddFavorite');
+
+            if (!videoId) {
+                alert('올바른 YouTube URL 또는 영상 ID를 입력하세요.');
+                return;
+            }
+
+            container.style.display = '';
+            speedRow.style.cssText  = 'display:flex!important;align-items:center;gap:12px;margin-bottom:12px;';
+            addFavBtn.style.display = '';
+
+            if (player && typeof player.loadVideoById === 'function') {
+                player.loadVideoById(videoId);
+                return;
+            }
+
+            // 플레이어 div 초기화
+            const playerDiv = document.getElementById('ytPlayer');
+            playerDiv.innerHTML = '';
+
+            const initPlayer = () => {
+                player = new YT.Player('ytPlayer', {
+                    videoId: videoId,
+                    playerVars: { rel: 0, modestbranding: 1 },
+                    events: {
+                        onStateChange: function(event) {
+                            // 재생 시작 시 메트로놈 정지 (상호 배제)
+                            if (event.data === YT.PlayerState.PLAYING) {
+                                if (isPlaying) stopMetronome();
+                            }
+                        }
+                    }
+                });
+            };
+
+            if (ytApiLoaded && typeof YT !== 'undefined' && YT.Player) {
+                initPlayer();
+            } else {
+                ensureYtApi();
+                // API 로드 완료를 폴링
+                const iv = setInterval(() => {
+                    if (typeof YT !== 'undefined' && YT.Player) {
+                        clearInterval(iv);
+                        ytApiLoaded = true;
+                        initPlayer();
+                    }
+                }, 150);
+            }
+        }
+
+        // ===== 즐겨찾기 =====
+        const BT_KEY = 'scaleflow.backingtracks.v1';
+
+        function loadFavorites() {
+            try { return JSON.parse(localStorage.getItem(BT_KEY)) || []; } catch(e) { return []; }
+        }
+        function saveFavorites(favs) {
+            try { localStorage.setItem(BT_KEY, JSON.stringify(favs)); } catch(e) {}
+        }
+
+        function renderFavorites() {
+            const favs    = loadFavorites();
+            const listEl  = document.getElementById('ytFavoritesList');
+            listEl.innerHTML = '';
+            favs.forEach((fav, i) => {
+                const chip = document.createElement('div');
+                chip.className = 'bt-favorites-chip';
+                chip.title = fav.label;
+
+                const label = document.createElement('span');
+                label.className = 'chip-label';
+                label.textContent = fav.label;
+                label.addEventListener('click', () => loadYouTubeVideo(fav.videoId));
+
+                const editBtn = document.createElement('span');
+                editBtn.textContent = '✏';
+                editBtn.style.cssText = 'flex-shrink:0;font-size:12px;opacity:0.6;cursor:pointer;margin-left:4px;';
+                editBtn.title = '이름 변경';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const newLabel = prompt('새 이름을 입력하세요:', fav.label);
+                    if (newLabel && newLabel.trim()) {
+                        const f = loadFavorites();
+                        if (f[i]) { f[i].label = newLabel.trim(); saveFavorites(f); renderFavorites(); }
+                    }
+                });
+
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'chip-remove';
+                removeBtn.textContent = '×';
+                removeBtn.title = '삭제';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const f = loadFavorites();
+                    f.splice(i, 1);
+                    saveFavorites(f);
+                    renderFavorites();
+                });
+
+                chip.appendChild(label);
+                chip.appendChild(editBtn);
+                chip.appendChild(removeBtn);
+                listEl.appendChild(chip);
+            });
+        }
+
+        function addFavorite() {
+            if (!player || typeof player.getVideoData !== 'function') return;
+            const data  = player.getVideoData();
+            const videoId = data.video_id || '';
+            if (!videoId) return;
+            const title  = (data.title && data.title.trim()) || document.getElementById('ytUrlInput').value || videoId;
+            const url    = document.getElementById('ytUrlInput').value.trim() || 'https://www.youtube.com/watch?v=' + videoId;
+            const favs   = loadFavorites();
+            // 중복 방지
+            if (favs.some(f => f.videoId === videoId)) {
+                alert('이미 즐겨찾기에 있습니다.');
+                return;
+            }
+            favs.push({ label: title, videoId, url });
+            saveFavorites(favs);
+            renderFavorites();
+        }
+
         // ===== localStorage 지속화 =====
         const STORAGE_KEY = 'scaleflow.settings.v1';
         function saveSettings() {
             try {
+                const activeTabEl = document.querySelector('.tab-btn.active');
                 const data = {
                     bpm: document.getElementById('bpm').value,
                     timeSignature: document.getElementById('timeSignature').value,
@@ -2511,6 +2834,7 @@
                     chordMode: document.getElementById('chordMode').checked,
                     darkMode: document.getElementById('darkMode').checked,
                     countIn: countInEnabled,
+                    activeTab: activeTabEl ? (activeTabEl.id === 'tabBackingTrack' ? 'backingtrack' : 'metronome') : 'metronome',
                     volumes: {
                         metronome: document.getElementById('metronomeVolume').value,
                         bass: document.getElementById('bassVolume').value,
@@ -2544,6 +2868,7 @@
             setVal('metronomeSound', s.metronomeSound);
             setVal('instrumentSelect', s.instrument);
             setVal('keyCenter', s.keyCenter);
+            if (s.keyCenter) lastScaleKey = s.keyCenter;
             setVal('scaleType', s.scaleType);
             if (s.subdivision) {
                 currentSubdivision = s.subdivision;
@@ -2584,6 +2909,9 @@
                 setSlider('hihatVolume', v.hihat);
                 setSlider('crashVolume', v.crash);
             }
+            if (s.activeTab && s.activeTab !== 'metronome') {
+                switchMainTab(s.activeTab);
+            }
             if (Array.isArray(s.progression) && s.progression.length) {
                 const parsed = s.progression.map(item => {
                     const [name, dur] = String(item).split(':');
@@ -2620,6 +2948,7 @@
                     chordProgression = parsed;
                     currentChordIndex = 0;
                     currentChordBeat = 0;
+                    lastScaleKey = document.getElementById('keyCenter').value;
                     return true;
                 }
             } catch (e) { /* ignore */ }
@@ -2687,7 +3016,19 @@
             document.getElementById('instrumentSelect').addEventListener('change', switchInstrument);
             
             // 스케일 변경
-            document.getElementById('keyCenter').addEventListener('change', updateScale);
+            document.getElementById('keyCenter').addEventListener('change', function() {
+                const newKey = this.value;
+                const delta = ((getNoteIndex(newKey) - getNoteIndex(lastScaleKey)) + 12) % 12;
+                if (delta !== 0) {
+                    chordProgression.forEach(chord => {
+                        chord.root = notes[(getNoteIndex(chord.root) + delta + 12) % 12];
+                    });
+                    updateChordProgressionUI();
+                    updateCurrentChordDisplay();
+                }
+                lastScaleKey = newKey;
+                updateScale();
+            });
             document.getElementById('scaleType').addEventListener('change', updateScale);
             
             // 프렛보드 모드 변경
@@ -2756,6 +3097,7 @@
                 ];
                 currentChordIndex = 0;
                 currentChordBeat = 0;
+                lastScaleKey = document.getElementById('keyCenter').value;
                 updateChordProgressionUI();
             });
 
@@ -2889,6 +3231,47 @@
                     updateChordProgressionUI();
                 }
             });
+
+            // ===== 백킹트랙 이벤트 =====
+            document.getElementById('ytLoadBtn').addEventListener('click', function() {
+                const url = document.getElementById('ytUrlInput').value.trim();
+                const videoId = parseYouTubeId(url);
+                loadYouTubeVideo(videoId);
+            });
+            document.getElementById('ytUrlInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const videoId = parseYouTubeId(this.value.trim());
+                    loadYouTubeVideo(videoId);
+                }
+            });
+
+            // 속도 슬라이더
+            const ytSpeedSlider = document.getElementById('ytSpeedSlider');
+            const ytSpeedLabel  = document.getElementById('ytSpeedLabel');
+            const defaultRates  = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+            ytSpeedSlider.addEventListener('input', function() {
+                const idx = parseInt(this.value, 10);
+                let rates = defaultRates;
+                try {
+                    if (player && typeof player.getAvailablePlaybackRates === 'function') {
+                        const r = player.getAvailablePlaybackRates();
+                        if (Array.isArray(r) && r.length) rates = r;
+                    }
+                } catch(e) {}
+                const rate = rates[Math.min(idx, rates.length - 1)] || 1;
+                ytSpeedLabel.textContent = rate + 'x';
+                try {
+                    if (player && typeof player.setPlaybackRate === 'function') {
+                        player.setPlaybackRate(rate);
+                    }
+                } catch(e) {}
+            });
+
+            // 즐겨찾기 추가 버튼
+            document.getElementById('ytAddFavorite').addEventListener('click', addFavorite);
+
+            // 즐겨찾기 초기 렌더링
+            renderFavorites();
         });
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9742d803e5870dbb',t:'MTc1NjAzODQ0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
