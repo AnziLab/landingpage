@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScaleFlow - 스케일 연습 도구 v0.13</title>
+    <title>ScaleFlow - 스케일 연습 도구 v0.14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .fret-marker {
@@ -456,6 +456,83 @@
 
         /* 프렛보드는 스크롤 가능하되 라벨 보이도록 */
         #fretboard { max-width: 100%; }
+
+        /* 탭 템포 · 카운트인 · 공유 */
+        .mini-btn {
+            border-radius: 10px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border-light);
+            background: var(--surface-light);
+            color: inherit;
+            cursor: pointer;
+            transition: background .12s ease, transform .08s ease, border-color .12s ease;
+            white-space: nowrap;
+        }
+        .mini-btn:hover { border-color: var(--accent); }
+        .mini-btn:active { transform: translateY(1px); }
+        .mini-btn.on {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .dark-theme .mini-btn {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+        }
+        .dark-theme .mini-btn:hover { border-color: var(--accent); }
+        .mini-btn.flash {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .bpm-row {
+            display: flex;
+            gap: 6px;
+            align-items: stretch;
+        }
+        .bpm-row input[type="number"] { flex: 1 1 auto; min-width: 0; }
+
+        /* 코드 진행 타임라인 */
+        #chordTimeline {
+            display: flex;
+            gap: 3px;
+            height: 6px;
+            margin: 6px 0 10px;
+            width: 100%;
+        }
+        #chordTimeline .seg {
+            flex: 1 1 0;
+            background: var(--border-light);
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+        .dark-theme #chordTimeline .seg { background: #374151; }
+        #chordTimeline .seg.active { background: rgba(59,130,246,0.25); }
+        #chordTimeline .seg .fill {
+            position: absolute;
+            inset: 0 100% 0 0;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: right .1s linear;
+        }
+        #chordTimeline .seg.done .fill { right: 0 !important; }
+
+        /* 카운트인 오버레이 카운트 표시 */
+        .count-in-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(59,130,246,0.15);
+            color: var(--accent);
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body class="light-theme min-h-screen p-4 transition-colors duration-300" id="body">
@@ -599,7 +676,10 @@
             <div class="metronome-controls">
                 <div class="mc-item mc-bpm">
                     <label class="block text-sm font-medium mb-1">BPM</label>
-                    <input type="number" id="bpm" value="120" min="40" max="240" class="w-full input-bg rounded px-3 py-2 border">
+                    <div class="bpm-row">
+                        <input type="number" id="bpm" value="120" min="40" max="240" class="input-bg rounded px-3 py-2 border">
+                        <button id="tapTempo" class="mini-btn" title="탭 템포 (T 키)">TAP</button>
+                    </div>
                 </div>
                 <div class="mc-item mc-time">
                     <label class="block text-sm font-medium mb-1">박자표</label>
@@ -640,16 +720,23 @@
                     </div>
                 </div>
             </div>
+            <div class="flex flex-wrap items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                <button id="countInToggle" class="mini-btn" title="재생 전 1마디 카운트인">카운트인</button>
+                <span id="countInStatus"></span>
+                <span class="ml-auto">Space 재생/정지 · T 탭 템포 · ← → 코드 이동</span>
+            </div>
         </div>
 
         <!-- 코드 진행 설정 및 표시 (코드 모드일 때만 표시) -->
         <div id="chordProgressionPanel" class="panel-bg rounded-lg p-4 mb-4 border" style="display: none;">
             <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                 <h3 class="text-lg font-semibold">🎹 코드진행</h3>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3 flex-wrap">
                     <span>현재: <span id="currentChordDisplay" class="font-semibold">-</span></span>
+                    <button id="shareProgression" class="mini-btn" title="이 진행을 URL로 공유">공유</button>
                 </div>
             </div>
+            <div id="chordTimeline" aria-hidden="true"></div>
             <div class="flex flex-wrap items-end gap-2 mb-3">
                 <div>
                     <label class="block text-xs font-medium mb-1">프리셋</label>
@@ -1025,6 +1112,9 @@
         let currentDrumStep = 0;
         let isPlaying = false;
         let startTime = 0;
+        let countInEnabled = false;
+        let countInStepsRemaining = 0;
+        let tapTimes = [];
         let nextNoteTime = 0;
         let lookahead = 25.0; // 25ms 미리보기
         let scheduleAheadTime = 0.1; // 100ms 미리 스케줄링
@@ -1347,6 +1437,29 @@
 
             const currentQuarterBeat = Math.floor(stepNumber / 4);
             const sixteenthInBeat = stepNumber % 4;
+
+            // 카운트인: 코드/드럼/패턴 스킵하고 4분음 클릭만 재생
+            if (countInStepsRemaining > 0) {
+                if (sixteenthInBeat === 0) {
+                    const isFirstOfBar = (countInStepsRemaining % (beatCount * 4)) === 0;
+                    playBeep(isFirstOfBar ? 1400 : 1000, 80, time);
+                    const delay = Math.max(0, (time - audioSystem.context.currentTime) * 1000);
+                    const beatsLeft = Math.ceil(countInStepsRemaining / 4);
+                    setTimeout(() => {
+                        const pill = document.getElementById('countInStatus');
+                        if (pill) pill.innerHTML = `<span class="count-in-pill">카운트 ${beatsLeft}</span>`;
+                    }, delay);
+                }
+                countInStepsRemaining--;
+                if (countInStepsRemaining === 0) {
+                    const delay = Math.max(0, (time - audioSystem.context.currentTime) * 1000);
+                    setTimeout(() => {
+                        const pill = document.getElementById('countInStatus');
+                        if (pill) pill.innerHTML = '';
+                    }, delay);
+                }
+                return;
+            }
 
             // 코드 진행: 매 4분음 다운빗마다 체크, 새 코드 경계면 정확한 시간에 예약
             if (isChordMode && sixteenthInBeat === 0 && chordProgression.length > 0) {
@@ -1815,19 +1928,20 @@
         // Web Audio API 기반 정밀 메트로놈 재생
         async function startMetronome() {
             if (isPlaying) return;
-            
+
             await initAudio();
-            
+
             isPlaying = true;
             currentDrumStep = 0;
+            countInStepsRemaining = countInEnabled ? (beatCount * 4) : 0;
             startTime = audioSystem.context.currentTime;
             nextNoteTime = audioSystem.context.currentTime;
-            
+
             const isChordMode = document.getElementById('chordMode').checked;
             if (isChordMode) {
                 startChordProgression();
             }
-            
+
             // 정밀 스케줄러 시작
             metronomeInterval = setInterval(scheduler, lookahead);
         }
@@ -1835,14 +1949,17 @@
         // 메트로놈 정지
         function stopMetronome() {
             if (!isPlaying) return;
-            
+
             isPlaying = false;
-            
+            countInStepsRemaining = 0;
+            const pill = document.getElementById('countInStatus');
+            if (pill) pill.innerHTML = '';
+
             if (metronomeInterval) {
                 clearInterval(metronomeInterval);
                 metronomeInterval = null;
             }
-            
+
             currentBeat = 0;
             currentDrumStep = 0;
             
@@ -2183,10 +2300,12 @@
         function updateChordProgressionUI() {
             const container = document.getElementById('chordContainer');
             container.innerHTML = '';
-            
+
             chordProgression.forEach((chord, index) => {
                 container.appendChild(createChordElement(chord, index));
             });
+            if (typeof renderChordTimeline === 'function') renderChordTimeline();
+            if (typeof saveSettings === 'function') saveSettings();
         }
         
         // 코드 업데이트
@@ -2308,14 +2427,261 @@
             }
         }
 
+        // ===== 탭 템포 =====
+        function handleTapTempo() {
+            const now = performance.now();
+            // 2초 이상 공백이면 리셋
+            if (tapTimes.length && now - tapTimes[tapTimes.length - 1] > 2000) {
+                tapTimes = [];
+            }
+            tapTimes.push(now);
+            if (tapTimes.length > 6) tapTimes.shift();
+            if (tapTimes.length >= 2) {
+                const intervals = [];
+                for (let i = 1; i < tapTimes.length; i++) {
+                    intervals.push(tapTimes[i] - tapTimes[i - 1]);
+                }
+                const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                const bpm = Math.round(60000 / avg);
+                const clamped = Math.max(40, Math.min(240, bpm));
+                const bpmInput = document.getElementById('bpm');
+                bpmInput.value = clamped;
+                bpmInput.dispatchEvent(new Event('change'));
+            }
+            const btn = document.getElementById('tapTempo');
+            if (btn) {
+                btn.classList.add('flash');
+                setTimeout(() => btn.classList.remove('flash'), 90);
+            }
+        }
+
+        // ===== 코드 진행 타임라인 =====
+        function renderChordTimeline() {
+            const timeline = document.getElementById('chordTimeline');
+            if (!timeline) return;
+            timeline.innerHTML = '';
+            chordProgression.forEach((chord, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'seg';
+                seg.style.flexGrow = String(chord.duration || 4);
+                seg.dataset.index = String(i);
+                const fill = document.createElement('div');
+                fill.className = 'fill';
+                seg.appendChild(fill);
+                timeline.appendChild(seg);
+            });
+            updateChordTimelineProgress();
+        }
+
+        function updateChordTimelineProgress() {
+            const timeline = document.getElementById('chordTimeline');
+            if (!timeline) return;
+            const segs = timeline.querySelectorAll('.seg');
+            segs.forEach((seg, i) => {
+                seg.classList.toggle('active', i === currentChordIndex);
+                const fill = seg.querySelector('.fill');
+                if (!fill) return;
+                if (i < currentChordIndex) {
+                    seg.classList.add('done');
+                    fill.style.right = '0%';
+                } else if (i === currentChordIndex) {
+                    seg.classList.remove('done');
+                    const dur = chordProgression[i].duration || 4;
+                    const pct = Math.min(100, (currentChordBeat / dur) * 100);
+                    fill.style.right = `${100 - pct}%`;
+                } else {
+                    seg.classList.remove('done');
+                    fill.style.right = '100%';
+                }
+            });
+        }
+
+        // ===== localStorage 지속화 =====
+        const STORAGE_KEY = 'scaleflow.settings.v1';
+        function saveSettings() {
+            try {
+                const data = {
+                    bpm: document.getElementById('bpm').value,
+                    timeSignature: document.getElementById('timeSignature').value,
+                    metronomeSound: document.getElementById('metronomeSound').value,
+                    subdivision: currentSubdivision,
+                    instrument: document.getElementById('instrumentSelect').value,
+                    keyCenter: document.getElementById('keyCenter').value,
+                    scaleType: document.getElementById('scaleType').value,
+                    chordMode: document.getElementById('chordMode').checked,
+                    darkMode: document.getElementById('darkMode').checked,
+                    countIn: countInEnabled,
+                    volumes: {
+                        metronome: document.getElementById('metronomeVolume').value,
+                        bass: document.getElementById('bassVolume').value,
+                        piano: document.getElementById('pianoVolume').value,
+                        drumMaster: document.getElementById('drumMasterVolume').value,
+                        instrument: document.getElementById('instrumentVolume').value,
+                        kick: document.getElementById('kickVolume').value,
+                        snare: document.getElementById('snareVolume').value,
+                        hihat: document.getElementById('hihatVolume').value,
+                        crash: document.getElementById('crashVolume').value
+                    },
+                    progression: chordProgression.map(c => getChordName(c) + ':' + (c.duration || 4))
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) { /* ignore quota/serialize errors */ }
+        }
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch (e) { return null; }
+        }
+
+        function applySettings(s) {
+            if (!s) return;
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el != null && v != null) el.value = v; };
+            setVal('bpm', s.bpm);
+            setVal('timeSignature', s.timeSignature);
+            setVal('metronomeSound', s.metronomeSound);
+            setVal('instrumentSelect', s.instrument);
+            setVal('keyCenter', s.keyCenter);
+            setVal('scaleType', s.scaleType);
+            if (s.subdivision) {
+                currentSubdivision = s.subdivision;
+                document.querySelectorAll('.subdivision-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.value === s.subdivision);
+                });
+            }
+            if (typeof s.chordMode === 'boolean') {
+                document.getElementById('chordMode').checked = s.chordMode;
+                document.getElementById('chordProgressionPanel').style.display = s.chordMode ? 'block' : 'none';
+            }
+            if (typeof s.darkMode === 'boolean') {
+                document.getElementById('darkMode').checked = s.darkMode;
+                toggleTheme();
+            }
+            if (typeof s.countIn === 'boolean') {
+                countInEnabled = s.countIn;
+                const btn = document.getElementById('countInToggle');
+                if (btn) btn.classList.toggle('on', countInEnabled);
+            }
+            if (s.volumes) {
+                const v = s.volumes;
+                const setSlider = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el != null && val != null) {
+                        el.value = val;
+                        const disp = document.getElementById(id + 'Display');
+                        if (disp) disp.textContent = val;
+                    }
+                };
+                setSlider('metronomeVolume', v.metronome);
+                setSlider('bassVolume', v.bass);
+                setSlider('pianoVolume', v.piano);
+                setSlider('drumMasterVolume', v.drumMaster);
+                setSlider('instrumentVolume', v.instrument);
+                setSlider('kickVolume', v.kick);
+                setSlider('snareVolume', v.snare);
+                setSlider('hihatVolume', v.hihat);
+                setSlider('crashVolume', v.crash);
+            }
+            if (Array.isArray(s.progression) && s.progression.length) {
+                const parsed = s.progression.map(item => {
+                    const [name, dur] = String(item).split(':');
+                    const c = parseChord(name);
+                    if (c && dur) c.duration = parseInt(dur) || 4;
+                    return c;
+                }).filter(Boolean);
+                if (parsed.length) {
+                    chordProgression = parsed;
+                    currentChordIndex = 0;
+                    currentChordBeat = 0;
+                }
+            }
+        }
+
+        // ===== URL 해시 공유 =====
+        function progressionToHash() {
+            const list = chordProgression.map(c => getChordName(c) + ':' + (c.duration || 4));
+            return '#p=' + encodeURIComponent(list.join(','));
+        }
+
+        function loadProgressionFromHash() {
+            const m = location.hash.match(/[#&]p=([^&]+)/);
+            if (!m) return false;
+            try {
+                const list = decodeURIComponent(m[1]).split(',');
+                const parsed = list.map(item => {
+                    const [name, dur] = item.split(':');
+                    const c = parseChord(name);
+                    if (c && dur) c.duration = parseInt(dur) || 4;
+                    return c;
+                }).filter(Boolean);
+                if (parsed.length) {
+                    chordProgression = parsed;
+                    currentChordIndex = 0;
+                    currentChordBeat = 0;
+                    return true;
+                }
+            } catch (e) { /* ignore */ }
+            return false;
+        }
+
+        function shareProgression() {
+            const url = location.origin + location.pathname + progressionToHash();
+            const btn = document.getElementById('shareProgression');
+            const done = (ok) => {
+                if (!btn) return;
+                const original = btn.textContent;
+                btn.textContent = ok ? '복사됨' : '복사 실패';
+                btn.classList.add('on');
+                setTimeout(() => {
+                    btn.textContent = original;
+                    btn.classList.remove('on');
+                }, 1200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => done(true)).catch(() => {
+                    history.replaceState(null, '', progressionToHash());
+                    done(false);
+                });
+            } else {
+                history.replaceState(null, '', progressionToHash());
+                done(false);
+            }
+        }
+
+        // ===== 코드 수동 이동 (키보드) =====
+        function stepChord(delta) {
+            if (!chordProgression.length) return;
+            const chordMode = document.getElementById('chordMode').checked;
+            if (!chordMode) return;
+            currentChordIndex = (currentChordIndex + delta + chordProgression.length) % chordProgression.length;
+            currentChordBeat = 0;
+            const cd = document.getElementById('currentChordDisplay');
+            if (cd) cd.textContent = getChordName(chordProgression[currentChordIndex]);
+            document.querySelectorAll('.chord-item').forEach((item, i) => {
+                item.classList.toggle('playing', i === currentChordIndex);
+            });
+            updateChordTimelineProgress();
+        }
+
         // 이벤트 리스너 설정
         document.addEventListener('DOMContentLoaded', function() {
-            // 초기 설정
+            // 초기 설정 — 저장된 설정 복원 후 UI 생성 (해시가 있으면 해시 우선)
+            const saved = loadSettings();
+            applySettings(saved);
+            loadProgressionFromHash();
+
             updateBeatIndicators();
             createDrumGrid();
             createFretboard();
             updateChordProgressionUI();
+            renderChordTimeline();
             updateTimerDisplay();
+
+            if (saved && saved.instrument && saved.instrument !== 'guitar') {
+                switchInstrument();
+            }
             
             // 악기 변경
             document.getElementById('instrumentSelect').addEventListener('change', switchInstrument);
@@ -2450,13 +2816,77 @@
                 const rhythmToggle = document.getElementById('rhythmToggle');
                 const volumePanel = document.getElementById('volumePanel');
                 const volumeToggle = document.getElementById('volumeToggle');
-                
+
                 if (!rhythmPanel.contains(e.target) && !rhythmToggle.contains(e.target)) {
                     rhythmPanel.style.display = 'none';
                 }
-                
+
                 if (!volumePanel.contains(e.target) && !volumeToggle.contains(e.target)) {
                     volumePanel.style.display = 'none';
+                }
+            });
+
+            // 탭 템포
+            document.getElementById('tapTempo').addEventListener('click', handleTapTempo);
+
+            // 카운트인 토글
+            const countInBtn = document.getElementById('countInToggle');
+            countInBtn.classList.toggle('on', countInEnabled);
+            countInBtn.addEventListener('click', () => {
+                countInEnabled = !countInEnabled;
+                countInBtn.classList.toggle('on', countInEnabled);
+                saveSettings();
+            });
+
+            // 진행 공유
+            document.getElementById('shareProgression').addEventListener('click', shareProgression);
+
+            // 키보드 단축키 — 입력 포커스 중엔 무시
+            document.addEventListener('keydown', function(e) {
+                const tag = (e.target && e.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (isPlaying) stopMetronome(); else startMetronome();
+                } else if (e.key === 't' || e.key === 'T') {
+                    e.preventDefault();
+                    handleTapTempo();
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    stepChord(1);
+                } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    stepChord(-1);
+                }
+            });
+
+            // 매 60ms 타임라인 진행바 업데이트 (재생 중일 때만 의미)
+            setInterval(() => {
+                if (isPlaying) updateChordTimelineProgress();
+            }, 60);
+
+            // 주요 설정 변경 시 저장
+            const persistIds = [
+                'bpm', 'timeSignature', 'metronomeSound', 'instrumentSelect',
+                'keyCenter', 'scaleType', 'chordMode', 'darkMode',
+                'metronomeVolume', 'bassVolume', 'pianoVolume', 'drumMasterVolume',
+                'instrumentVolume', 'kickVolume', 'snareVolume', 'hihatVolume', 'crashVolume'
+            ];
+            persistIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', saveSettings);
+                if (el.type === 'range') el.addEventListener('input', saveSettings);
+            });
+            document.querySelectorAll('.subdivision-btn').forEach(btn => {
+                btn.addEventListener('click', saveSettings);
+            });
+
+            // 해시 변경 수신 (사용자가 링크 붙여넣었을 때)
+            window.addEventListener('hashchange', () => {
+                if (loadProgressionFromHash()) {
+                    updateChordProgressionUI();
                 }
             });
         });
