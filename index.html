@@ -2,219 +2,461 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>내 웹앱 모음</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="필요해서 만든 작은 정적 웹앱 모음 — AnziLab">
+    <title>AnziLab — Tools, simply made.</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body, h1, h2, h3, p, ul, li, figure { margin: 0; padding: 0; }
+        ul { list-style: none; }
+        a { color: inherit; text-decoration: none; }
+        button { font: inherit; border: 0; background: none; cursor: pointer; color: inherit; }
+
+        :root {
+            --bg: #fbfbfd;
+            --bg-elevated: #ffffff;
+            --bg-subtle: rgba(0, 0, 0, 0.03);
+            --border: rgba(0, 0, 0, 0.08);
+            --border-strong: rgba(0, 0, 0, 0.16);
+            --text-primary: #1d1d1f;
+            --text-secondary: #515154;
+            --text-tertiary: #86868b;
+            --accent: #0071e3;
+            --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-card-hover: 0 20px 48px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+            --glow: radial-gradient(60% 60% at 50% 0%, rgba(0, 113, 227, 0.18), transparent 70%);
         }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000;
+                --bg-elevated: #1c1c1e;
+                --bg-subtle: rgba(255, 255, 255, 0.04);
+                --border: rgba(255, 255, 255, 0.08);
+                --border-strong: rgba(255, 255, 255, 0.2);
+                --text-primary: #f5f5f7;
+                --text-secondary: #a1a1a6;
+                --text-tertiary: #6e6e73;
+                --accent: #2997ff;
+                --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+                --shadow-card-hover: 0 20px 48px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+                --glow: radial-gradient(60% 60% at 50% 0%, rgba(41, 151, 255, 0.28), transparent 70%);
+            }
+        }
+
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                         'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo',
+                         'Malgun Gothic', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 17px;
+            line-height: 1.5;
+            letter-spacing: -0.015em;
             min-height: 100vh;
-            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 50px;
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
-            max-width: 1200px;
+        .container {
+            max-width: 1120px;
             margin: 0 auto;
+            padding: 0 24px;
         }
 
-        .card {
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
+        /* ─── Nav ─── */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            background: color-mix(in srgb, var(--bg) 72%, transparent);
+            border-bottom: 1px solid var(--border);
         }
-
-        .card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        }
-
-        .card-preview {
-            height: 200px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        .nav-inner {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 4em;
-            position: relative;
-            overflow: hidden;
+            justify-content: space-between;
+            height: 52px;
         }
-
-        .card-preview::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s;
-            opacity: 0;
-        }
-
-        .card:hover .card-preview::before {
-            animation: shine 0.5s ease-in-out;
-        }
-
-        @keyframes shine {
-            0% {
-                transform: translateX(-100%) translateY(-100%) rotate(45deg);
-                opacity: 0;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(100%) translateY(100%) rotate(45deg);
-                opacity: 0;
-            }
-        }
-
-        .card-content {
-            padding: 25px;
-        }
-
-        .card-title {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .card-description {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .card-tags {
+        .logo {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             gap: 8px;
         }
-
-        .tag {
-            background: #f0f0f0;
-            color: #666;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-        }
-
-        .tag.primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .floating-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background: #667eea;
+        .logo-dot {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 14px var(--accent);
+        }
+        .nav-links {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            gap: 28px;
+        }
+        .nav-links a {
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+        .nav-links a:hover { color: var(--text-primary); }
+
+        /* ─── Hero ─── */
+        .hero {
+            position: relative;
+            padding: 140px 0 100px;
+            text-align: center;
+            isolation: isolate;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: -20% -10% 0 -10%;
+            background: var(--glow);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .hero h1 {
+            font-size: clamp(44px, 8vw, 84px);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1.04;
+            margin-bottom: 20px;
+        }
+        .hero h1 em {
+            font-style: normal;
+            background: linear-gradient(120deg, var(--accent), #a855f7 60%, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .hero p {
+            font-size: clamp(17px, 1.6vw, 21px);
+            color: var(--text-secondary);
+            max-width: 580px;
+            margin: 0 auto;
+            letter-spacing: -0.01em;
+        }
+
+        /* ─── Section ─── */
+        .section {
+            padding: 48px 0;
+            scroll-margin-top: 72px;
+        }
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-title {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+        .section-meta {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            font-variant-numeric: tabular-nums;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* ─── Grid ─── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+        }
+
+        /* ─── Card ─── */
+        .card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px;
+            min-height: 184px;
+            box-shadow: var(--shadow-card);
+            transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+                        border-color 0.3s ease,
+                        box-shadow 0.4s ease;
+            overflow: hidden;
             cursor: pointer;
-            transition: all 0.3s;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 0%),
+                        color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-strong);
+            box-shadow: var(--shadow-card-hover);
+        }
+        .card:hover::before { opacity: 1; }
+        .card:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+        }
+        .card-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+        }
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.015em;
+            margin-bottom: 4px;
+        }
+        .card-desc {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+        .card-cta {
+            margin-top: 18px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+        .card-cta svg {
+            transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .card:hover .card-cta svg { transform: translateX(4px); }
+
+        /* ─── Footer ─── */
+        footer {
+            margin-top: 60px;
+            padding: 36px 0 48px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            letter-spacing: 0.01em;
         }
 
-        .floating-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 30px rgba(0,0,0,0.3);
+        @media (max-width: 640px) {
+            .hero { padding: 96px 0 56px; }
+            .section { padding: 36px 0; }
+            .section-header { margin-bottom: 20px; }
+            .grid { grid-template-columns: 1fr; gap: 12px; }
+            .nav-links { display: none; }
         }
 
-        @media (max-width: 768px) {
-            .grid-container {
-                grid-template-columns: 1fr;
-                gap: 20px;
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
             }
-            
-            .header h1 {
-                font-size: 2em;
-            }
+            html { scroll-behavior: auto; }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🌟 내 웹앱 모음</h1>
-        <p>제가 필요해서 만든 정적 웹앱입니다.</p>
-    </div>
-
-    <div class="grid-container">
-        <!-- WPM 계산기 -->
-        <div class="card" onclick="window.open('wpm.html', '_blank')">
-            <div class="card-preview">
-                <span>📊</span>
-            </div>
-            <div class="card-content">
-                <h3 class="card-title">WPM 계산기</h3>
-                <p class="card-description">읽기 속도를 측정하고 읽기 수준을 확인할 수 있는 도구</p>
-                <div class="card-tags">
-                    <span class="tag primary">도구</span>
-                    <span class="tag">생산성</span>
-                    <span class="tag">측정</span>
-                </div>
+    <nav>
+        <div class="container nav-inner">
+            <a href="#top" class="logo"><span class="logo-dot"></span>AnziLab</a>
+            <div class="nav-links">
+                <a href="#music">음악</a>
+                <a href="#productivity">생산성</a>
+                <a href="#learning">학습</a>
+                <a href="#media">미디어</a>
             </div>
         </div>
-    </div>
-        <div class="grid-container">
-        <!-- WPM 계산기 -->
-        <div class="card" onclick="window.open('fretboard.html', '_blank')">
-            <div class="card-preview">
-                <span>📊</span>
+    </nav>
+
+    <main id="top">
+        <header class="hero container">
+            <h1>Small tools,<br><em>thoughtfully made.</em></h1>
+            <p>필요해서 직접 만든 정적 웹앱 모음입니다. 로그인도, 설치도 필요 없어요.</p>
+        </header>
+
+        <section id="music" class="section container">
+            <div class="section-header">
+                <h2 class="section-title">음악</h2>
+                <span class="section-meta">04 · Instruments &amp; Audio</span>
             </div>
-            <div class="card-content">
-                <h3 class="card-title">기타 스케일 연습</h3>
-                <p class="card-description">프렛보드에 스케일 표시해주는 앱</p>
-                <div class="card-tags">
-                    <span class="tag primary">악기</span>
-                    <span class="tag">연습</span>
-                    <span class="tag">기타</span>
-                </div>
+            <div class="grid">
+                <a class="card" href="gtpractice.html">
+                    <div class="card-icon">🎼</div>
+                    <h3 class="card-title">기타 종합 연습</h3>
+                    <p class="card-desc">스케일 프렛보드·메트로놈·코드 진행을 한 화면에서 연습하는 통합 도구.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="fretboard.html">
+                    <div class="card-icon">🎸</div>
+                    <h3 class="card-title">기타 프렛보드</h3>
+                    <p class="card-desc">스케일을 22프렛 보드 위에 바로 시각화해 주는 가벼운 뷰어.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="tempo.html">
+                    <div class="card-icon">🥁</div>
+                    <h3 class="card-title">메트로놈</h3>
+                    <p class="card-desc">박자·세부 분할·다크모드까지 지원하는 깔끔한 메트로놈.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="slowdowner.html">
+                    <div class="card-icon">🐢</div>
+                    <h3 class="card-title">오디오 속도 조절</h3>
+                    <p class="card-desc">파일을 올려 재생 속도를 바꿔 가며 카피/청음할 수 있는 플레이어.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
             </div>
+        </section>
+
+        <section id="productivity" class="section container">
+            <div class="section-header">
+                <h2 class="section-title">생산성</h2>
+                <span class="section-meta">02 · Daily</span>
+            </div>
+            <div class="grid">
+                <a class="card" href="tvtodo.html">
+                    <div class="card-icon">📺</div>
+                    <h3 class="card-title">홈 대시보드</h3>
+                    <p class="card-desc">TV·태블릿에 띄워 두고 쓰는 할 일과 정보 대시보드.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="stopwatch.html">
+                    <div class="card-icon">⏱️</div>
+                    <h3 class="card-title">스톱워치</h3>
+                    <p class="card-desc">노션 임베드를 염두에 두고 만든 투명 배경 스톱워치.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+            </div>
+        </section>
+
+        <section id="learning" class="section container">
+            <div class="section-header">
+                <h2 class="section-title">학습</h2>
+                <span class="section-meta">04 · Study</span>
+            </div>
+            <div class="grid">
+                <a class="card" href="wpm.html">
+                    <div class="card-icon">📖</div>
+                    <h3 class="card-title">WPM 계산기</h3>
+                    <p class="card-desc">읽기 속도를 측정하고 수준을 가늠해 주는 간단한 계산기.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="reading1.html">
+                    <div class="card-icon">🧠</div>
+                    <h3 class="card-title">빅데이터 마인드맵</h3>
+                    <p class="card-desc">빈칸을 채우며 개념을 복습하는 마인드맵 학습지.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="memorygame">
+                    <div class="card-icon">🎴</div>
+                    <h3 class="card-title">숙어 메모리 게임</h3>
+                    <p class="card-desc">호계중 3과 숙어를 짝 맞추며 외우는 카드 게임.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="commons.html">
+                    <div class="card-icon">📈</div>
+                    <h3 class="card-title">공유지의 비극</h3>
+                    <p class="card-desc">이차함수 최적화로 공유지의 비극을 그려 보는 수학 시각화.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+            </div>
+        </section>
+
+        <section id="media" class="section container">
+            <div class="section-header">
+                <h2 class="section-title">미디어</h2>
+                <span class="section-meta">02 · YouTube</span>
+            </div>
+            <div class="grid">
+                <a class="card" href="ytplayer.html">
+                    <div class="card-icon">▶️</div>
+                    <h3 class="card-title">YouTube 플레이어</h3>
+                    <p class="card-desc">한 화면에서 바로 영상을 재생하는 미니 플레이어.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+
+                <a class="card" href="ytconsole.html">
+                    <div class="card-icon">📹</div>
+                    <h3 class="card-title">YouTube 임베드 콘솔</h3>
+                    <p class="card-desc">영상 주소를 붙여 넣으면 임베드 코드를 만들어 주는 도구.</p>
+                    <span class="card-cta">열기
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>AnziLab · dev.anzilab.com · Built as static HTML.</p>
         </div>
+    </footer>
 
-        
-    </div>
-
-    <div class="floating-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-        ↑
-    </div>
+    <script>
+        // Subtle spotlight on card hover — tracks cursor via CSS vars.
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('pointermove', e => {
+                const r = card.getBoundingClientRect();
+                card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+                card.style.setProperty('--my', `${e.clientY - r.top}px`);
+            });
+        });
+    </script>
 </body>
 </html>
