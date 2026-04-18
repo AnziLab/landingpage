@@ -333,6 +333,129 @@
         .chord-item.playing .chord-name-display {
             color: #10b981;
         }
+
+        /* ============== 비주얼 리프레시 & 모바일 반응형 ============== */
+        :root {
+            --surface-light: #ffffff;
+            --surface-soft-light: #f7f8fa;
+            --border-light: #e5e7eb;
+            --surface-dark: #1f2937;
+            --surface-soft-dark: #111827;
+            --border-dark: #374151;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans KR", sans-serif; }
+        .light-theme { background: #f3f4f6; }
+        .dark-theme { background: #0b1220; }
+        .panel-bg {
+            border-radius: 14px !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+        }
+        .light-theme .panel-bg {
+            background: var(--surface-light);
+            border-color: var(--border-light);
+        }
+        .dark-theme .panel-bg {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+        }
+        .btn-primary, .btn-secondary {
+            border-radius: 10px !important;
+            font-weight: 500;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+            transition: transform .08s ease, box-shadow .15s ease;
+        }
+        .btn-primary:active, .btn-secondary:active { transform: translateY(1px); }
+        h1, h2, h3 { letter-spacing: -0.01em; }
+        select, input[type="number"], input[type="text"] {
+            border-radius: 10px !important;
+        }
+
+        /* 메트로놈 컨트롤 바: grid-cols-12 대신 flex-wrap로 모바일 안전 */
+        .metronome-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .metronome-controls > .mc-item { flex: 1 1 auto; min-width: 0; }
+        .metronome-controls > .mc-bpm { flex: 0 0 110px; }
+        .metronome-controls > .mc-time { flex: 0 0 88px; }
+        .metronome-controls > .mc-sound { flex: 0 0 120px; }
+        .metronome-controls > .mc-subdiv { flex: 1 1 240px; }
+        .metronome-controls > .mc-beats { flex: 1 1 160px; }
+        .metronome-controls > .mc-buttons { flex: 1 1 160px; }
+        @media (max-width: 640px) {
+            .metronome-controls > .mc-bpm,
+            .metronome-controls > .mc-time,
+            .metronome-controls > .mc-sound { flex: 1 1 calc(50% - 6px); }
+            .metronome-controls > .mc-subdiv,
+            .metronome-controls > .mc-beats,
+            .metronome-controls > .mc-buttons { flex: 1 1 100%; }
+        }
+
+        /* 팝오버 패널 (리듬/음량): 모바일에서 화면 밖으로 안 나가게 */
+        #rhythmPanel, #volumePanel {
+            max-width: calc(100vw - 24px);
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            #rhythmPanel, #volumePanel {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                right: auto !important;
+                transform: translate(-50%, -50%);
+                width: calc(100vw - 24px);
+                min-width: 0 !important;
+            }
+            #rhythmPanel .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #volumePanel .grid.grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        /* 메트로놈 헤더 우측 컨트롤들이 모바일에서 접히게 */
+        @media (max-width: 640px) {
+            .metronome-header-controls {
+                flex-wrap: wrap;
+                gap: 8px !important;
+                justify-content: flex-start !important;
+            }
+        }
+
+        /* 드럼 스텝 크기 축소 모바일 */
+        @media (max-width: 640px) {
+            .drum-step { width: 20px !important; height: 20px !important; font-size: 9px; }
+            .drum-label { width: 44px !important; font-size: 10px !important; padding-right: 4px !important; }
+            .beat-indicator { width: 28px; height: 28px; }
+        }
+
+        /* 박자 표시기 */
+        .beat-indicator {
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
+        .beat-indicator.active {
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+        }
+
+        /* 코드 카드 — 조금 더 산뜻하게 */
+        .chord-item {
+            border-radius: 12px;
+        }
+
+        /* 재생/정지 버튼 크게 */
+        .play-button-group button { min-height: 44px; font-weight: 600; }
+
+        /* 본문 패딩 모바일에서 좁게 */
+        @media (max-width: 640px) {
+            body { padding: 8px !important; }
+            h1#mainTitle { font-size: 1.5rem !important; }
+        }
+
+        /* 프렛보드는 스크롤 가능하되 라벨 보이도록 */
+        #fretboard { max-width: 100%; }
     </style>
 </head>
 <body class="light-theme min-h-screen p-4 transition-colors duration-300" id="body">
@@ -381,9 +504,9 @@
         
         <!-- 메트로놈 & 박자 표시기 -->
         <div class="panel-bg rounded-lg p-4 mb-4 border">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                 <h3 class="text-lg font-semibold">🥁 메트로놈</h3>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 metronome-header-controls">
                     <!-- 코드진행 모드 토글 -->
                     <div class="flex items-center gap-2">
                         <span>메트로놈</span>
@@ -473,13 +596,12 @@
                 </div>
             </div>
             
-            <div class="grid grid-cols-12 gap-4 items-center">
-                <!-- 메트로놈 설정 -->
-                <div class="col-span-2">
+            <div class="metronome-controls">
+                <div class="mc-item mc-bpm">
                     <label class="block text-sm font-medium mb-1">BPM</label>
-                    <input type="number" id="bpm" value="120" min="60" max="200" class="w-full input-bg rounded px-3 py-2 border">
+                    <input type="number" id="bpm" value="120" min="40" max="240" class="w-full input-bg rounded px-3 py-2 border">
                 </div>
-                <div class="col-span-1">
+                <div class="mc-item mc-time">
                     <label class="block text-sm font-medium mb-1">박자표</label>
                     <select id="timeSignature" class="w-full input-bg rounded px-3 py-2 border">
                         <option value="2/2">2/2</option>
@@ -488,7 +610,7 @@
                         <option value="6/8">6/8</option>
                     </select>
                 </div>
-                <div class="col-span-2">
+                <div class="mc-item mc-sound">
                     <label class="block text-sm font-medium mb-1">사운드</label>
                     <select id="metronomeSound" class="w-full input-bg rounded px-3 py-2 border">
                         <option value="beep">비프</option>
@@ -496,9 +618,7 @@
                         <option value="pattern">패턴</option>
                     </select>
                 </div>
-                
-                <!-- 재생 옵션 -->
-                <div class="col-span-3">
+                <div class="mc-item mc-subdiv">
                     <label class="block text-sm font-medium mb-1">재생 옵션</label>
                     <div class="grid grid-cols-6 gap-1">
                         <button class="subdivision-btn active" data-value="quarter" title="4분음표">♩</button>
@@ -509,18 +629,14 @@
                         <button class="subdivision-btn" data-value="sixteenthSparse" title="16분음표(1,4만)">♬_♬</button>
                     </div>
                 </div>
-                
-                <!-- 박자 표시기 -->
-                <div class="col-span-2">
+                <div class="mc-item mc-beats">
                     <label class="block text-sm font-medium mb-1">박자 표시</label>
-                    <div id="beatIndicators" class="flex gap-2"></div>
+                    <div id="beatIndicators" class="flex flex-wrap gap-2"></div>
                 </div>
-                
-                <!-- 컨트롤 버튼 -->
-                <div class="col-span-2">
-                    <div class="flex gap-2">
-                        <button id="metronomePlay" class="btn-primary rounded px-4 py-2 flex-1">재생</button>
-                        <button id="metronomeStop" class="btn-secondary rounded px-4 py-2 flex-1">정지</button>
+                <div class="mc-item mc-buttons">
+                    <div class="flex gap-2 play-button-group">
+                        <button id="metronomePlay" class="btn-primary rounded px-4 py-2 flex-1">▶ 재생</button>
+                        <button id="metronomeStop" class="btn-secondary rounded px-4 py-2 flex-1">■ 정지</button>
                     </div>
                 </div>
             </div>
