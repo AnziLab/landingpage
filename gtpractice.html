@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScaleFlow - 스케일 연습 도구 v0.12</title>
+    <title>ScaleFlow - 스케일 연습 도구 v0.13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .fret-marker {
@@ -528,12 +528,29 @@
 
         <!-- 코드 진행 설정 및 표시 (코드 모드일 때만 표시) -->
         <div id="chordProgressionPanel" class="panel-bg rounded-lg p-4 mb-4 border" style="display: none;">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                 <h3 class="text-lg font-semibold">🎹 코드진행</h3>
                 <div class="flex items-center gap-4">
-                    <span>현재: <span id="currentChordDisplay">-</span></span>
-                    <button id="addChord" class="btn-primary rounded px-3 py-2">+ 코드 추가</button>
+                    <span>현재: <span id="currentChordDisplay" class="font-semibold">-</span></span>
                 </div>
+            </div>
+            <div class="flex flex-wrap items-end gap-2 mb-3">
+                <div>
+                    <label class="block text-xs font-medium mb-1">프리셋</label>
+                    <select id="chordPresetSelect" class="input-bg rounded px-2 py-1 text-sm border">
+                        <option value="">— 선택 —</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-medium mb-1">코드 입력 (예: Cmaj7, F#m7b5, Bb13)</label>
+                    <div class="flex gap-1">
+                        <input id="chordInput" type="text" placeholder="Cmaj7"
+                               class="input-bg rounded px-2 py-1 text-sm border flex-1" />
+                        <button id="chordInputAdd" class="btn-primary rounded px-3 py-1 text-sm">추가</button>
+                    </div>
+                </div>
+                <button id="addChord" class="btn-primary rounded px-3 py-2 text-sm">+ 기본 코드</button>
+                <button id="clearChords" class="btn-secondary rounded px-3 py-2 text-sm">초기화</button>
             </div>
             <div class="overflow-x-auto">
                 <div id="chordContainer" class="flex gap-3 min-w-max">
@@ -722,7 +739,7 @@
             masterGain: null,
             buffers: new Map(),
             activeNodes: new Set(),
-            maxNodes: 4, // 모바일 최적화를 위해 대폭 줄임
+            maxNodes: 64, // 코드 진행 폴리포니를 넉넉히
             
             async init() {
                 if (!this.context) {
@@ -767,7 +784,6 @@
         };
         
         let metronomeInterval = null;
-        let chordInterval = null;
         let timerInterval = null;
         let currentBeat = 0;
         let beatCount = 4;
@@ -793,10 +809,10 @@
         
         // 코드 진행 시스템
         let chordProgression = [
-            { root: 'C', quality: 'major', seventh: '', tensions: [], duration: 4 },
-            { root: 'A', quality: 'minor', seventh: '', tensions: [], duration: 4 },
-            { root: 'F', quality: 'major', seventh: '', tensions: [], duration: 4 },
-            { root: 'G', quality: 'major', seventh: '', tensions: [], duration: 4 }
+            { root: 'C', quality: 'major', seventh: '', tensions: [], extras: [], duration: 4 },
+            { root: 'A', quality: 'minor', seventh: '', tensions: [], extras: [], duration: 4 },
+            { root: 'F', quality: 'major', seventh: '', tensions: [], extras: [], duration: 4 },
+            { root: 'G', quality: 'major', seventh: '', tensions: [], extras: [], duration: 4 }
         ];
         let currentChordIndex = 0;
         let currentChordBeat = 0;
@@ -935,64 +951,79 @@
             };
         }
 
-        // 베이스 소리 생성 (Web Audio API 통합)
-        async function playBass(frequency = 82, duration = 500, note = null, octave = null) {
+        // 공용 신스 보이스: 2-osc 디튠 + 로우패스 + ADSR (샘플 정확 스케줄링)
+        function synthVoice({ freq, startTime, duration, gain, type = 'piano' }) {
             if (!audioSystem.context) return;
-            
-            const bassVol = document.getElementById('bassVolume').value / 100;
-            const startTime = audioSystem.context.currentTime;
-            
-            const oscillator = audioSystem.context.createOscillator();
-            const gainNode = audioSystem.context.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioSystem.masterGain);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sawtooth';
-            
-            gainNode.gain.setValueAtTime(0.2 * bassVol, startTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
-            
-            // 노드 관리
-            audioSystem.addNode(oscillator);
-            
-            oscillator.start(startTime);
-            oscillator.stop(startTime + duration / 1000);
-            
-            oscillator.addEventListener('ended', () => {
-                audioSystem.removeNode(oscillator);
+            const ctx = audioSystem.context;
+            const durSec = duration / 1000;
+
+            let waveA, waveB, detuneCents, filterHz, filterQ, a, d, s, r, subAmount;
+            if (type === 'bass') {
+                waveA = 'sawtooth'; waveB = 'sawtooth'; detuneCents = 8;
+                filterHz = Math.min(900, freq * 6); filterQ = 2.5;
+                a = 0.005; d = 0.12; s = 0.55; r = 0.22;
+                subAmount = 0.35;
+            } else {
+                // piano-like
+                waveA = 'triangle'; waveB = 'triangle'; detuneCents = 6;
+                filterHz = Math.min(7000, freq * 8); filterQ = 0.9;
+                a = 0.008; d = 0.28; s = 0.35; r = 0.4;
+                subAmount = 0.12;
+            }
+
+            const oscA = ctx.createOscillator();
+            oscA.type = waveA; oscA.frequency.value = freq; oscA.detune.value = -detuneCents;
+            const oscB = ctx.createOscillator();
+            oscB.type = waveB; oscB.frequency.value = freq; oscB.detune.value = detuneCents;
+            const sub = ctx.createOscillator();
+            sub.type = 'sine'; sub.frequency.value = freq / 2;
+
+            const mix = ctx.createGain(); mix.gain.value = 1;
+            const subGain = ctx.createGain(); subGain.gain.value = subAmount;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = filterHz;
+            filter.Q.value = filterQ;
+
+            const env = ctx.createGain();
+            env.gain.setValueAtTime(0, startTime);
+            env.gain.linearRampToValueAtTime(gain, startTime + a);
+            env.gain.linearRampToValueAtTime(gain * s, startTime + a + d);
+            env.gain.setValueAtTime(gain * s, startTime + Math.max(a + d, durSec));
+            env.gain.exponentialRampToValueAtTime(0.0008, startTime + Math.max(a + d, durSec) + r);
+
+            oscA.connect(mix); oscB.connect(mix);
+            sub.connect(subGain); subGain.connect(mix);
+            mix.connect(filter); filter.connect(env); env.connect(audioSystem.masterGain);
+
+            const stopAt = startTime + Math.max(a + d, durSec) + r + 0.05;
+            oscA.start(startTime); oscB.start(startTime); sub.start(startTime);
+            oscA.stop(stopAt); oscB.stop(stopAt); sub.stop(stopAt);
+
+            audioSystem.addNode(oscA); audioSystem.addNode(oscB); audioSystem.addNode(sub);
+            oscA.addEventListener('ended', () => {
+                audioSystem.removeNode(oscA);
+                audioSystem.removeNode(oscB);
+                audioSystem.removeNode(sub);
+                try { mix.disconnect(); filter.disconnect(); env.disconnect(); subGain.disconnect(); } catch(e){}
             });
         }
 
-        // 피아노 음 재생 (Web Audio API 통합)
-        async function playPianoNote(frequency, duration = 500, note = null, octave = null) {
+        // 베이스 소리 생성 (신스 보이스 사용, when 파라미터 지원)
+        async function playBass(frequency = 82, duration = 500, note = null, octave = null, when = 0) {
             if (!audioSystem.context) return;
-            
+            const bassVol = document.getElementById('bassVolume').value / 100;
+            const startTime = when || audioSystem.context.currentTime;
+            synthVoice({ freq: frequency, startTime, duration, gain: 0.22 * bassVol, type: 'bass' });
+        }
+
+        // 피아노 음 재생 (신스 보이스 사용, when 파라미터 지원)
+        async function playPianoNote(frequency, duration = 500, note = null, octave = null, when = 0) {
+            if (!audioSystem.context) return;
             const pianoVol = document.getElementById('pianoVolume').value / 100;
-            const startTime = audioSystem.context.currentTime;
-            
-            const oscillator = audioSystem.context.createOscillator();
-            const gainNode = audioSystem.context.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioSystem.masterGain);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'triangle';
-            
-            gainNode.gain.setValueAtTime(0.15 * pianoVol, startTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
-            
-            // 노드 관리
-            audioSystem.addNode(oscillator);
-            
-            oscillator.start(startTime);
-            oscillator.stop(startTime + duration / 1000);
-            
-            oscillator.addEventListener('ended', () => {
-                audioSystem.removeNode(oscillator);
-            });
+            const startTime = when || audioSystem.context.currentTime;
+            synthVoice({ freq: frequency, startTime, duration, gain: 0.17 * pianoVol, type: 'piano' });
         }
 
         // 악기 소리 재생 (Web Audio API 통합, 모바일 최적화)
@@ -1067,10 +1098,24 @@
             const soundType = document.getElementById('metronomeSound').value;
             const isChordMode = document.getElementById('chordMode').checked;
             const subdivisions = currentSubdivision;
-            
+
             const currentQuarterBeat = Math.floor(stepNumber / 4);
             const sixteenthInBeat = stepNumber % 4;
-            
+
+            // 코드 진행: 매 4분음 다운빗마다 체크, 새 코드 경계면 정확한 시간에 예약
+            if (isChordMode && sixteenthInBeat === 0 && chordProgression.length > 0) {
+                if (currentChordBeat === 0) {
+                    playChordSound(chordProgression[currentChordIndex], time);
+                    scheduleChordUIUpdate(currentChordIndex, time);
+                }
+                currentChordBeat++;
+                const dur = chordProgression[currentChordIndex].duration || 4;
+                if (currentChordBeat >= dur) {
+                    currentChordBeat = 0;
+                    currentChordIndex = (currentChordIndex + 1) % chordProgression.length;
+                }
+            }
+
             if (soundType !== 'pattern' && !beatStates[currentQuarterBeat]) return;
             
             let shouldPlay = false;
@@ -1148,10 +1193,21 @@
                     }
                 }, Math.max(0, delay));
                 
-                if (isFirstBeat && isChordMode && stepNumber === 0) {
-                    playChordSound(chordProgression[0]);
-                }
             }
+        }
+
+        // 코드 진행 UI 업데이트를 실제 연주 시점에 맞춰 스케줄
+        function scheduleChordUIUpdate(index, time) {
+            const delay = Math.max(0, (time - audioSystem.context.currentTime) * 1000);
+            setTimeout(() => {
+                const currentChordDisplay = document.getElementById('currentChordDisplay');
+                if (currentChordDisplay) {
+                    currentChordDisplay.textContent = getChordName(chordProgression[index]);
+                }
+                document.querySelectorAll('.chord-item').forEach((item, i) => {
+                    item.classList.toggle('playing', i === index);
+                });
+            }, delay);
         }
 
         function nextNote() {
@@ -1604,28 +1660,11 @@
             }, 1000);
         }
 
-        // 코드 진행 재생
+        // 코드 진행 재생 준비 (스케줄링은 메트로놈 scheduler에서 처리)
         function startChordProgression() {
-            if (chordInterval) return;
-            
-            const bpm = parseInt(document.getElementById('bpm').value);
-            const beatDuration = 60000 / bpm;
-            
             currentChordIndex = 0;
             currentChordBeat = 0;
-            
             updateCurrentChordDisplay();
-            
-            chordInterval = setInterval(() => {
-                currentChordBeat++;
-                
-                if (currentChordBeat >= chordProgression[currentChordIndex].duration) {
-                    currentChordIndex = (currentChordIndex + 1) % chordProgression.length;
-                    currentChordBeat = 0;
-                    playChordSound(chordProgression[currentChordIndex]);
-                    updateCurrentChordDisplay();
-                }
-            }, beatDuration);
         }
         
         // 현재 연주 중인 코드 표시 업데이트
@@ -1648,123 +1687,190 @@
         // 코드 구성음 계산
         function getChordNotes(chordObj) {
             const { root, quality, seventh, tensions } = chordObj;
+            const extras = chordObj.extras || [];
             const rootIndex = getNoteIndex(root);
             let intervals = [];
-            
+
             switch (quality) {
-                case 'major':
-                    intervals = [0, 4, 7];
-                    break;
-                case 'minor':
-                    intervals = [0, 3, 7];
-                    break;
-                case 'augmented':
-                    intervals = [0, 4, 8];
-                    break;
-                case 'diminished':
-                    intervals = [0, 3, 6];
-                    break;
-                case 'halfDiminished':
-                    intervals = [0, 3, 6];
-                    break;
+                case 'major':        intervals = [0, 4, 7]; break;
+                case 'minor':        intervals = [0, 3, 7]; break;
+                case 'augmented':    intervals = [0, 4, 8]; break;
+                case 'diminished':   intervals = [0, 3, 6]; break;
+                case 'diminished7':  intervals = [0, 3, 6, 9]; break;
+                case 'halfDiminished': intervals = [0, 3, 6, 10]; break;
+                default:             intervals = [0, 4, 7];
             }
-            
-            if (seventh === 'dominant') {
-                intervals.push(10);
-            } else if (seventh === 'major7') {
-                intervals.push(11);
+
+            // sus2 / sus4: 3도(메이저) 또는 b3(마이너) 대체
+            if (extras.includes('sus2')) {
+                intervals = intervals.filter(i => i !== 3 && i !== 4);
+                intervals.push(2);
             }
-            
-            if (quality === 'diminished' && seventh === '') {
+            if (extras.includes('sus4')) {
+                intervals = intervals.filter(i => i !== 3 && i !== 4);
+                intervals.push(5);
+            }
+
+            if (seventh === 'dominant') intervals.push(10);
+            else if (seventh === 'major7') intervals.push(11);
+
+            // 6th: 중7음이 없을 때만
+            if (extras.includes('6') && !intervals.includes(10) && !intervals.includes(11) && !intervals.includes(9)) {
                 intervals.push(9);
-            } else if (quality === 'halfDiminished' && seventh === '') {
-                intervals.push(10);
             }
-            
+            if (extras.includes('add9')) intervals.push(2);
+
             tensions.forEach(tension => {
                 switch (tension) {
-                    case '9': intervals.push(2); break;
-                    case 'b9': intervals.push(1); break;
-                    case '#9': intervals.push(3); break;
-                    case '11': intervals.push(5); break;
+                    case '9':   intervals.push(2); break;
+                    case 'b9':  intervals.push(1); break;
+                    case '#9':  intervals.push(3); break;
+                    case '11':  intervals.push(5); break;
                     case '#11': intervals.push(6); break;
-                    case '13': intervals.push(9); break;
+                    case '13':  intervals.push(9); break;
                     case 'b13': intervals.push(8); break;
                 }
             });
-            
+
+            // 중복 제거
+            intervals = [...new Set(intervals)];
             return intervals.map(interval => notes[(rootIndex + interval) % 12]);
         }
         
-        // 피아노 보이싱 생성
+        // 피아노 보이싱 생성 — 드롭 보이싱: 루트는 아래, 3·5·7은 중역, 9·11·13은 위
         function createPianoVoicing(chordNotes) {
+            if (chordNotes.length === 0) return [];
             const voicing = [];
-            
+            // 0번(루트)은 3옥타브, 1~3번(3·5·7)은 4옥타브, 4번 이상(9·11·13)은 5옥타브
             chordNotes.forEach((note, index) => {
                 let octave;
-                
-                if (index === 0) {
-                    octave = 3;
-                } else if (index === 1) {
-                    octave = 4;
-                } else if (index === 2) {
-                    octave = 3;
-                } else {
-                    octave = 4;
-                }
-                
+                if (index === 0) octave = 3;
+                else if (index <= 3) octave = 4;
+                else octave = 5;
                 voicing.push({ note, octave });
             });
-            
             return voicing;
         }
         
-        // 코드 사운드 재생 (Web Audio API 통합)
-        function playChordSound(chordObj) {
+        // 코드 사운드 재생 (Web Audio API 통합, when 파라미터 지원)
+        function playChordSound(chordObj, when = 0) {
             if (!audioSystem.context) return;
-            
+
+            const startTime = when || audioSystem.context.currentTime;
+            const bpm = parseInt(document.getElementById('bpm').value) || 100;
+            const beatSec = 60 / bpm;
+            const sustainMs = Math.max(400, Math.min(2000, beatSec * 1000 * (chordObj.duration || 4) * 0.9));
+
             const chordNotes = getChordNotes(chordObj);
-            
-            // 베이스 음
+
+            // 베이스 음 — 루트를 옥타브 2에서
             const rootNote = chordObj.root;
             const rootFreq = getNoteFrequency(rootNote, 2);
-            playBass(rootFreq, 800, rootNote, 2);
-            
-            // 피아노 보이싱
+            playBass(rootFreq, sustainMs, rootNote, 2, startTime);
+
+            // 피아노 보이싱 — 가벼운 스트럼 (샘플 정확)
             const voicing = createPianoVoicing(chordNotes);
             voicing.forEach((noteData, index) => {
-                setTimeout(() => {
-                    const freq = getNoteFrequency(noteData.note, noteData.octave);
-                    playPianoNote(freq, 600, noteData.note, noteData.octave);
-                }, index * 50);
+                const noteWhen = startTime + index * 0.012;
+                const freq = getNoteFrequency(noteData.note, noteData.octave);
+                playPianoNote(freq, sustainMs - index * 12, noteData.note, noteData.octave, noteWhen);
             });
         }
         
         // 코드 이름 생성
         function getChordName(chordObj) {
             const { root, quality, seventh, tensions } = chordObj;
+            const extras = chordObj.extras || [];
             let name = root;
-            
+
             if (quality === 'minor') name += 'm';
-            else if (quality === 'augmented') name += '(#5)';
-            else if (quality === 'diminished') name += '°';
-            else if (quality === 'halfDiminished') name += 'ø';
-            
-            if (seventh === 'dominant') {
-                name += '7';
-            } else if (seventh === 'major7') {
-                name += '△7';
-            } else if (quality === 'diminished' && seventh === '') {
-                name += '7';
-            } else if (quality === 'halfDiminished' && seventh === '') {
-                name += '7';
-            }
-            
+            else if (quality === 'augmented') name += 'aug';
+            else if (quality === 'diminished') name += 'dim';
+            else if (quality === 'diminished7') name += 'dim7';
+            else if (quality === 'halfDiminished') name += 'm7♭5';
+
+            if (seventh === 'dominant') name += '7';
+            else if (seventh === 'major7') name += 'Δ7';
+
+            if (extras.includes('sus2')) name += 'sus2';
+            if (extras.includes('sus4')) name += 'sus4';
+            if (extras.includes('6')) name += '6';
+            if (extras.includes('add9')) name += 'add9';
+
             if (tensions.length > 0) {
                 name += '(' + tensions.join(',') + ')';
             }
-            
             return name;
+        }
+
+        // 문자열 → 코드 객체 파서: "Cmaj7", "F#m7b5", "Bb13" 등
+        function parseChord(input) {
+            if (!input) return null;
+            const str = String(input).trim().replace(/\s+/g, '');
+            if (!str) return null;
+            const m = str.match(/^([A-Ga-g])([#b♯♭]?)/);
+            if (!m) return null;
+            let root = m[1].toUpperCase();
+            const acc = m[2];
+            if (acc === '#' || acc === '♯') root += '#';
+            else if (acc === 'b' || acc === '♭') {
+                const flatMap = { 'Cb':'B', 'Db':'C#', 'Eb':'D#', 'Fb':'E', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#' };
+                root = flatMap[root + 'b'] || root;
+            }
+
+            let rest = str.slice(m[0].length);
+            let quality = 'major', seventh = '', tensions = [], extras = [];
+
+            // 품질 + 7th 조합 순서대로 시도 (길이 긴 것부터)
+            const patterns = [
+                [/^maj9/i,    () => { quality='major'; seventh='major7'; tensions.push('9'); }],
+                [/^maj13/i,   () => { quality='major'; seventh='major7'; tensions.push('9','13'); }],
+                [/^maj7/i,    () => { quality='major'; seventh='major7'; }],
+                [/^Δ7/,       () => { quality='major'; seventh='major7'; }],
+                [/^M7/,       () => { quality='major'; seventh='major7'; }],
+                [/^m7b5/i,    () => { quality='halfDiminished'; }],
+                [/^m7♭5/i,    () => { quality='halfDiminished'; }],
+                [/^ø7?/,      () => { quality='halfDiminished'; }],
+                [/^m9/i,      () => { quality='minor'; seventh='dominant'; tensions.push('9'); }],
+                [/^m11/i,     () => { quality='minor'; seventh='dominant'; tensions.push('9','11'); }],
+                [/^m13/i,     () => { quality='minor'; seventh='dominant'; tensions.push('9','13'); }],
+                [/^m7/i,      () => { quality='minor'; seventh='dominant'; }],
+                [/^m6/i,      () => { quality='minor'; extras.push('6'); }],
+                [/^mMaj7/,    () => { quality='minor'; seventh='major7'; }],
+                [/^min/i,     () => { quality='minor'; }],
+                [/^m(?!aj)/,  () => { quality='minor'; }],
+                [/^dim7/i,    () => { quality='diminished7'; }],
+                [/^°7/,       () => { quality='diminished7'; }],
+                [/^dim/i,     () => { quality='diminished'; }],
+                [/^°/,        () => { quality='diminished'; }],
+                [/^aug7/i,    () => { quality='augmented'; seventh='dominant'; }],
+                [/^aug/i,     () => { quality='augmented'; }],
+                [/^\+/,       () => { quality='augmented'; }],
+                [/^sus2/i,    () => { extras.push('sus2'); }],
+                [/^sus4/i,    () => { extras.push('sus4'); }],
+                [/^sus/i,     () => { extras.push('sus4'); }],
+                [/^add9/i,    () => { extras.push('add9'); }],
+                [/^13/,       () => { seventh='dominant'; tensions.push('9','13'); }],
+                [/^11/,       () => { seventh='dominant'; tensions.push('9','11'); }],
+                [/^9/,        () => { seventh='dominant'; tensions.push('9'); }],
+                [/^7/,        () => { seventh='dominant'; }],
+                [/^6/,        () => { extras.push('6'); }],
+            ];
+            for (const [pat, fn] of patterns) {
+                const mm = rest.match(pat);
+                if (mm) { fn(); rest = rest.slice(mm[0].length); break; }
+            }
+
+            // 뒤따라오는 텐션들: b9, #9, #11, b13 등 (괄호 허용)
+            rest = rest.replace(/[()]/g, '');
+            const tensionRe = /([b♭#♯])(9|11|13)/g;
+            let tm;
+            while ((tm = tensionRe.exec(rest)) !== null) {
+                const sign = (tm[1] === '#' || tm[1] === '♯') ? '#' : 'b';
+                tensions.push(sign + tm[2]);
+            }
+
+            return { root, quality, seventh, tensions, extras, duration: 4 };
         }
 
         // 코드 UI 생성
@@ -1789,11 +1895,12 @@
                     </div>
                     <div>
                         <select class="chord-quality w-full input-bg rounded px-1 py-1 text-xs border" onchange="updateChord(${index})">
-                            <option value="major" ${chordObj.quality === 'major' ? 'selected' : ''}></option>
+                            <option value="major" ${chordObj.quality === 'major' ? 'selected' : ''}>M</option>
                             <option value="minor" ${chordObj.quality === 'minor' ? 'selected' : ''}>m</option>
-                            <option value="augmented" ${chordObj.quality === 'augmented' ? 'selected' : ''}>(#5)</option>
-                            <option value="diminished" ${chordObj.quality === 'diminished' ? 'selected' : ''}>°</option>
-                            <option value="halfDiminished" ${chordObj.quality === 'halfDiminished' ? 'selected' : ''}>ø</option>
+                            <option value="augmented" ${chordObj.quality === 'augmented' ? 'selected' : ''}>aug</option>
+                            <option value="diminished" ${chordObj.quality === 'diminished' ? 'selected' : ''}>dim</option>
+                            <option value="diminished7" ${chordObj.quality === 'diminished7' ? 'selected' : ''}>dim7</option>
+                            <option value="halfDiminished" ${chordObj.quality === 'halfDiminished' ? 'selected' : ''}>m7♭5</option>
                         </select>
                     </div>
                 </div>
@@ -1874,15 +1981,47 @@
             updateChordProgressionUI();
         }
         
-        // 코드 추가
-        function addChord() {
-            chordProgression.push({
-                root: 'C',
-                quality: 'major',
-                seventh: '',
-                tensions: [],
-                duration: 4
-            });
+        // 코드 추가 (선택적으로 문자열 파싱으로 추가)
+        function addChord(inputStr) {
+            let chord;
+            if (typeof inputStr === 'string' && inputStr.trim()) {
+                chord = parseChord(inputStr);
+                if (!chord) return false;
+            } else {
+                chord = { root: 'C', quality: 'major', seventh: '', tensions: [], extras: [], duration: 4 };
+            }
+            chordProgression.push(chord);
+            updateChordProgressionUI();
+            return true;
+        }
+
+        // 코드 진행 프리셋 (문자열 배열로 정의 → parseChord로 객체화)
+        const chordPresets = {
+            'pop_1_5_6_4':   { label: 'I-V-vi-IV (Pop)',        chords: ['C', 'G', 'Am', 'F'] },
+            'fifties_1_6_4_5': { label: 'I-vi-IV-V (50s)',      chords: ['C', 'Am', 'F', 'G'] },
+            'pop_6_4_1_5':   { label: 'vi-IV-I-V (감성팝)',     chords: ['Am', 'F', 'C', 'G'] },
+            'andalusian':    { label: 'Andalusian (Am-G-F-E)',  chords: ['Am', 'G', 'F', 'E'] },
+            'jazz_ii_v_i':   { label: 'ii-V-I (C major)',       chords: ['Dm7', 'G7', 'Cmaj7', 'Cmaj7'] },
+            'jazz_minor_ii_v_i': { label: 'ii-V-i (A minor)',   chords: ['Bm7b5', 'E7', 'Am7', 'Am7'] },
+            'rhythm_changes': { label: 'Rhythm Changes A (Bb)', chords: ['Bbmaj7', 'G7', 'Cm7', 'F7'] },
+            'blues_12':      { label: '12-bar Blues (C7)',      chords: ['C7','C7','C7','C7','F7','F7','C7','C7','G7','F7','C7','G7'] },
+            'jazz_blues':    { label: 'Jazz Blues (Bb)',        chords: ['Bb7','Eb7','Bb7','Bb7','Eb7','Eb7','Bb7','G7','Cm7','F7','Bb7','F7'] },
+            'canon':         { label: 'Canon in D',             chords: ['D','A','Bm','F#m','G','D','G','A'] },
+            'autumn_leaves': { label: 'Autumn Leaves (Gm)',     chords: ['Cm7','F7','Bbmaj7','Ebmaj7','Am7b5','D7','Gm','Gm'] },
+            'giant_steps':   { label: 'Giant Steps (일부)',      chords: ['Bmaj7','D7','Gmaj7','Bb7','Ebmaj7','Am7','D7','Gmaj7'] },
+            'modal_dorian':  { label: 'D Dorian Vamp',          chords: ['Dm7','G7','Dm7','G7'] },
+            'bossa_1':       { label: 'Bossa Nova',             chords: ['Fmaj7','Gm7','Am7','Gm7'] }
+        };
+
+        // 프리셋 로드
+        function loadChordPreset(key) {
+            const preset = chordPresets[key];
+            if (!preset) return;
+            const parsed = preset.chords.map(s => parseChord(s)).filter(Boolean);
+            if (parsed.length === 0) return;
+            chordProgression = parsed;
+            currentChordIndex = 0;
+            currentChordBeat = 0;
             updateChordProgressionUI();
         }
         
@@ -1896,22 +2035,17 @@
 
         // 코드 진행 정지
         function stopChordProgression() {
-            if (chordInterval) {
-                clearInterval(chordInterval);
-                chordInterval = null;
-                currentChordIndex = 0;
-                currentChordBeat = 0;
-                
-                const currentChordDisplay = document.getElementById('currentChordDisplay');
-                if (currentChordDisplay) {
-                    currentChordDisplay.textContent = '-';
-                }
-                
-                const chordItems = document.querySelectorAll('.chord-item');
-                chordItems.forEach(item => {
-                    item.classList.remove('playing');
-                });
+            currentChordIndex = 0;
+            currentChordBeat = 0;
+
+            const currentChordDisplay = document.getElementById('currentChordDisplay');
+            if (currentChordDisplay) {
+                currentChordDisplay.textContent = '-';
             }
+
+            document.querySelectorAll('.chord-item').forEach(item => {
+                item.classList.remove('playing');
+            });
         }
 
         // 테마 변경
@@ -1985,7 +2119,48 @@
             });
             
             // 코드 추가 버튼
-            document.getElementById('addChord').addEventListener('click', addChord);
+            document.getElementById('addChord').addEventListener('click', () => addChord());
+
+            // 자유 입력 파싱으로 코드 추가
+            const chordInputEl = document.getElementById('chordInput');
+            const chordInputAddHandler = () => {
+                const val = chordInputEl.value;
+                if (addChord(val)) {
+                    chordInputEl.value = '';
+                    chordInputEl.classList.remove('border-red-500');
+                } else {
+                    chordInputEl.classList.add('border-red-500');
+                }
+            };
+            document.getElementById('chordInputAdd').addEventListener('click', chordInputAddHandler);
+            chordInputEl.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); chordInputAddHandler(); }
+            });
+
+            // 코드 진행 초기화
+            document.getElementById('clearChords').addEventListener('click', () => {
+                chordProgression = [
+                    { root: 'C', quality: 'major', seventh: '', tensions: [], extras: [], duration: 4 }
+                ];
+                currentChordIndex = 0;
+                currentChordBeat = 0;
+                updateChordProgressionUI();
+            });
+
+            // 프리셋 드롭다운 채우기
+            const presetSel = document.getElementById('chordPresetSelect');
+            Object.entries(chordPresets).forEach(([key, preset]) => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = preset.label;
+                presetSel.appendChild(opt);
+            });
+            presetSel.addEventListener('change', function() {
+                if (this.value) {
+                    loadChordPreset(this.value);
+                    this.value = '';
+                }
+            });
             
             // 재생 옵션 버튼들
             document.querySelectorAll('.subdivision-btn').forEach(btn => {
