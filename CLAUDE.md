@@ -21,7 +21,7 @@ Deployment is via GitHub Pages to the custom domain in `CNAME` — pushing to th
 
 ## File layout conventions
 
-- `index.html` — landing page. Apps are grouped into `<section id="...">` blocks (`music`, `productivity`, `learning`, `media`). Adding a new app means dropping an `<a class="card" href="newfile.html">` into the matching section grid and bumping the section's count in `.section-meta`.
+- `index.html` — landing page. Apps are grouped into `<section id="...">` blocks (currently `music` and `media`). Some apps on disk are intentionally **unlinked** because they're too personal to surface publicly — notably `tvtodo.html`, `stopwatch.html`, `wpm.html`, `reading1.html`, `memorygame`, `commons.html`. Don't re-add them to the landing page without asking. Adding a new public app means dropping an `<a class="card" href="newfile.html">` into the matching section grid and bumping the section's count in `.section-meta`.
 - `*.html` at the repo root — each file is one independent app. Do **not** factor shared code into separate JS/CSS files; the established pattern is that every page inlines its own `<style>` and `<script>`.
 - `memorygame` (no extension) is also an HTML file, served as-is.
 - `sounds/{piano,bass4,drums}/*.opus` — sample library. Note: the guitar practice apps currently synthesize tones via the Web Audio API (`AudioContext`, oscillators) rather than loading these samples. If you wire samples in, reference them as relative paths from the HTML file.
