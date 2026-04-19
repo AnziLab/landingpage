@@ -487,6 +487,15 @@
             color: #fff;
             border-color: var(--accent);
         }
+        .mini-btn.error-flash {
+            background: #ef4444;
+            color: #fff;
+            border-color: #dc2626;
+        }
+        .mini-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
         .bpm-row {
             display: flex;
             gap: 6px;
@@ -870,6 +879,15 @@
                     <label class="text-sm font-medium whitespace-nowrap">재생 속도</label>
                     <input id="ytSpeedSlider" type="range" min="0" max="6" value="2" step="1" class="flex-1">
                     <span id="ytSpeedLabel" class="text-sm font-semibold w-10 text-right">1x</span>
+                </div>
+                <!-- 구간반복 (A-B Loop) -->
+                <div class="flex items-center gap-2 mb-3 flex-wrap" id="ytLoopRow" style="display:none!important;">
+                    <button id="ytSetA" class="mini-btn">A 설정</button>
+                    <span id="ytLoopALabel" class="text-xs font-mono" style="min-width:52px;"></span>
+                    <button id="ytSetB" class="mini-btn">B 설정</button>
+                    <span id="ytLoopBLabel" class="text-xs font-mono" style="min-width:52px;"></span>
+                    <button id="ytLoopToggle" class="mini-btn" disabled>구간반복</button>
+                    <button id="ytLoopClear" class="mini-btn">지우기</button>
                 </div>
                 <!-- 즐겨찾기 -->
                 <div class="flex items-center justify-between mb-2 mt-1">
@@ -2630,6 +2648,68 @@
         let ytApiLoading = false;
         let player = null; // YouTube IFrame Player 인스턴스
 
+        // ===== A-B 구간반복 상태 =====
+        let loopA = null;
+        let loopB = null;
+        let loopActive = false;
+        let loopInterval = null;
+
+        function formatTime(sec) {
+            const s = Math.floor(sec);
+            const m = Math.floor(s / 60);
+            const ss = s % 60;
+            return m + ':' + (ss < 10 ? '0' : '') + ss;
+        }
+
+        function startLoopInterval() {
+            if (loopInterval) return;
+            loopInterval = setInterval(function() {
+                if (!loopActive || !player || typeof player.getCurrentTime !== 'function') return;
+                try {
+                    if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                        const t = player.getCurrentTime();
+                        if (t >= loopB) {
+                            player.seekTo(loopA, true);
+                        }
+                    }
+                } catch(e) {}
+            }, 200);
+        }
+
+        function stopLoopInterval() {
+            if (loopInterval) {
+                clearInterval(loopInterval);
+                loopInterval = null;
+            }
+        }
+
+        function updateLoopUI() {
+            const aLabel = document.getElementById('ytLoopALabel');
+            const bLabel = document.getElementById('ytLoopBLabel');
+            const toggle = document.getElementById('ytLoopToggle');
+            if (aLabel) aLabel.textContent = loopA !== null ? 'A: ' + formatTime(loopA) : '';
+            if (bLabel) bLabel.textContent = loopB !== null ? 'B: ' + formatTime(loopB) : '';
+            if (toggle) {
+                const canLoop = loopA !== null && loopB !== null;
+                toggle.disabled = !canLoop;
+                if (loopActive && canLoop) {
+                    toggle.classList.add('on');
+                } else {
+                    toggle.classList.remove('on');
+                }
+            }
+        }
+
+        function flashBtnError(btn, msg) {
+            const orig = btn.textContent;
+            btn.textContent = msg;
+            btn.classList.add('error-flash');
+            setTimeout(function() {
+                btn.textContent = orig;
+                btn.classList.remove('error-flash');
+            }, 1000);
+        }
+
         function switchMainTab(tab) {
             const metEl = document.getElementById('tabContentMetronome');
             const btEl  = document.getElementById('tabContentBackingTrack');
@@ -2691,9 +2771,10 @@
         }
 
         // YouTube 플레이어 생성/교체
-        function loadYouTubeVideo(videoId) {
+        function loadYouTubeVideo(videoId, loopOpts) {
             const container = document.getElementById('ytPlayerContainer');
             const speedRow  = document.getElementById('ytSpeedRow');
+            const loopRow   = document.getElementById('ytLoopRow');
             const addFavBtn = document.getElementById('ytAddFavorite');
 
             if (!videoId) {
@@ -2701,9 +2782,19 @@
                 return;
             }
 
+            // 즐겨찾기에서 루프 포인트 복원 (loopActive는 false로 시작)
+            if (loopOpts && typeof loopOpts === 'object') {
+                loopA = (typeof loopOpts.loopA === 'number') ? loopOpts.loopA : null;
+                loopB = (typeof loopOpts.loopB === 'number') ? loopOpts.loopB : null;
+                loopActive = false;
+                stopLoopInterval();
+            }
+
             container.style.display = '';
             speedRow.style.cssText  = 'display:flex!important;align-items:center;gap:12px;margin-bottom:12px;';
+            loopRow.style.cssText   = 'display:flex!important;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;';
             addFavBtn.style.display = '';
+            updateLoopUI();
 
             if (player && typeof player.loadVideoById === 'function') {
                 player.loadVideoById(videoId);
@@ -2723,6 +2814,13 @@
                             // 재생 시작 시 메트로놈 정지 (상호 배제)
                             if (event.data === YT.PlayerState.PLAYING) {
                                 if (isPlaying) stopMetronome();
+                                // 루프 활성 상태이고 A/B가 설정돼 있으면 폴링 시작
+                                if (loopActive && loopA !== null && loopB !== null) {
+                                    startLoopInterval();
+                                }
+                            } else {
+                                // 재생 상태가 아니면 폴링 중지
+                                stopLoopInterval();
                             }
                         }
                     }
@@ -2766,7 +2864,7 @@
                 const label = document.createElement('span');
                 label.className = 'chip-label';
                 label.textContent = fav.label;
-                label.addEventListener('click', () => loadYouTubeVideo(fav.videoId));
+                label.addEventListener('click', () => loadYouTubeVideo(fav.videoId, fav));
 
                 const editBtn = document.createElement('span');
                 editBtn.textContent = '✏';
@@ -2813,7 +2911,10 @@
                 alert('이미 즐겨찾기에 있습니다.');
                 return;
             }
-            favs.push({ label: title, videoId, url });
+            const newFav = { label: title, videoId, url };
+            if (loopA !== null) newFav.loopA = loopA;
+            if (loopB !== null) newFav.loopB = loopB;
+            favs.push(newFav);
             saveFavorites(favs);
             renderFavorites();
         }
@@ -3272,6 +3373,68 @@
 
             // 즐겨찾기 초기 렌더링
             renderFavorites();
+
+            // ===== A-B 구간반복 이벤트 =====
+            document.getElementById('ytSetA').addEventListener('click', function() {
+                if (!player || typeof player.getCurrentTime !== 'function') {
+                    flashBtnError(this, '영상 없음');
+                    return;
+                }
+                try {
+                    loopA = player.getCurrentTime();
+                    // B가 이미 설정돼 있고 B <= A이면 B를 리셋
+                    if (loopB !== null && loopB <= loopA) {
+                        loopB = null;
+                        loopActive = false;
+                        stopLoopInterval();
+                    }
+                    updateLoopUI();
+                } catch(e) {
+                    flashBtnError(this, '오류');
+                }
+            });
+
+            document.getElementById('ytSetB').addEventListener('click', function() {
+                if (!player || typeof player.getCurrentTime !== 'function') {
+                    flashBtnError(this, '영상 없음');
+                    return;
+                }
+                try {
+                    const t = player.getCurrentTime();
+                    if (loopA !== null && t <= loopA) {
+                        flashBtnError(this, 'B > A 필요');
+                        return;
+                    }
+                    loopB = t;
+                    updateLoopUI();
+                } catch(e) {
+                    flashBtnError(this, '오류');
+                }
+            });
+
+            document.getElementById('ytLoopToggle').addEventListener('click', function() {
+                if (loopA === null || loopB === null) return;
+                loopActive = !loopActive;
+                if (loopActive) {
+                    // 플레이어가 재생 중일 때만 인터벌 시작
+                    try {
+                        if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+                            startLoopInterval();
+                        }
+                    } catch(e) {}
+                } else {
+                    stopLoopInterval();
+                }
+                updateLoopUI();
+            });
+
+            document.getElementById('ytLoopClear').addEventListener('click', function() {
+                loopA = null;
+                loopB = null;
+                loopActive = false;
+                stopLoopInterval();
+                updateLoopUI();
+            });
         });
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9742d803e5870dbb',t:'MTc1NjAzODQ0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
