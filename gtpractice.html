@@ -2653,6 +2653,7 @@
         let loopB = null;
         let loopActive = false;
         let loopInterval = null;
+        let currentFavoriteIdx = null;
 
         function formatTime(sec) {
             const s = Math.floor(sec);
@@ -2852,6 +2853,15 @@
             try { localStorage.setItem(BT_KEY, JSON.stringify(favs)); } catch(e) {}
         }
 
+        function persistCurrentLoopToFavorite() {
+            if (currentFavoriteIdx === null) return;
+            const favs = loadFavorites();
+            if (!favs[currentFavoriteIdx]) return;
+            if (loopA !== null) { favs[currentFavoriteIdx].loopA = loopA; } else { delete favs[currentFavoriteIdx].loopA; }
+            if (loopB !== null) { favs[currentFavoriteIdx].loopB = loopB; } else { delete favs[currentFavoriteIdx].loopB; }
+            saveFavorites(favs);
+        }
+
         function renderFavorites() {
             const favs    = loadFavorites();
             const listEl  = document.getElementById('ytFavoritesList');
@@ -2864,7 +2874,7 @@
                 const label = document.createElement('span');
                 label.className = 'chip-label';
                 label.textContent = fav.label;
-                label.addEventListener('click', () => loadYouTubeVideo(fav.videoId, fav));
+                label.addEventListener('click', () => { currentFavoriteIdx = i; loadYouTubeVideo(fav.videoId, fav); });
 
                 const editBtn = document.createElement('span');
                 editBtn.textContent = '✏';
@@ -2888,6 +2898,11 @@
                     const f = loadFavorites();
                     f.splice(i, 1);
                     saveFavorites(f);
+                    if (currentFavoriteIdx === i) {
+                        currentFavoriteIdx = null;
+                    } else if (currentFavoriteIdx !== null && i < currentFavoriteIdx) {
+                        currentFavoriteIdx--;
+                    }
                     renderFavorites();
                 });
 
@@ -3337,11 +3352,13 @@
             document.getElementById('ytLoadBtn').addEventListener('click', function() {
                 const url = document.getElementById('ytUrlInput').value.trim();
                 const videoId = parseYouTubeId(url);
+                currentFavoriteIdx = null;
                 loadYouTubeVideo(videoId);
             });
             document.getElementById('ytUrlInput').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     const videoId = parseYouTubeId(this.value.trim());
+                    currentFavoriteIdx = null;
                     loadYouTubeVideo(videoId);
                 }
             });
@@ -3389,6 +3406,7 @@
                         stopLoopInterval();
                     }
                     updateLoopUI();
+                    persistCurrentLoopToFavorite();
                 } catch(e) {
                     flashBtnError(this, '오류');
                 }
@@ -3407,6 +3425,7 @@
                     }
                     loopB = t;
                     updateLoopUI();
+                    persistCurrentLoopToFavorite();
                 } catch(e) {
                     flashBtnError(this, '오류');
                 }
@@ -3434,6 +3453,7 @@
                 loopActive = false;
                 stopLoopInterval();
                 updateLoopUI();
+                persistCurrentLoopToFavorite();
             });
         });
     </script>
