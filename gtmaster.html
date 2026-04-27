@@ -1756,6 +1756,28 @@
       else startMetronome();
     }
 
+    // ── Audio resume on visibility change ──────────────────────────────────────
+    // Browsers suspend AudioContext when the tab is backgrounded (especially on
+    // iOS / mobile Chrome). Resume + realign scheduler when we come back.
+    function resumeAudioIfNeeded() {
+      if (!audioSystem.ctx) return;
+      const finish = () => {
+        if (metronome.isPlaying) {
+          metronome.nextNoteTime = audioSystem.ctx.currentTime + 0.05;
+        }
+      };
+      if (audioSystem.ctx.state === 'suspended') {
+        audioSystem.ctx.resume().then(finish).catch(() => {});
+      } else {
+        finish();
+      }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') resumeAudioIfNeeded();
+    });
+    window.addEventListener('focus', resumeAudioIfNeeded);
+    window.addEventListener('pageshow', resumeAudioIfNeeded);
+
     // ── Init ───────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       // Apply persisted state
