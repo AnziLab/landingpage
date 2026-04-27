@@ -319,13 +319,73 @@
       gap: 8px;
     }
 
-    /* Fretboard placeholder */
-    .fretboard-placeholder {
+    /* Fretboard */
+    .fretboard {
+      position: relative;
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
       background: var(--surface-2);
-      border-radius: 8px;
-      color: var(--text-dim);
-      font-size: 13px;
+      border-radius: 10px;
+      padding: 6px 0;
     }
+    .fretboard-inner {
+      position: relative;
+      height: 100%;
+      min-height: 100px;
+    }
+    .fb-string {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255,255,255,0.18);
+    }
+    [data-theme="light"] .fb-string { background: rgba(0,0,0,0.18); }
+    .fb-fret-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(255,255,255,0.12);
+    }
+    [data-theme="light"] .fb-fret-line { background: rgba(0,0,0,0.12); }
+    .fb-fret-line.nut { width: 3px; background: var(--text-dim); }
+    .fb-marker {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      transform: translate(-50%, -50%);
+    }
+    [data-theme="light"] .fb-marker { background: rgba(0,0,0,0.18); }
+    .fb-fret-num {
+      position: absolute;
+      bottom: 0;
+      font-size: 9px;
+      color: var(--text-dim);
+      transform: translateX(-50%);
+    }
+    .fb-note {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(0,0,0,0.25);
+      user-select: none;
+      transition: transform 0.08s;
+    }
+    .fb-note:active { transform: translate(-50%, -50%) scale(0.85); }
+    .fb-note.root { box-shadow: 0 0 0 2px rgba(255,255,255,0.4); }
 
     /* Loop status */
     .loop-status {
@@ -624,9 +684,7 @@
       <!-- 프렛보드 -->
       <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column;">
         <div class="card-title">프렛보드</div>
-        <div id="fretboardContainer" class="fretboard-placeholder" style="flex:1; min-height:120px; display:flex; align-items:center; justify-content:center; color:var(--text-dim);">
-          프렛보드는 다음 단계에서 그려집니다.
-        </div>
+        <div id="fretboardContainer" class="fretboard" style="flex:1; min-height:120px;"></div>
       </div>
     </section>
 
@@ -1565,6 +1623,187 @@
       }
     };
 
+    // ── Fretboard tunings & note math ─────────────────────────────────────────
+    const TUNINGS = {
+      guitar:  [ {note:'E',octave:2},{note:'A',octave:2},{note:'D',octave:3},{note:'G',octave:3},{note:'B',octave:3},{note:'E',octave:4} ],
+      bass4:   [ {note:'E',octave:1},{note:'A',octave:1},{note:'D',octave:2},{note:'G',octave:2} ],
+      bass5:   [ {note:'B',octave:0},{note:'E',octave:1},{note:'A',octave:1},{note:'D',octave:2},{note:'G',octave:2} ],
+      violin:  [ {note:'G',octave:3},{note:'D',octave:4},{note:'A',octave:4},{note:'E',octave:5} ]
+    };
+
+    const NUM_FRETS = 22;
+    const FRET_MARKERS = [3,5,7,9,15,17,19,21];
+    const DOUBLE_DOT_FRETS = [12];
+
+    const NOTE_NAMES_FRETBOARD = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+    function pitchClassIndex(note) { return NOTE_TO_SEMITONE[note]; }
+
+    function fretNote(stringTuning, fret) {
+      const baseIdx = pitchClassIndex(stringTuning.note);
+      const totalSemitones = baseIdx + fret;
+      const noteIdx = ((totalSemitones % 12) + 12) % 12;
+      const octave = stringTuning.octave + Math.floor(totalSemitones / 12);
+      const noteName = NOTE_NAMES_FRETBOARD[noteIdx];
+      const midi = 12 + octave * 12 + noteIdx;
+      const freq = 440 * Math.pow(2, (midi - 69) / 12);
+      return { note: noteName, octave, midi, freq };
+    }
+
+    // ── Scale resolution ───────────────────────────────────────────────────────
+    function resolveScale(keyName, scaleKey) {
+      const pattern = scalePatterns[scaleKey] || scalePatterns.major;
+      const intervals = scaleIntervals[scaleKey] || scaleIntervals.major;
+      const rootIdx = pitchClassIndex(keyName);
+      const set = new Set();
+      const labelMap = {};
+      for (let i = 0; i < pattern.length; i++) {
+        const semis = pattern[i];
+        const noteIdx = ((rootIdx + semis) % 12 + 12) % 12;
+        const noteName = NOTE_NAMES_FRETBOARD[noteIdx];
+        set.add(noteName);
+        labelMap[noteName] = intervals[i];
+      }
+      return { set, labelMap };
+    }
+
+    // ── Click-to-play fretboard note ───────────────────────────────────────────
+    function playFretboardNote(freq) {
+      audioSystem.ensureStarted();
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      const when = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, when);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(0.6, when + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, when + 0.9);
+      osc.frequency.setValueAtTime(freq * 1.001, when + 0.05);
+      osc.connect(env);
+      env.connect(audioSystem.gains.fretboard);
+      osc.start(when);
+      osc.stop(when + 1.0);
+    }
+
+    // ── Render fretboard ───────────────────────────────────────────────────────
+    function renderFretboard() {
+      const container = document.getElementById('fretboardContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const tuning = TUNINGS[state.instrument] || TUNINGS.guitar;
+      const numStrings = tuning.length;
+
+      const FRET_W = 56;
+      const STR_GAP = 22;
+      const TOP_PAD = 16;
+      const BOT_PAD = 24;
+      const innerWidth = FRET_W * (NUM_FRETS + 1) + 30;
+      const innerHeight = TOP_PAD + (numStrings - 1) * STR_GAP + BOT_PAD;
+
+      const inner = document.createElement('div');
+      inner.className = 'fretboard-inner';
+      inner.style.width = innerWidth + 'px';
+      inner.style.height = innerHeight + 'px';
+
+      const lefty = !!state.leftHanded;
+
+      function yForStringIdx(idx) {
+        const visualRow = (numStrings - 1) - idx;
+        return TOP_PAD + visualRow * STR_GAP;
+      }
+
+      function xForFret(fret) {
+        if (fret === 0) {
+          const x = 6;
+          return lefty ? (innerWidth - x) : x;
+        }
+        const x = 14 + (fret - 0.5) * FRET_W;
+        return lefty ? (innerWidth - x) : x;
+      }
+
+      // Strings (horizontal lines)
+      for (let s = 0; s < numStrings; s++) {
+        const line = document.createElement('div');
+        line.className = 'fb-string';
+        line.style.top = yForStringIdx(s) + 'px';
+        inner.appendChild(line);
+      }
+
+      // Fret lines (vertical)
+      const nutX = lefty ? (innerWidth - 14) : 14;
+      const nut = document.createElement('div');
+      nut.className = 'fb-fret-line nut';
+      nut.style.left = nutX + 'px';
+      inner.appendChild(nut);
+      for (let f = 1; f <= NUM_FRETS; f++) {
+        const line = document.createElement('div');
+        line.className = 'fb-fret-line';
+        const x = 14 + f * FRET_W;
+        line.style.left = (lefty ? (innerWidth - x) : x) + 'px';
+        inner.appendChild(line);
+      }
+
+      // Fret markers
+      const markerY = TOP_PAD + (numStrings - 1) * STR_GAP / 2;
+      for (const f of FRET_MARKERS) {
+        const m = document.createElement('div');
+        m.className = 'fb-marker';
+        m.style.left = xForFret(f) + 'px';
+        m.style.top = markerY + 'px';
+        inner.appendChild(m);
+      }
+      for (const f of DOUBLE_DOT_FRETS) {
+        for (const dy of [-12, 12]) {
+          const m = document.createElement('div');
+          m.className = 'fb-marker';
+          m.style.left = xForFret(f) + 'px';
+          m.style.top = (markerY + dy) + 'px';
+          inner.appendChild(m);
+        }
+      }
+
+      // Fret numbers
+      const fretNumbers = [3,5,7,9,12,15,17,19,21];
+      for (const f of fretNumbers) {
+        const num = document.createElement('div');
+        num.className = 'fb-fret-num';
+        num.textContent = f;
+        num.style.left = xForFret(f) + 'px';
+        num.style.bottom = '4px';
+        inner.appendChild(num);
+      }
+
+      // Scale notes
+      const { set: scaleSet, labelMap } = resolveScale(state.scaleKeyCenter, state.scaleType);
+
+      for (let s = 0; s < numStrings; s++) {
+        const tuningStr = tuning[s];
+        for (let f = 0; f <= NUM_FRETS; f++) {
+          const note = fretNote(tuningStr, f);
+          if (!scaleSet.has(note.note)) continue;
+          const label = labelMap[note.note];
+          const dot = document.createElement('div');
+          dot.className = 'fb-note' + (label === 'R' ? ' root' : '');
+          dot.textContent = label;
+          dot.style.left = xForFret(f) + 'px';
+          dot.style.top = yForStringIdx(s) + 'px';
+          const color = intervalColors[label] || '#888';
+          dot.style.background = color;
+          dot.dataset.freq = note.freq;
+          dot.dataset.note = note.note;
+          dot.addEventListener('click', () => {
+            playFretboardNote(parseFloat(dot.dataset.freq));
+          });
+          inner.appendChild(dot);
+        }
+      }
+
+      container.appendChild(inner);
+    }
+
     // ── Tone helpers ───────────────────────────────────────────────────────────
     function tone(freq, when, duration, type, gain) {
       if (!audioSystem.ctx) return;
@@ -1818,6 +2057,7 @@
       renderChordList();
       renderSuggestEmpty();
       renderVolumes();
+      renderFretboard();
 
       // ── Event listeners ────────────────────────────────────────────────────
 
@@ -2002,6 +2242,7 @@
           document.querySelectorAll('#instrumentBtns [data-instrument]').forEach(b => {
             b.classList.toggle('active', b.dataset.instrument === state.instrument);
           });
+          renderFretboard();
         });
       });
 
@@ -2009,16 +2250,19 @@
       document.getElementById('leftHandedBtn').addEventListener('click', () => {
         setState({ leftHanded: !state.leftHanded });
         document.getElementById('leftHandedBtn').classList.toggle('active', state.leftHanded);
+        renderFretboard();
       });
 
       // Scale key
       document.getElementById('scaleKeySelect').addEventListener('change', e => {
         setState({ scaleKeyCenter: e.target.value });
+        renderFretboard();
       });
 
       // Scale type
       document.getElementById('scaleTypeSelect').addEventListener('change', e => {
         setState({ scaleType: e.target.value });
+        renderFretboard();
       });
 
       // Backing expand toggle
