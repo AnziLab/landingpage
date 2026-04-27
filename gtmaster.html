@@ -831,10 +831,20 @@
     let saveTimer = null;
     function saveState() {
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { console.warn(e); }
-      }, 200);
+      saveTimer = setTimeout(flushSaveState, 200);
     }
+    function flushSaveState() {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { console.warn(e); }
+    }
+    // Flush pending saves before the page is hidden / unloaded so values typed
+    // milliseconds before close still persist.
+    window.addEventListener('pagehide', flushSaveState);
+    window.addEventListener('beforeunload', flushSaveState);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushSaveState();
+    });
 
     function setState(patch) {
       Object.assign(state, patch);
@@ -1699,7 +1709,7 @@
       const FRET_W = 56;
       const STR_GAP = 22;
       const TOP_PAD = 16;
-      const BOT_PAD = 24;
+      const BOT_PAD = 38;
       const innerWidth = FRET_W * (NUM_FRETS + 1) + 30;
       const innerHeight = TOP_PAD + (numStrings - 1) * STR_GAP + BOT_PAD;
 
@@ -1772,7 +1782,7 @@
         num.className = 'fb-fret-num';
         num.textContent = f;
         num.style.left = xForFret(f) + 'px';
-        num.style.bottom = '4px';
+        num.style.bottom = '8px';
         inner.appendChild(num);
       }
 
