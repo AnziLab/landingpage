@@ -312,12 +312,56 @@
     .duration-row .stepper { width: 20px; height: 20px; font-size: 12px; }
     .duration-num { font-size: 11px; color: var(--text-dim); flex: 1; text-align: center; }
 
+    /* Chord card playing highlight */
+    .chord-card.playing {
+      border-color: var(--success);
+      box-shadow: 0 0 0 1px var(--success), 0 0 12px rgba(16, 185, 129, 0.35);
+    }
+
     /* Suggest */
     .suggest-list {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
+    .suggest-section-header {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin: 8px 0 4px;
+      width: 100%;
+    }
+    .suggest-section-header:first-child { margin-top: 0; }
+    .suggest-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .suggest-chip {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 11px;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+      text-align: left;
+      max-width: 220px;
+    }
+    .suggest-chip:hover { opacity: 0.85; }
+    .suggest-chip .chip-name { font-weight: 600; white-space: nowrap; }
+    .suggest-chip .chip-why { font-size: 10px; opacity: 0.7; line-height: 1.25; white-space: normal; }
+    .suggest-chip.contextual { background: var(--accent-soft); border-color: var(--accent); }
+    .suggest-chip.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .suggest-chip.active .chip-why { opacity: 0.85; }
 
     /* Fretboard */
     .fretboard {
@@ -1872,6 +1916,124 @@
       else clickHat(when);
     }
 
+    // ── Chord audio synthesis ──────────────────────────────────────────────────
+    function chordToPitches(chord) {
+      if (!chord || !chord.root) return [];
+      const rootIdx = NOTE_TO_SEMITONE[chord.root];
+      if (rootIdx === undefined) return [];
+
+      const baseIntervals = [0];
+      switch (chord.quality) {
+        case 'minor':          baseIntervals.push(3, 7); break;
+        case 'diminished':     baseIntervals.push(3, 6); break;
+        case 'diminished7':    baseIntervals.push(3, 6, 9); break;
+        case 'halfDiminished': baseIntervals.push(3, 6, 10); break;
+        case 'augmented':      baseIntervals.push(4, 8); break;
+        case 'major':
+        default:               baseIntervals.push(4, 7); break;
+      }
+      if (chord.seventh === 'major7' && !baseIntervals.includes(11) && !baseIntervals.includes(10) && !baseIntervals.includes(9)) {
+        baseIntervals.push(11);
+      } else if (chord.seventh === 'dominant' && !baseIntervals.includes(10) && !baseIntervals.includes(11) && !baseIntervals.includes(9)) {
+        baseIntervals.push(10);
+      }
+
+      const tensionMap = { 'b9':1, '9':2, '#9':3, '11':5, '#11':6, 'b13':8, '13':9 };
+      if (Array.isArray(chord.tensions)) {
+        for (const t of chord.tensions) {
+          if (tensionMap[t] !== undefined && !baseIntervals.includes(tensionMap[t])) {
+            baseIntervals.push(tensionMap[t]);
+          }
+        }
+      }
+
+      const PIANO_BASE_OCT = 4;
+      const BASS_OCT = 2;
+      const pitches = [];
+      const bassMidi = 12 + BASS_OCT * 12 + rootIdx;
+      pitches.push({ midi: bassMidi, voice: 'bass' });
+      for (const semi of baseIntervals) {
+        const midi = 12 + PIANO_BASE_OCT * 12 + rootIdx + semi;
+        pitches.push({ midi, voice: 'piano' });
+      }
+      return pitches.map(p => ({ ...p, freq: 440 * Math.pow(2, (p.midi - 69) / 12) }));
+    }
+
+    function playChordSound(chord, when) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      const pitches = chordToPitches(chord);
+      for (const p of pitches) {
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        if (p.voice === 'bass') {
+          osc.type = 'sawtooth';
+          env.gain.setValueAtTime(0, when);
+          env.gain.linearRampToValueAtTime(0.4, when + 0.02);
+          env.gain.exponentialRampToValueAtTime(0.0001, when + 1.2);
+        } else {
+          osc.type = 'triangle';
+          env.gain.setValueAtTime(0, when);
+          env.gain.linearRampToValueAtTime(0.18, when + 0.015);
+          env.gain.exponentialRampToValueAtTime(0.0001, when + 1.6);
+        }
+        osc.frequency.setValueAtTime(p.freq, when);
+        osc.connect(env);
+        env.connect(audioSystem.gains.chord);
+        osc.start(when);
+        osc.stop(when + 1.7);
+      }
+    }
+
+    // ── Chord playback state ───────────────────────────────────────────────────
+    const chordPlayback = {
+      currentChordIdx: 0,
+      beatInChord: 0,
+    };
+
+    function resetChordPlayback() {
+      chordPlayback.currentChordIdx = 0;
+      chordPlayback.beatInChord = 0;
+      updateCurrentChordLabel();
+      highlightChordCard();
+      renderSuggestions();
+    }
+
+    function updateCurrentChordLabel() {
+      const labelEl = document.getElementById('currentChordLabel');
+      if (!labelEl) return;
+      const chord = state.chordProgression[chordPlayback.currentChordIdx];
+      labelEl.textContent = chord ? chordDisplayName(chord) : '-';
+    }
+
+    function highlightChordCard() {
+      const cards = document.querySelectorAll('#chordList .chord-card');
+      cards.forEach((card, i) => {
+        card.classList.toggle('playing', i === chordPlayback.currentChordIdx);
+      });
+    }
+
+    function onBeatFired(when) {
+      if (!state.chordProgression || state.chordProgression.length === 0) return;
+      if (metronome.countInRemaining > 0) return;
+
+      chordPlayback.beatInChord++;
+      const cur = state.chordProgression[chordPlayback.currentChordIdx];
+      if (!cur) return;
+      if (chordPlayback.beatInChord >= (cur.duration || 4)) {
+        chordPlayback.beatInChord = 0;
+        chordPlayback.currentChordIdx = (chordPlayback.currentChordIdx + 1) % state.chordProgression.length;
+        const nextChord = state.chordProgression[chordPlayback.currentChordIdx];
+        playChordSound(nextChord, when);
+        const delayMs = Math.max(0, (when - audioSystem.ctx.currentTime) * 1000);
+        setTimeout(() => {
+          updateCurrentChordLabel();
+          highlightChordCard();
+          renderSuggestions();
+        }, delayMs);
+      }
+    }
+
     // ── Metronome scheduler ────────────────────────────────────────────────────
     const SCHEDULE_AHEAD_S    = 0.1;
     const SCHEDULE_INTERVAL_MS = 25;
@@ -1916,6 +2078,7 @@
       if (isBeat) {
         const delayMs = Math.max(0, (when - audioSystem.ctx.currentTime) * 1000);
         setTimeout(() => flashBeatDot(beatNum), delayMs);
+        onBeatFired(when);
       }
     }
 
@@ -1935,6 +2098,12 @@
           metronome.nextNoteTime += 60 / state.bpm;
           if (metronome.countInRemaining === 0) {
             metronome.currentTick = 0;
+            if (state.chordProgression && state.chordProgression.length > 0) {
+              resetChordPlayback();
+              playChordSound(state.chordProgression[0], metronome.nextNoteTime);
+              const delayMs = Math.max(0, (metronome.nextNoteTime - audioSystem.ctx.currentTime) * 1000);
+              setTimeout(() => { updateCurrentChordLabel(); highlightChordCard(); renderSuggestions(); }, delayMs);
+            }
           }
           continue;
         }
@@ -1957,6 +2126,15 @@
       btn.textContent = '■ 정지';
       btn.classList.add('danger');
       btn.classList.remove('primary');
+      // Start chord playback (if no count-in; count-in path handles its own start)
+      if (!state.countIn && state.chordProgression && state.chordProgression.length > 0) {
+        resetChordPlayback();
+        playChordSound(state.chordProgression[0], metronome.nextNoteTime);
+        const delayMs = Math.max(0, (metronome.nextNoteTime - audioSystem.ctx.currentTime) * 1000);
+        setTimeout(() => { updateCurrentChordLabel(); highlightChordCard(); renderSuggestions(); }, delayMs);
+      } else if (!state.countIn) {
+        resetChordPlayback();
+      }
     }
 
     function stopMetronome() {
@@ -1968,6 +2146,12 @@
       btn.classList.add('primary');
       btn.classList.remove('danger');
       document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('flash'));
+      // Reset chord playback and clear highlights
+      chordPlayback.currentChordIdx = 0;
+      chordPlayback.beatInChord = 0;
+      document.querySelectorAll('#chordList .chord-card').forEach(c => c.classList.remove('playing'));
+      const labelEl = document.getElementById('currentChordLabel');
+      if (labelEl) labelEl.textContent = '-';
     }
 
     // ── Beat dot flash ─────────────────────────────────────────────────────────
