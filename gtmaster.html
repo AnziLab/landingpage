@@ -1513,9 +1513,14 @@
         xBtn.textContent = '✕';
         xBtn.addEventListener('click', () => {
           state.chordProgression.splice(idx, 1);
+          if (chordPlayback.currentChordIdx >= state.chordProgression.length && state.chordProgression.length > 0) {
+            chordPlayback.currentChordIdx = state.chordProgression.length - 1;
+          } else if (state.chordProgression.length === 0) {
+            chordPlayback.currentChordIdx = 0;
+          }
           setState({ chordProgression: [...state.chordProgression] });
           renderChordList();
-          renderSuggestEmpty();
+          renderSuggestions();
         });
 
         // Chord name
@@ -1541,6 +1546,7 @@
           state.chordProgression[idx].root = rootSel.value;
           setState({ chordProgression: [...state.chordProgression] });
           nameDiv.textContent = chordDisplayName(state.chordProgression[idx]);
+          if (idx === chordPlayback.currentChordIdx) renderSuggestions();
         });
 
         // Quality select
@@ -1557,6 +1563,7 @@
           state.chordProgression[idx].quality = qualSel.value;
           setState({ chordProgression: [...state.chordProgression] });
           nameDiv.textContent = chordDisplayName(state.chordProgression[idx]);
+          if (idx === chordPlayback.currentChordIdx) renderSuggestions();
         });
 
         controls.appendChild(rootSel);
@@ -1604,6 +1611,9 @@
         card.appendChild(durRow);
         container.appendChild(card);
       });
+      // Restore highlight and label after re-render
+      highlightChordCard();
+      updateCurrentChordLabel();
     }
 
     // ── Render: Suggest empty state ────────────────────────────────────────────
@@ -1616,6 +1626,109 @@
       } else {
         empty.style.display = 'none';
         list.style.display = '';
+      }
+    }
+
+    // ── Render: Suggestion chips ───────────────────────────────────────────────
+    const SUGGESTION_LABEL_MAP = (() => {
+      const out = {};
+      // Build lazily on first call so DOM is ready
+      return out;
+    })();
+
+    function ensureSuggestionLabelMap() {
+      if (Object.keys(SUGGESTION_LABEL_MAP).length > 0) return;
+      const sel = document.getElementById('scaleTypeSelect');
+      if (sel) {
+        for (const opt of sel.querySelectorAll('option')) SUGGESTION_LABEL_MAP[opt.value] = opt.textContent;
+      }
+    }
+
+    function renderSuggestions() {
+      ensureSuggestionLabelMap();
+      const emptyEl = document.getElementById('suggestEmpty');
+      const listEl = document.getElementById('suggestList');
+      const roleLabel = document.getElementById('suggestRoleLabel');
+      if (!listEl || !emptyEl) return;
+
+      listEl.innerHTML = '';
+      if (!state.chordProgression || state.chordProgression.length === 0) {
+        emptyEl.style.display = '';
+        listEl.style.display = 'none';
+        if (roleLabel) roleLabel.textContent = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      listEl.style.display = '';
+
+      const chord = state.chordProgression[chordPlayback.currentChordIdx];
+      if (!chord) return;
+
+      // Role from songKey
+      const songKey = state.songKey;
+      const role = (songKey && chord.root) ? getChordRoleInKey(chord.root, songKey) : null;
+      if (roleLabel) {
+        const name = chordDisplayName(chord);
+        roleLabel.textContent = role && songKey ? `${name} — ${role} of ${songKey}` : name;
+      }
+
+      const type = classifyChordForSuggestions(chord);
+      const contextual = (type && role) ? (chordScaleSuggestionsByRole[type + '|' + role] || []) : [];
+      const generic = type ? (chordScaleSuggestions[type] || []) : [];
+
+      const seen = new Set(contextual.map(s => s.scale));
+      const dedupedGeneric = generic.filter(s => !seen.has(s.scale));
+
+      function makePill(sug, kind) {
+        const btn = document.createElement('button');
+        btn.className = 'suggest-chip ' + kind;
+        if (state.scaleType === sug.scale) btn.classList.add('active');
+        const name = SUGGESTION_LABEL_MAP[sug.scale] || sug.scale;
+        btn.innerHTML = `<span class="chip-name">${name}</span><span class="chip-why">${sug.why || ''}</span>`;
+        btn.addEventListener('click', () => {
+          const newKey = chord.root || state.scaleKeyCenter;
+          setState({ scaleType: sug.scale, scaleKeyCenter: newKey });
+          const ksSel = document.getElementById('scaleKeySelect');
+          const stSel = document.getElementById('scaleTypeSelect');
+          if (ksSel) ksSel.value = newKey;
+          if (stSel) stSel.value = sug.scale;
+          renderFretboard();
+          renderSuggestions();
+          // Mobile: switch to 프렛 tab
+          if (window.innerWidth < 900) {
+            applyActiveTab('fretboard');
+            setState({ activeTab: 'fretboard' });
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'fretboard'));
+          }
+        });
+        return btn;
+      }
+
+      if (contextual.length > 0) {
+        const h = document.createElement('div');
+        h.className = 'suggest-section-header';
+        h.textContent = '📍 컨텍스트 추천';
+        listEl.appendChild(h);
+        const row = document.createElement('div');
+        row.className = 'suggest-pill-row';
+        contextual.forEach(s => row.appendChild(makePill(s, 'contextual')));
+        listEl.appendChild(row);
+      }
+      if (dedupedGeneric.length > 0) {
+        const h = document.createElement('div');
+        h.className = 'suggest-section-header';
+        h.textContent = '🎼 일반 추천';
+        listEl.appendChild(h);
+        const row = document.createElement('div');
+        row.className = 'suggest-pill-row';
+        dedupedGeneric.forEach(s => row.appendChild(makePill(s, 'generic')));
+        listEl.appendChild(row);
+      }
+      if (contextual.length === 0 && dedupedGeneric.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = '이 코드에 대한 추천 데이터가 없습니다.';
+        listEl.appendChild(empty);
       }
     }
 
@@ -2249,7 +2362,7 @@
 
       renderBeatIndicator();
       renderChordList();
-      renderSuggestEmpty();
+      renderSuggestions();
       renderVolumes();
       renderFretboard();
 
@@ -2350,6 +2463,7 @@
       // Song key
       document.getElementById('songKeySelect').addEventListener('change', e => {
         setState({ songKey: e.target.value });
+        renderSuggestions();
       });
 
       // Song key auto-detect from first chord
@@ -2358,6 +2472,7 @@
           const root = state.chordProgression[0].root;
           setState({ songKey: root });
           document.getElementById('songKeySelect').value = root;
+          renderSuggestions();
         }
       });
 
@@ -2382,7 +2497,7 @@
             document.getElementById('songKeySelect').value = prog[0].root;
           }
           renderChordList();
-          renderSuggestEmpty();
+          renderSuggestions();
         }
         e.target.value = '';
       });
@@ -2404,7 +2519,7 @@
           document.getElementById('songKeySelect').value = parsed.root;
         }
         renderChordList();
-        renderSuggestEmpty();
+        renderSuggestions();
         inputEl.value = '';
       }
       document.getElementById('chordAddBtn').addEventListener('click', addChordFromInput);
@@ -2419,14 +2534,16 @@
         }];
         setState({ chordProgression: prog });
         renderChordList();
-        renderSuggestEmpty();
+        renderSuggestions();
       });
 
       // Reset progression
       document.getElementById('resetProgBtn').addEventListener('click', () => {
         setState({ chordProgression: [] });
+        chordPlayback.currentChordIdx = 0;
+        chordPlayback.beatInChord = 0;
         renderChordList();
-        renderSuggestEmpty();
+        renderSuggestions();
       });
 
       // Instrument buttons
