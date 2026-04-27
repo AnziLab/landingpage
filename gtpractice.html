@@ -1868,6 +1868,7 @@
                 document.querySelectorAll('.chord-item').forEach((item, i) => {
                     item.classList.toggle('playing', i === index);
                 });
+                updateChordScaleSuggestions();
             }, delay);
         }
 
@@ -2420,6 +2421,195 @@
             ],
         };
 
+        const NOTE_TO_SEMITONE = {
+          'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,
+          'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11
+        };
+
+        // Returns roman-numeral-ish role label like 'I','bII','II','bIII','III','IV',
+        // 'bV','V','bVI','VI','bVII','VII'. Always uppercase.
+        function getChordRoleInKey(chordRoot, keyCenter) {
+          const r = NOTE_TO_SEMITONE[chordRoot];
+          const k = NOTE_TO_SEMITONE[keyCenter];
+          if (r === undefined || k === undefined) return null;
+          const interval = (r - k + 12) % 12;
+          const map = {
+            0:'I', 1:'bII', 2:'II', 3:'bIII', 4:'III', 5:'IV',
+            6:'bV', 7:'V', 8:'bVI', 9:'VI', 10:'bVII', 11:'VII'
+          };
+          return map[interval] || null;
+        }
+
+        const chordScaleSuggestionsByRole = {
+          // Major7 by role
+          'maj7|I':   [
+            { scale: 'major',           why: 'I장조 토닉. 4도(11)는 어보이드.' },
+            { scale: 'lydian',           why: '모달 컬러를 원하면 #11.' },
+            { scale: 'bebopMajor',       why: '비밥 라인 (I 자리).' },
+            { scale: 'majorPentatonic',  why: '안전한 토닉 라인.' },
+          ],
+          'maj7|IV':  [
+            { scale: 'lydian',           why: 'IV의 자연 모드. #11이 살아있음.' },
+            { scale: 'major',            why: '평이한 IV. 어보이드 4도 주의.' },
+            { scale: 'majorPentatonic',  why: '안전한 IV 라인.' },
+          ],
+          'maj7|bIII':[
+            { scale: 'lydian',           why: '평행단조에서 차용한 bIIImaj7. 리디안 컬러.' },
+          ],
+          'maj7|bVI':[
+            { scale: 'lydian',           why: '평행단조에서 차용한 bVImaj7. 리디안 컬러.' },
+          ],
+          'maj7|bII':[
+            { scale: 'lydian',           why: 'V의 트라이톤 서브 maj7 변형. 리디안.' },
+          ],
+
+          // Dominant 7 by role
+          '7|V':      [
+            { scale: 'mixolydian',       why: 'V7→I 기능 도미넌트의 정공법.' },
+            { scale: 'bebopDominant',    why: 'V7 비밥 라인.' },
+            { scale: 'altered',          why: 'I이 마이너거나 강한 텐션을 원할 때.' },
+            { scale: 'phrygianDominant', why: '마이너 키 V7→Im에 정공법 (b9 b13).' },
+            { scale: 'halfWholeDim',     why: 'b9 #9 #11 13 모두 가능.' },
+          ],
+          '7|I':      [
+            { scale: 'mixolydian',       why: '블루스 I7. 도미넌트 토닉 사운드.' },
+            { scale: 'mixoBluesScale',   why: '블루스 I7 위 메이저+마이너 블루스 혼합.' },
+            { scale: 'minorPentatonic',  why: '블루스 I7 위 b3↔3 슬라이드.' },
+            { scale: 'minorBluesScale',  why: '블루스 I7. b5 블루노트.' },
+            { scale: 'bebopDominant',    why: '재즈 블루스 I 라인.' },
+          ],
+          '7|IV':     [
+            { scale: 'mixolydian',       why: '블루스 IV7.' },
+            { scale: 'mixoBluesScale',   why: '블루스 IV에 블루노트 추가.' },
+            { scale: 'minorPentatonic',  why: '블루스 IV. b3↔3.' },
+            { scale: 'lydianDominant',   why: 'IV7을 비기능적으로 (#11) 보고 싶을 때.' },
+          ],
+          '7|bII':    [
+            { scale: 'lydianDominant',   why: 'V7의 트라이톤 서브. #11이 자연스러움.' },
+            { scale: 'altered',          why: '대체 도미넌트로 강한 텐션.' },
+          ],
+          '7|II':     [
+            { scale: 'mixolydian',       why: 'V7/V (도펠도미넌트) 기본.' },
+            { scale: 'lydianDominant',   why: '비기능적 II7 (모달 인터체인지)에 #11.' },
+            { scale: 'bebopDominant',    why: '비밥 라인.' },
+          ],
+          '7|III':    [
+            { scale: 'altered',          why: 'V7/vi. vi(마이너)로 해결되니 얼터드.' },
+            { scale: 'phrygianDominant', why: 'V7/vi에 b9 b13.' },
+            { scale: 'halfWholeDim',     why: 'V7/vi 텐션 다양화.' },
+          ],
+          '7|VI':     [
+            { scale: 'altered',          why: 'V7/ii. ii(마이너)로 해결되니 얼터드.' },
+            { scale: 'phrygianDominant', why: 'V7/ii에 b9 b13.' },
+            { scale: 'halfWholeDim',     why: 'V7/ii 텐션.' },
+          ],
+          '7|VII':    [
+            { scale: 'altered',          why: 'V7/iii. 강한 얼터드.' },
+            { scale: 'phrygianDominant', why: 'V7/iii.' },
+          ],
+          '7|bVII':   [
+            { scale: 'lydianDominant',   why: 'bVII7 (백도어 도미넌트). #11 컬러.' },
+            { scale: 'mixolydian',       why: '평이한 bVII7.' },
+          ],
+          '7|bVI':    [
+            { scale: 'lydianDominant',   why: 'bVI7 (모달 인터체인지/트라이톤 변형).' },
+          ],
+
+          // Minor 7 by role
+          'm7|II':    [
+            { scale: 'dorian',           why: 'ii–V–I의 ii. 도리안이 정공법.' },
+            { scale: 'bebopDorian',      why: 'ii 자리 비밥 라인.' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+          ],
+          'm7|VI':    [
+            { scale: 'minor',            why: 'vi (관계단조 토닉). 에올리안.' },
+            { scale: 'dorian',           why: 'vi를 모달로 해석할 때.' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+          ],
+          'm7|III':   [
+            { scale: 'phrygian',         why: 'iii. 프리지안의 b9 컬러.' },
+            { scale: 'minor',            why: '평이한 iii.' },
+          ],
+          'm7|I':     [
+            { scale: 'dorian',           why: '모달 i. 도리안.' },
+            { scale: 'minor',            why: 'i (에올리안).' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+            { scale: 'minorBluesScale',  why: '블루스 i. b5.' },
+          ],
+          'm7|IV':    [
+            { scale: 'dorian',           why: 'iv 모달 인터체인지. 도리안.' },
+            { scale: 'minor',            why: '단조 iv (에올리안).' },
+          ],
+          'm7|V':     [
+            { scale: 'phrygian',         why: '단조의 v (자연단조).' },
+            { scale: 'minor',            why: 'v를 평이하게.' },
+          ],
+
+          // Half-diminished by role
+          'm7b5|VII': [
+            { scale: 'locrian',          why: 'vii°7 자연 모드.' },
+            { scale: 'locrianNat2',      why: '2도 살린 모던 사운드.' },
+          ],
+          'm7b5|II':  [
+            { scale: 'locrianNat2',      why: '단조 ii–V–i의 ii. 모던 표준.' },
+            { scale: 'locrian',          why: '전통적 마이너 ii–V.' },
+          ],
+
+          // Diminished7 by role
+          'dim7|VII':   [
+            { scale: 'wholeHalfDim',     why: '코드 톤 + 텐션 일치.' },
+            { scale: 'harmonicMinor',    why: '한 음 위 하모닉 마이너의 vii°7.' },
+          ],
+          'dim7|bIII':  [
+            { scale: 'wholeHalfDim',     why: '패싱 디미니쉬드.' },
+          ],
+          'dim7|bV':    [
+            { scale: 'wholeHalfDim',     why: '패싱/연결 디미니쉬드.' },
+          ],
+          'dim7|bVI':   [
+            { scale: 'wholeHalfDim',     why: '패싱 디미니쉬드.' },
+          ],
+
+          // Minor (no 7) by role
+          'm|VI':     [
+            { scale: 'minor',            why: 'vi 관계단조.' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+          ],
+          'm|II':     [
+            { scale: 'dorian',           why: 'ii 자리 모달.' },
+          ],
+          'm|I':      [
+            { scale: 'minor',            why: 'i 자연단조.' },
+            { scale: 'dorian',           why: 'i 모달 (도리안).' },
+            { scale: 'harmonicMinor',    why: 'i 하모닉 마이너 컬러.' },
+            { scale: 'melodicMinor',     why: 'i 멜로딕 마이너.' },
+          ],
+
+          // Major (no 7) by role
+          'maj|I':    [
+            { scale: 'major',            why: 'I 장조 토닉.' },
+            { scale: 'majorPentatonic',  why: '안전.' },
+            { scale: 'lydian',           why: '#11 모던 컬러.' },
+          ],
+          'maj|IV':   [
+            { scale: 'lydian',           why: 'IV 자연 모드.' },
+            { scale: 'major',            why: '평이한 IV.' },
+          ],
+          'maj|V':    [
+            { scale: 'mixolydian',       why: 'V (도미넌트 기능, 7 없는 트라이아드).' },
+          ],
+          'maj|bVII': [
+            { scale: 'lydian',           why: 'bVII 모달 인터체인지.' },
+            { scale: 'major',            why: '평이한 bVII.' },
+          ],
+          'maj|bVI':  [
+            { scale: 'lydian',           why: 'bVI 모달 인터체인지.' },
+          ],
+          'maj|bIII': [
+            { scale: 'lydian',           why: 'bIII 모달 인터체인지.' },
+          ],
+        };
+
         function classifyChordForSuggestions(chord) {
             if (!chord) return null;
             const q = chord.quality;
@@ -2493,13 +2683,22 @@
                 return;
             }
 
-            chordLabel.textContent = getChordName(chord);
+            const keyCenter = document.getElementById('keyCenter') ? document.getElementById('keyCenter').value : null;
+            const role = keyCenter ? getChordRoleInKey(chord.root, keyCenter) : null;
+            chordLabel.textContent = getChordName(chord) + (role && keyCenter ? ' (' + role + ' of ' + keyCenter + ')' : '');
 
-            const key = classifyChordForSuggestions(chord);
-            const suggestions = key ? chordScaleSuggestions[key] : null;
+            const type = classifyChordForSuggestions(chord);
+            const contextual = (type && role) ? (chordScaleSuggestionsByRole[type + '|' + role] || []) : [];
+            const generic = type ? (chordScaleSuggestions[type] || []) : [];
+            const contextualScales = new Set(contextual.map(function(s) { return s.scale; }));
+            const deduplicatedGeneric = generic.filter(function(s) { return !contextualScales.has(s.scale); });
 
             listEl.innerHTML = '';
-            if (!suggestions || suggestions.length === 0) {
+
+            const hasContextual = contextual.length > 0;
+            const hasGeneric = deduplicatedGeneric.length > 0;
+
+            if (!hasContextual && !hasGeneric) {
                 emptyEl.style.display = '';
                 return;
             }
@@ -2516,7 +2715,7 @@
 
             const currentScale = scaleSelect ? scaleSelect.value : '';
 
-            suggestions.forEach(function(sug) {
+            function makePill(sug, isContextualPill) {
                 const btn = document.createElement('button');
                 const isActive = sug.scale === currentScale;
                 btn.style.cssText = [
@@ -2525,7 +2724,9 @@
                     'cursor:pointer', 'text-align:left', 'transition:opacity 0.15s',
                     isActive
                         ? 'background:rgba(99,102,241,0.25);border-color:rgba(99,102,241,0.7);opacity:1;'
-                        : 'background:rgba(128,128,128,0.12);border-color:rgba(128,128,128,0.25);opacity:0.85;'
+                        : isContextualPill
+                            ? 'background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.3);opacity:0.85;'
+                            : 'background:rgba(128,128,128,0.12);border-color:rgba(128,128,128,0.25);opacity:0.85;'
                 ].join(';');
 
                 const nameSpan = document.createElement('span');
@@ -2553,8 +2754,39 @@
                 btn.addEventListener('mouseenter', function() { this.style.opacity = '1'; });
                 btn.addEventListener('mouseleave', function() { this.style.opacity = isActive ? '1' : '0.85'; });
 
-                listEl.appendChild(btn);
-            });
+                return btn;
+            }
+
+            if (hasContextual && (hasGeneric || generic.length > 0)) {
+                // Show both sections with headers
+                const ctxHeader = document.createElement('div');
+                ctxHeader.style.cssText = 'font-size:0.7rem;opacity:0.6;margin-bottom:4px;margin-top:2px;';
+                ctxHeader.textContent = '📍 컨텍스트 추천 (역할 기반)';
+                listEl.appendChild(ctxHeader);
+
+                const ctxWrap = document.createElement('div');
+                ctxWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;';
+                contextual.forEach(function(sug) { ctxWrap.appendChild(makePill(sug, true)); });
+                listEl.appendChild(ctxWrap);
+
+                if (hasGeneric) {
+                    const genHeader = document.createElement('div');
+                    genHeader.style.cssText = 'font-size:0.7rem;opacity:0.6;margin-bottom:4px;margin-top:4px;';
+                    genHeader.textContent = '🎼 일반 추천';
+                    listEl.appendChild(genHeader);
+
+                    const genWrap = document.createElement('div');
+                    genWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+                    deduplicatedGeneric.forEach(function(sug) { genWrap.appendChild(makePill(sug, false)); });
+                    listEl.appendChild(genWrap);
+                }
+            } else if (hasContextual) {
+                // Only contextual — no headers needed, just render
+                contextual.forEach(function(sug) { listEl.appendChild(makePill(sug, true)); });
+            } else {
+                // Only generic — original layout, no headers
+                generic.forEach(function(sug) { listEl.appendChild(makePill(sug, false)); });
+            }
         }
 
         // 코드 구성음 계산
@@ -3581,6 +3813,7 @@
                 }
                 lastScaleKey = newKey;
                 updateScale();
+                updateChordScaleSuggestions();
             });
             document.getElementById('scaleType').addEventListener('change', updateScale);
             
