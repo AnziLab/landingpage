@@ -1,0 +1,1838 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Guitar Master</title>
+  <style>
+    :root {
+      --radius: 14px;
+      --gap: 16px;
+      --pad: 14px;
+    }
+    [data-theme="dark"] {
+      --bg: #0b1220; --surface: #1f2937; --surface-2: #111827;
+      --text: #e5e7eb; --text-dim: #9ca3af;
+      --accent: #6366f1; --accent-soft: rgba(99,102,241,0.2);
+      --border: rgba(255,255,255,0.08); --danger: #ef4444;
+      --success: #10b981;
+    }
+    [data-theme="light"] {
+      --bg: #ffffff; --surface: #f8f9fa; --surface-2: #f1f3f5;
+      --text: #111827; --text-dim: #6b7280;
+      --accent: #4f46e5; --accent-soft: rgba(79,70,229,0.12);
+      --border: rgba(0,0,0,0.08); --danger: #dc2626;
+      --success: #059669;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--pad);
+      margin-bottom: var(--gap);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .card-title-row {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .subtle { font-weight: 400; font-size: 12px; color: var(--text-dim); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn.primary { background: var(--accent); color: white; border-color: transparent; }
+    .btn.danger { background: var(--danger); color: white; border-color: transparent; }
+    .btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .stepper {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    select, input[type="number"], input[type="text"] {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font: inherit;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .empty {
+      color: var(--text-dim);
+      font-size: 13px;
+      padding: 16px 0;
+      text-align: center;
+    }
+
+    /* App layout */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 5;
+    }
+    .app-header .title { font-size: 16px; font-weight: 700; }
+    .app-header .header-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .app-main { padding: 12px 12px 80px; }
+    .tab-content[data-active="false"] { display: none; }
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 10;
+    }
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 8px 0;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 11px;
+      cursor: pointer;
+      position: relative;
+    }
+    .tab-btn .tab-icon { font-size: 18px; line-height: 1; }
+    .tab-btn.active { color: var(--accent); }
+    .tab-btn.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 20%;
+      right: 20%;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 0 0 3px 3px;
+    }
+
+    @media (min-width: 720px) {
+      .app-main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 16px 16px 16px;
+      }
+      .tab-content[data-active="false"] { display: block; }
+      .tab-bar { display: none; }
+      .section-header {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 12px;
+        margin-top: 24px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .section-header:first-child { margin-top: 0; }
+    }
+    @media (max-width: 719px) {
+      .section-header { display: none; }
+    }
+
+    /* Beat indicator */
+    .beat-dots {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .beat-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 1px solid var(--text-dim);
+    }
+    .beat-dot.accent { background: var(--accent); border-color: var(--accent); }
+
+    /* Chord list */
+    .chord-list {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .chord-card {
+      min-width: 140px;
+      max-width: 140px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .chord-card .card-x {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .chord-card .card-x:hover { color: var(--danger); }
+    .chord-card .chord-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      padding-right: 20px;
+    }
+    .chord-card .chord-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .chord-card select {
+      width: 100%;
+      font-size: 12px;
+      padding: 4px 6px;
+    }
+    .duration-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .duration-num { font-size: 12px; color: var(--text-dim); flex: 1; text-align: center; }
+
+    /* Suggest */
+    .suggest-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* Fretboard placeholder */
+    .fretboard-placeholder {
+      background: var(--surface-2);
+      border-radius: 8px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* Loop status */
+    .loop-status {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: monospace;
+      margin: 8px 0;
+    }
+
+    /* Speed row */
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .speed-val { font-size: 13px; min-width: 36px; text-align: right; }
+
+    /* Volume sliders */
+    .vol-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .vol-label { font-size: 13px; min-width: 72px; }
+    .vol-val { font-size: 12px; min-width: 36px; text-align: right; color: var(--text-dim); }
+
+    /* Drawer */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 100;
+    }
+    .drawer-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--surface);
+      border-radius: 16px 16px 0 0;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 16px;
+      z-index: 101;
+      transform: translateY(100%);
+      transition: transform 0.25s;
+    }
+    .drawer[data-open="true"] .drawer-panel { transform: translateY(0); }
+    .drawer[data-open="false"] .drawer-backdrop { display: none; }
+    .drawer[data-open="false"] .drawer-panel { transform: translateY(100%); }
+    .drawer-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 12px;
+    }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .drawer-title { font-size: 16px; font-weight: 700; }
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 20px;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+    .close-btn:hover { color: var(--text); }
+
+    /* Instrument buttons */
+    .instrument-grid {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    /* Favorites */
+    .favorites-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+    /* Big play button */
+    #playBtn { font-size: 15px; padding: 10px 28px; }
+
+    /* Bpm input */
+    #bpmInput { width: 72px; text-align: center; font-size: 16px; font-weight: 700; }
+
+    /* Theme toggle row */
+    .theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 12px;
+    }
+    .theme-row .label { font-size: 13px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <span class="title">🎸 Guitar Master</span>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" title="테마 전환">🌙</button>
+      <button class="icon-btn" id="shareBtn" title="공유">🔗</button>
+      <button class="icon-btn" id="settingsBtn" title="설정">⚙️</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- Tab 1: 연습 -->
+    <section class="tab-content" data-tab="practice" data-active="true" id="tab-practice">
+      <div class="section-header">🥁 연습</div>
+
+      <!-- 메트로놈 -->
+      <div class="card">
+        <div class="card-title">🥁 메트로놈</div>
+        <div class="row">
+          <span class="label">BPM</span>
+          <input type="number" id="bpmInput" min="40" max="240" value="120">
+          <button class="btn btn-sm" id="tapBtn">TAP</button>
+        </div>
+        <div class="row">
+          <span class="label">박자</span>
+          <select id="timeSigSelect">
+            <option value="2/2">2/2</option>
+            <option value="3/4">3/4</option>
+            <option value="4/4" selected>4/4</option>
+            <option value="6/8">6/8</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="label">분할</span>
+        </div>
+        <div class="btn-row" id="subdivisionBtns">
+          <button class="btn btn-sm active" data-subdivision="quarter">♩</button>
+          <button class="btn btn-sm" data-subdivision="eighth">♫</button>
+          <button class="btn btn-sm" data-subdivision="sixteenth">♬</button>
+          <button class="btn btn-sm" data-subdivision="triplet">♪♪♪</button>
+        </div>
+        <div class="row">
+          <span class="label">사운드</span>
+          <div class="btn-row" id="soundBtns" style="margin-bottom:0;">
+            <button class="btn btn-sm active" data-sound="click">비프</button>
+            <button class="btn btn-sm" data-sound="drum">드럼</button>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn btn-sm" id="countInBtn">카운트인</button>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="playBtn">▶ 재생</button>
+        </div>
+        <div id="beatIndicator" class="beat-dots"></div>
+      </div>
+
+      <!-- 코드 진행 -->
+      <div class="card">
+        <div class="card-title-row">
+          🎹 코드진행
+          <span class="subtle">현재: <span id="currentChordLabel">-</span></span>
+        </div>
+        <div class="row">
+          <span class="label">곡의 키:</span>
+          <select id="songKeySelect">
+            <option>C</option><option>C#</option><option>Db</option>
+            <option>D</option><option>D#</option><option>Eb</option>
+            <option>E</option><option>F</option><option>F#</option>
+            <option>Gb</option><option>G</option><option>G#</option>
+            <option>Ab</option><option>A</option><option>A#</option>
+            <option>Bb</option><option>B</option>
+          </select>
+          <button class="btn btn-sm" id="songKeyDetectBtn">첫 코드로 자동 설정</button>
+        </div>
+        <div class="row">
+          <span class="label">프리셋</span>
+          <select id="presetSelect">
+            <option value="">— 선택 —</option>
+          </select>
+        </div>
+        <div class="row">
+          <input type="text" id="chordInput" placeholder="Cmaj7, F#m7b5, Bb13..." style="flex:1; min-width:0;">
+          <button class="btn primary btn-sm" id="chordAddBtn">추가</button>
+        </div>
+        <div class="row">
+          <button class="btn btn-sm" id="addBasicBtn">+ 기본 코드</button>
+          <button class="btn btn-sm danger" id="resetProgBtn">초기화</button>
+        </div>
+        <div id="chordList" class="chord-list"></div>
+      </div>
+
+      <!-- 추천 스케일 -->
+      <div class="card">
+        <div class="card-title-row">
+          🎼 추천 스케일
+          <span id="suggestRoleLabel" class="subtle"></span>
+        </div>
+        <div id="suggestEmpty" class="empty">코드를 추가하면 추천이 표시됩니다.</div>
+        <div id="suggestList" class="suggest-list"></div>
+      </div>
+    </section>
+
+    <!-- Tab 2: 프렛 -->
+    <section class="tab-content" data-tab="fretboard" data-active="false" id="tab-fretboard">
+      <div class="section-header">🎸 프렛</div>
+
+      <!-- 악기 -->
+      <div class="card">
+        <div class="card-title">악기</div>
+        <div class="instrument-grid" id="instrumentBtns">
+          <button class="btn btn-sm active" data-instrument="guitar">🎸 기타</button>
+          <button class="btn btn-sm" data-instrument="bass4">🎸 4현</button>
+          <button class="btn btn-sm" data-instrument="bass5">🎸 5현</button>
+          <button class="btn btn-sm" data-instrument="violin">🎻 바이올린</button>
+        </div>
+        <div>
+          <button class="btn btn-sm" id="leftHandedBtn">왼손잡이</button>
+        </div>
+      </div>
+
+      <!-- 스케일 설정 -->
+      <div class="card">
+        <div class="card-title">스케일 설정</div>
+        <div class="row">
+          <span class="label">키</span>
+          <select id="scaleKeySelect">
+            <option>C</option><option>C#</option><option>Db</option>
+            <option>D</option><option>D#</option><option>Eb</option>
+            <option>E</option><option>F</option><option>F#</option>
+            <option>Gb</option><option>G</option><option>G#</option>
+            <option>Ab</option><option>A</option><option>A#</option>
+            <option>Bb</option><option>B</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="label">스케일</span>
+          <select id="scaleTypeSelect">
+            <optgroup label="기본 모드 (메이저)">
+              <option value="major">메이저 (이오니안)</option>
+              <option value="dorian">도리안</option>
+              <option value="phrygian">프리지안</option>
+              <option value="lydian">리디안</option>
+              <option value="mixolydian">믹솔리디안</option>
+              <option value="minor">에올리안 (내추럴 마이너)</option>
+              <option value="locrian">로크리안</option>
+            </optgroup>
+            <optgroup label="펜타토닉 / 블루스">
+              <option value="majorPentatonic">메이저 펜타토닉</option>
+              <option value="minorPentatonic">마이너 펜타토닉</option>
+              <option value="minorBluesScale">마이너 블루스</option>
+              <option value="majorBluesScale">메이저 블루스</option>
+              <option value="mixoBluesScale">믹소 블루스</option>
+            </optgroup>
+            <optgroup label="멜로딕 마이너 모드">
+              <option value="melodicMinor">멜로딕 마이너</option>
+              <option value="dorianb2">도리안 b2</option>
+              <option value="lydianAugmented">리디안 어그멘티드</option>
+              <option value="lydianDominant">리디안 도미넌트</option>
+              <option value="mixolydianb6">믹솔리디안 b6</option>
+              <option value="locrianNat2">로크리안 #2 (하프디미니쉬드)</option>
+              <option value="altered">얼터드 (수퍼 로크리안)</option>
+            </optgroup>
+            <optgroup label="하모닉 마이너 모드">
+              <option value="harmonicMinor">하모닉 마이너</option>
+              <option value="locrianNat6">로크리안 내추럴 6</option>
+              <option value="ionianAugmented">이오니안 어그멘티드</option>
+              <option value="dorian_sharp4">도리안 #4</option>
+              <option value="phrygianDominant">프리지안 도미넌트</option>
+              <option value="lydian_sharp2">리디안 #2</option>
+              <option value="superLocrianbb7">수퍼 로크리안 bb7</option>
+            </optgroup>
+            <optgroup label="디미니쉬드 / 비밥">
+              <option value="halfWholeDim">하프-홀 디미니쉬드</option>
+              <option value="wholeHalfDim">홀-하프 디미니쉬드</option>
+              <option value="bebopDominant">비밥 도미넌트</option>
+              <option value="bebopMajor">비밥 메이저</option>
+              <option value="bebopDorian">비밥 도리안</option>
+              <option value="bebopMelodicMinor">비밥 멜로딕 마이너</option>
+              <option value="bebop">비밥 (기본)</option>
+            </optgroup>
+            <optgroup label="대칭 / 기타">
+              <option value="wholeTone">홀톤</option>
+              <option value="augmentedScale">어그멘티드</option>
+              <option value="chromatic">크로매틱</option>
+            </optgroup>
+            <optgroup label="월드 / 이그조틱">
+              <option value="hungarianMinor">헝가리안 마이너</option>
+              <option value="doubleHarmonic">더블 하모닉</option>
+              <option value="hirajoshi">히라조시</option>
+              <option value="inSen">인센</option>
+              <option value="spanish8">스패니시 8음</option>
+              <option value="egyptian">이집션</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <!-- 프렛보드 -->
+      <div class="card">
+        <div class="card-title">프렛보드</div>
+        <div id="fretboardContainer" class="fretboard-placeholder" style="height:240px; display:flex; align-items:center; justify-content:center; color:var(--text-dim);">
+          프렛보드는 다음 단계에서 그려집니다.
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: 백킹 -->
+    <section class="tab-content" data-tab="backing" data-active="false" id="tab-backing">
+      <div class="section-header">🎬 백킹</div>
+
+      <div class="card">
+        <div class="card-title">🎬 YouTube 백킹트랙</div>
+        <div class="row">
+          <input type="text" id="ytUrlInput" placeholder="YouTube URL 또는 영상 ID" style="flex:1; min-width:0;">
+          <button class="btn btn-sm primary" id="ytLoadBtn">불러오기</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="loopABtn">A 설정</button>
+          <button class="btn btn-sm" id="loopBBtn">B 설정</button>
+          <button class="btn btn-sm" id="loopToggleBtn">루프</button>
+          <button class="btn btn-sm danger" id="loopClearBtn">지우기</button>
+        </div>
+        <div class="loop-status" id="loopStatus">A: --:--&nbsp;&nbsp;&nbsp;B: --:--</div>
+        <div class="row">
+          <span class="label">속도</span>
+          <div class="speed-row" style="flex:1;">
+            <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0">
+            <span class="speed-val" id="speedVal">1.0x</span>
+          </div>
+        </div>
+        <div class="card-title" style="margin-top:10px;">즐겨찾기</div>
+        <div id="favoritesList" class="favorites-list"></div>
+        <button class="btn btn-sm" id="addFavoriteBtn">+ 즐겨찾기 추가</button>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="practice" id="tabBtnPractice">
+      <span class="tab-icon">🥁</span>
+      <span>연습</span>
+    </button>
+    <button class="tab-btn" data-tab="fretboard" id="tabBtnFretboard">
+      <span class="tab-icon">🎸</span>
+      <span>프렛</span>
+    </button>
+    <button class="tab-btn" data-tab="backing" id="tabBtnBacking">
+      <span class="tab-icon">🎬</span>
+      <span>백킹</span>
+    </button>
+  </nav>
+
+  <!-- Settings Drawer -->
+  <div class="drawer" id="settingsDrawer" data-open="false">
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <div class="drawer-panel">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <span class="drawer-title">설정</span>
+        <button class="close-btn" id="drawerCloseBtn">✕</button>
+      </div>
+
+      <div class="card-title">음량</div>
+
+      <div class="vol-row">
+        <span class="vol-label">메트로놈</span>
+        <input type="range" id="volMetronome" min="0" max="1" step="0.05" value="0.5">
+        <span class="vol-val" id="volMetronomeVal">50%</span>
+      </div>
+      <div class="vol-row">
+        <span class="vol-label">코드</span>
+        <input type="range" id="volChord" min="0" max="1" step="0.05" value="0.5">
+        <span class="vol-val" id="volChordVal">50%</span>
+      </div>
+      <div class="vol-row">
+        <span class="vol-label">드럼</span>
+        <input type="range" id="volDrum" min="0" max="1" step="0.05" value="0.7">
+        <span class="vol-val" id="volDrumVal">70%</span>
+      </div>
+      <div class="vol-row">
+        <span class="vol-label">프렛보드</span>
+        <input type="range" id="volFretboard" min="0" max="1" step="0.05" value="0.7">
+        <span class="vol-val" id="volFretboardVal">70%</span>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">드럼 패턴</div>
+        <div class="empty" style="padding:8px 0;">Phase 2에서 구현</div>
+      </div>
+
+      <div class="theme-row">
+        <span class="label">테마</span>
+        <button class="btn btn-sm" id="drawerThemeBtn">라이트 모드로</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────────────────────
+    const defaultState = {
+      bpm: 120,
+      timeSignature: '4/4',
+      subdivision: 'quarter',
+      metronomeSound: 'click',
+      countIn: false,
+      songKey: 'C',
+      chordProgression: [],
+      instrument: 'guitar',
+      scaleKeyCenter: 'C',
+      scaleType: 'major',
+      leftHanded: false,
+      drumPattern: { kick: [], snare: [], hihat: [], crash: [] },
+      volumes: { metronome: 0.5, chord: 0.5, drum: 0.7, fretboard: 0.7 },
+      theme: 'dark',
+      activeTab: 'practice',
+      backing: {
+        videoId: null, loopA: null, loopB: null,
+        loopEnabled: false, speed: 1.0, favorites: []
+      }
+    };
+
+    const LS_KEY = 'gtmaster.state.v1';
+    let state = loadState();
+
+    function loadState() {
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+      return mergeDefaults(defaultState, saved || {});
+    }
+
+    function mergeDefaults(defaults, saved) {
+      const out = { ...defaults };
+      for (const k of Object.keys(defaults)) {
+        if (saved[k] !== undefined) {
+          if (typeof defaults[k] === 'object' && defaults[k] !== null && !Array.isArray(defaults[k])) {
+            out[k] = { ...defaults[k], ...saved[k] };
+          } else {
+            out[k] = saved[k];
+          }
+        }
+      }
+      return out;
+    }
+
+    let saveTimer = null;
+    function saveState() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { console.warn(e); }
+      }, 200);
+    }
+
+    function setState(patch) {
+      Object.assign(state, patch);
+      saveState();
+    }
+
+    // ── Music theory data (copied verbatim from gtpractice.html) ───────────────
+        const scalePatterns = {
+            // 기본 모드 (메이저)
+            major: [0, 2, 4, 5, 7, 9, 11],
+            dorian: [0, 2, 3, 5, 7, 9, 10],
+            phrygian: [0, 1, 3, 5, 7, 8, 10],
+            lydian: [0, 2, 4, 6, 7, 9, 11],
+            mixolydian: [0, 2, 4, 5, 7, 9, 10],
+            minor: [0, 2, 3, 5, 7, 8, 10],
+            locrian: [0, 1, 3, 5, 6, 8, 10],
+            // 펜타토닉
+            majorPentatonic: [0, 2, 4, 7, 9],
+            minorPentatonic: [0, 3, 5, 7, 10],
+            // 대칭
+            wholeTone: [0, 2, 4, 6, 8, 10],
+            // 하모닉 마이너
+            harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+            // 비밥 (기본)
+            bebop: [0, 2, 4, 5, 7, 9, 10, 11],
+            // 멜로딕 마이너 모드
+            melodicMinor: [0, 2, 3, 5, 7, 9, 11],
+            dorianb2: [0, 1, 3, 5, 7, 9, 10],
+            lydianAugmented: [0, 2, 4, 6, 8, 9, 11],
+            lydianDominant: [0, 2, 4, 6, 7, 9, 10],
+            mixolydianb6: [0, 2, 4, 5, 7, 8, 10],
+            locrianNat2: [0, 2, 3, 5, 6, 8, 10],
+            altered: [0, 1, 3, 4, 6, 8, 10],
+            // 하모닉 마이너 모드
+            locrianNat6: [0, 1, 3, 5, 6, 9, 10],
+            ionianAugmented: [0, 2, 4, 5, 8, 9, 11],
+            dorian_sharp4: [0, 2, 3, 6, 7, 9, 10],
+            phrygianDominant: [0, 1, 4, 5, 7, 8, 10],
+            lydian_sharp2: [0, 3, 4, 6, 7, 9, 11],
+            superLocrianbb7: [0, 1, 3, 4, 6, 8, 9],
+            // 디미니쉬드
+            halfWholeDim: [0, 1, 3, 4, 6, 7, 9, 10],
+            wholeHalfDim: [0, 2, 3, 5, 6, 8, 9, 11],
+            // 비밥
+            bebopDominant: [0, 2, 4, 5, 7, 9, 10, 11],
+            bebopMajor: [0, 2, 4, 5, 7, 8, 9, 11],
+            bebopDorian: [0, 2, 3, 4, 5, 7, 9, 10],
+            bebopMelodicMinor: [0, 2, 3, 5, 7, 8, 9, 11],
+            // 블루스
+            minorBluesScale: [0, 3, 5, 6, 7, 10],
+            majorBluesScale: [0, 2, 3, 4, 7, 9],
+            mixoBluesScale: [0, 2, 3, 4, 5, 6, 7, 9, 10],
+            // 대칭 / 기타
+            chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            augmentedScale: [0, 3, 4, 7, 8, 11],
+            // 월드 / 이그조틱
+            hungarianMinor: [0, 2, 3, 6, 7, 8, 11],
+            doubleHarmonic: [0, 1, 4, 5, 7, 8, 11],
+            hirajoshi: [0, 2, 3, 7, 8],
+            inSen: [0, 1, 5, 7, 10],
+            spanish8: [0, 1, 3, 4, 5, 6, 8, 10],
+            egyptian: [0, 2, 5, 7, 10]
+        };
+
+        const scaleIntervals = {
+            // 기본 모드 (메이저)
+            major: ['R', '2', '3', '4', '5', '6', '7'],
+            dorian: ['R', '2', 'b3', '4', '5', '6', 'b7'],
+            phrygian: ['R', 'b2', 'b3', '4', '5', 'b6', 'b7'],
+            lydian: ['R', '2', '3', '#4', '5', '6', '7'],
+            mixolydian: ['R', '2', '3', '4', '5', '6', 'b7'],
+            minor: ['R', '2', 'b3', '4', '5', 'b6', 'b7'],
+            locrian: ['R', 'b2', 'b3', '4', 'b5', 'b6', 'b7'],
+            // 펜타토닉
+            majorPentatonic: ['R', '2', '3', '5', '6'],
+            minorPentatonic: ['R', 'b3', '4', '5', 'b7'],
+            // 대칭
+            wholeTone: ['R', '2', '3', '#4', '#5', '#6'],
+            // 하모닉 마이너
+            harmonicMinor: ['R', '2', 'b3', '4', '5', 'b6', '7'],
+            // 비밥 (기본)
+            bebop: ['R', '2', '3', '4', '5', '6', 'b7', '7'],
+            // 멜로딕 마이너 모드
+            melodicMinor: ['R', '2', 'b3', '4', '5', '6', '7'],
+            dorianb2: ['R', 'b2', 'b3', '4', '5', '6', 'b7'],
+            lydianAugmented: ['R', '2', '3', '#4', '#5', '6', '7'],
+            lydianDominant: ['R', '2', '3', '#4', '5', '6', 'b7'],
+            mixolydianb6: ['R', '2', '3', '4', '5', 'b6', 'b7'],
+            locrianNat2: ['R', '2', 'b3', '4', 'b5', 'b6', 'b7'],
+            altered: ['R', 'b9', '#9', '3', 'b5', '#5', 'b7'],
+            // 하모닉 마이너 모드
+            locrianNat6: ['R', 'b2', 'b3', '4', 'b5', '6', 'b7'],
+            ionianAugmented: ['R', '2', '3', '4', '#5', '6', '7'],
+            dorian_sharp4: ['R', '2', 'b3', '#4', '5', '6', 'b7'],
+            phrygianDominant: ['R', 'b9', '3', '4', '5', 'b6', 'b7'],
+            lydian_sharp2: ['R', '#2', '3', '#4', '5', '6', '7'],
+            superLocrianbb7: ['R', 'b2', 'b3', 'b4', 'b5', 'b6', 'bb7'],
+            // 디미니쉬드
+            halfWholeDim: ['R', 'b9', '#9', '3', '#11', '5', '13', 'b7'],
+            wholeHalfDim: ['R', '2', 'b3', '4', 'b5', 'b6', '6', '7'],
+            // 비밥
+            bebopDominant: ['R', '2', '3', '4', '5', '6', 'b7', '7'],
+            bebopMajor: ['R', '2', '3', '4', '5', '#5', '6', '7'],
+            bebopDorian: ['R', '2', 'b3', '3', '4', '5', '6', 'b7'],
+            bebopMelodicMinor: ['R', '2', 'b3', '4', '5', 'b6', '6', '7'],
+            // 블루스
+            minorBluesScale: ['R', 'b3', '4', 'b5', '5', 'b7'],
+            majorBluesScale: ['R', '2', 'b3', '3', '5', '6'],
+            mixoBluesScale: ['R', '2', 'b3', '3', '4', 'b5', '5', '6', 'b7'],
+            // 대칭 / 기타
+            chromatic: ['R', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'],
+            augmentedScale: ['R', '#2', '3', '5', '#5', '7'],
+            // 월드 / 이그조틱
+            hungarianMinor: ['R', '2', 'b3', '#4', '5', 'b6', '7'],
+            doubleHarmonic: ['R', 'b2', '3', '4', '5', 'b6', '7'],
+            hirajoshi: ['R', '2', 'b3', '5', 'b6'],
+            inSen: ['R', 'b2', '4', '5', 'b7'],
+            spanish8: ['R', 'b2', 'b3', '3', '4', 'b5', 'b6', 'b7'],
+            egyptian: ['R', '2', '4', '5', 'b7']
+        };
+
+        const intervalColors = {
+            'R': '#ef4444',     // 빨강 (루트)
+            '2': '#f97316',     // 주황
+            'b2': '#f59e0b',    // 노랑-주황
+            '3': '#eab308',     // 노랑
+            'b3': '#84cc16',    // 연두
+            '4': '#22c55e',     // 초록
+            'b4': '#16a34a',    // 진초록 (수퍼 로크리안 bb7용)
+            '#4': '#10b981',    // 청록
+            '5': '#06b6d4',     // 하늘
+            'b5': '#0ea5e9',    // 파랑
+            '#5': '#d946ef',    // 자주
+            '6': '#3b82f6',     // 진파랑
+            'b6': '#6366f1',    // 남보라
+            '#6': '#ec4899',    // 분홍
+            '7': '#8b5cf6',     // 보라
+            'b7': '#a855f7',    // 진보라
+            'bb7': '#c084fc',   // 연보라 (수퍼 로크리안 bb7용)
+            '#2': '#fb923c',    // 주황-빨강 (헝가리안/리디안#2용)
+            'b9': '#fbbf24',    // 황금 (얼터드 텐션)
+            '#9': '#a3e635',    // 라임 (얼터드 텐션)
+            '#11': '#2dd4bf',   // 청록 (리디안 도미넌트 텐션)
+            '13': '#60a5fa'     // 하늘파랑 (하프-홀 디미니쉬드 텐션)
+        };
+
+        const NOTE_TO_SEMITONE = {
+          'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,
+          'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11
+        };
+
+        function getChordRoleInKey(chordRoot, keyCenter) {
+          const r = NOTE_TO_SEMITONE[chordRoot];
+          const k = NOTE_TO_SEMITONE[keyCenter];
+          if (r === undefined || k === undefined) return null;
+          const interval = (r - k + 12) % 12;
+          const map = {
+            0:'I', 1:'bII', 2:'II', 3:'bIII', 4:'III', 5:'IV',
+            6:'bV', 7:'V', 8:'bVI', 9:'VI', 10:'bVII', 11:'VII'
+          };
+          return map[interval] || null;
+        }
+
+        const chordScaleSuggestions = {
+            'maj7': [
+                { scale: 'major',           why: '기본 이오니안. 4도(11)는 어보이드 노트.' },
+                { scale: 'lydian',          why: '#11 텐션을 살림. 모달/플로팅 사운드.' },
+                { scale: 'bebopMajor',      why: '비밥 라인. 패싱 #5로 8분음 프레이즈.' },
+                { scale: 'majorPentatonic', why: '안전한 멜로디 라인.' },
+                { scale: 'majorBluesScale', why: '블루스 컬러 살짝.' },
+            ],
+            'maj7#11': [
+                { scale: 'lydian',          why: '#11이 코드 톤과 일치. 정공법.' },
+                { scale: 'lydianAugmented', why: '#5까지 더 어두운 컬러.' },
+            ],
+            'maj': [
+                { scale: 'major',           why: '기본.' },
+                { scale: 'majorPentatonic', why: '안전.' },
+                { scale: 'lydian',          why: '#11으로 모던 컬러.' },
+            ],
+            '7': [
+                { scale: 'mixolydian',      why: '기본 도미넌트 스케일.' },
+                { scale: 'bebopDominant',   why: '비밥 라인. 8분음 패싱이 자연스러움.' },
+                { scale: 'lydianDominant',  why: '#11 텐션 (트라이톤 서브, 비기능 V7).' },
+                { scale: 'mixolydianb6',    why: 'b13 살짝. 인도/힌두 컬러.' },
+                { scale: 'halfWholeDim',    why: 'b9 #9 #11 13 모두 가능. 도미넌트의 만능.' },
+                { scale: 'minorPentatonic', why: '블루스 도미넌트 위 b3↔3 슬라이드.' },
+                { scale: 'mixoBluesScale',  why: '블루스 도미넌트 위 메이저+마이너 블루스.' },
+            ],
+            '7alt': [
+                { scale: 'altered',          why: 'V7→Im 해결 정공법. b9 #9 b5 #5 모두.' },
+                { scale: 'phrygianDominant', why: 'b9 b13 강조. 스페인/플라멩고 컬러.' },
+                { scale: 'halfWholeDim',     why: 'b9 #9 #11 13. 얼터드 대체 컬러.' },
+            ],
+            '7b9': [
+                { scale: 'phrygianDominant', why: '마이너 키 V7→Im에 정공법.' },
+                { scale: 'halfWholeDim',     why: 'b9 + #9 #11 13 텐션 다양화.' },
+                { scale: 'altered',          why: 'b9 + 모든 얼터레이션.' },
+            ],
+            '7#11': [
+                { scale: 'lydianDominant',  why: '#11이 코드 톤. 트라이톤 서브, 비기능 V7.' },
+                { scale: 'halfWholeDim',    why: '#11 + b9 #9 13.' },
+            ],
+            '7b13': [
+                { scale: 'mixolydianb6',     why: 'b13(b6) 강조.' },
+                { scale: 'altered',          why: 'b13(#5) + 모든 얼터레이션.' },
+                { scale: 'phrygianDominant', why: 'b9 b13 동시.' },
+            ],
+            'm7': [
+                { scale: 'dorian',          why: 'ii–V–I의 ii. 자연 6도가 모던.' },
+                { scale: 'minor',           why: 'vi 자리의 m7 (에올리안).' },
+                { scale: 'phrygian',        why: 'iii 자리 또는 모달 b9 컬러.' },
+                { scale: 'minorPentatonic', why: '안전. 락/블루스/펑크에 두루.' },
+                { scale: 'minorBluesScale', why: 'b5 블루노트 추가.' },
+                { scale: 'bebopDorian',     why: '비밥 라인 (m7 자리).' },
+            ],
+            'm': [
+                { scale: 'minor',           why: '내추럴 마이너 기본.' },
+                { scale: 'dorian',          why: '6도가 살아있는 모달 마이너.' },
+                { scale: 'minorPentatonic', why: '안전.' },
+            ],
+            'm7b5': [
+                { scale: 'locrian',     why: '기본. 마이너 ii–V의 ii.' },
+                { scale: 'locrianNat2', why: '2도 살아있어 더 부드러움. 모던 재즈 표준.' },
+            ],
+            'mMaj7': [
+                { scale: 'melodicMinor',  why: '바로 그 코드 스케일. 본토닉 마이너.' },
+                { scale: 'harmonicMinor', why: '클래식한 마이너 컬러.' },
+            ],
+            'm6': [
+                { scale: 'melodicMinor', why: '6도 + b3.' },
+                { scale: 'dorian',       why: '내추럴 6도와 b3.' },
+            ],
+            'dim7': [
+                { scale: 'wholeHalfDim',  why: '코드 톤과 텐션 모두 일치.' },
+                { scale: 'harmonicMinor', why: '한 음 위 하모닉 마이너에 vii°7로 내장.' },
+            ],
+            'aug': [
+                { scale: 'wholeTone',      why: '#5 사운드 강조.' },
+                { scale: 'augmentedScale', why: '대칭적 컬러.' },
+            ],
+        };
+
+        const chordScaleSuggestionsByRole = {
+          // Major7 by role
+          'maj7|I':   [
+            { scale: 'major',           why: 'I장조 토닉. 4도(11)는 어보이드.' },
+            { scale: 'lydian',           why: '모달 컬러를 원하면 #11.' },
+            { scale: 'bebopMajor',       why: '비밥 라인 (I 자리).' },
+            { scale: 'majorPentatonic',  why: '안전한 토닉 라인.' },
+          ],
+          'maj7|IV':  [
+            { scale: 'lydian',           why: 'IV의 자연 모드. #11이 살아있음.' },
+            { scale: 'major',            why: '평이한 IV. 어보이드 4도 주의.' },
+            { scale: 'majorPentatonic',  why: '안전한 IV 라인.' },
+          ],
+          'maj7|bIII':[
+            { scale: 'lydian',           why: '평행단조에서 차용한 bIIImaj7. 리디안 컬러.' },
+          ],
+          'maj7|bVI':[
+            { scale: 'lydian',           why: '평행단조에서 차용한 bVImaj7. 리디안 컬러.' },
+          ],
+          'maj7|bII':[
+            { scale: 'lydian',           why: 'V의 트라이톤 서브 maj7 변형. 리디안.' },
+          ],
+
+          // Dominant 7 by role
+          '7|V':      [
+            { scale: 'mixolydian',       why: 'V7→I 기능 도미넌트의 정공법.' },
+            { scale: 'bebopDominant',    why: 'V7 비밥 라인.' },
+            { scale: 'altered',          why: 'I이 마이너거나 강한 텐션을 원할 때.' },
+            { scale: 'phrygianDominant', why: '마이너 키 V7→Im에 정공법 (b9 b13).' },
+            { scale: 'halfWholeDim',     why: 'b9 #9 #11 13 모두 가능.' },
+          ],
+          '7|I':      [
+            { scale: 'mixolydian',       why: '블루스 I7. 도미넌트 토닉 사운드.' },
+            { scale: 'mixoBluesScale',   why: '블루스 I7 위 메이저+마이너 블루스 혼합.' },
+            { scale: 'minorPentatonic',  why: '블루스 I7 위 b3↔3 슬라이드.' },
+            { scale: 'minorBluesScale',  why: '블루스 I7. b5 블루노트.' },
+            { scale: 'bebopDominant',    why: '재즈 블루스 I 라인.' },
+          ],
+          '7|IV':     [
+            { scale: 'mixolydian',       why: '블루스 IV7.' },
+            { scale: 'mixoBluesScale',   why: '블루스 IV에 블루노트 추가.' },
+            { scale: 'minorPentatonic',  why: '블루스 IV. b3↔3.' },
+            { scale: 'lydianDominant',   why: 'IV7을 비기능적으로 (#11) 보고 싶을 때.' },
+          ],
+          '7|bII':    [
+            { scale: 'lydianDominant',   why: 'V7의 트라이톤 서브. #11이 자연스러움.' },
+            { scale: 'altered',          why: '대체 도미넌트로 강한 텐션.' },
+          ],
+          '7|II':     [
+            { scale: 'mixolydian',       why: 'V7/V (도펠도미넌트) 기본.' },
+            { scale: 'lydianDominant',   why: '비기능적 II7 (모달 인터체인지)에 #11.' },
+            { scale: 'bebopDominant',    why: '비밥 라인.' },
+          ],
+          '7|III':    [
+            { scale: 'altered',          why: 'V7/vi. vi(마이너)로 해결되니 얼터드.' },
+            { scale: 'phrygianDominant', why: 'V7/vi에 b9 b13.' },
+            { scale: 'halfWholeDim',     why: 'V7/vi 텐션 다양화.' },
+          ],
+          '7|VI':     [
+            { scale: 'altered',          why: 'V7/ii. ii(마이너)로 해결되니 얼터드.' },
+            { scale: 'phrygianDominant', why: 'V7/ii에 b9 b13.' },
+            { scale: 'halfWholeDim',     why: 'V7/ii 텐션.' },
+          ],
+          '7|VII':    [
+            { scale: 'altered',          why: 'V7/iii. 강한 얼터드.' },
+            { scale: 'phrygianDominant', why: 'V7/iii.' },
+          ],
+          '7|bVII':   [
+            { scale: 'lydianDominant',   why: 'bVII7 (백도어 도미넌트). #11 컬러.' },
+            { scale: 'mixolydian',       why: '평이한 bVII7.' },
+          ],
+          '7|bVI':    [
+            { scale: 'lydianDominant',   why: 'bVI7 (모달 인터체인지/트라이톤 변형).' },
+          ],
+
+          // Minor 7 by role
+          'm7|II':    [
+            { scale: 'dorian',           why: 'ii–V–I의 ii. 도리안이 정공법.' },
+            { scale: 'bebopDorian',      why: 'ii 자리 비밥 라인.' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+          ],
+          'm7|VI':    [
+            { scale: 'minor',            why: 'vi (관계단조 토닉). 에올리안.' },
+            { scale: 'dorian',           why: 'vi를 모달로 해석할 때.' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+          ],
+          'm7|III':   [
+            { scale: 'phrygian',         why: 'iii. 프리지안의 b9 컬러.' },
+            { scale: 'minor',            why: '평이한 iii.' },
+          ],
+          'm7|I':     [
+            { scale: 'dorian',           why: '모달 i. 도리안.' },
+            { scale: 'minor',            why: 'i (에올리안).' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+            { scale: 'minorBluesScale',  why: '블루스 i. b5.' },
+          ],
+          'm7|IV':    [
+            { scale: 'dorian',           why: 'iv 모달 인터체인지. 도리안.' },
+            { scale: 'minor',            why: '단조 iv (에올리안).' },
+          ],
+          'm7|V':     [
+            { scale: 'phrygian',         why: '단조의 v (자연단조).' },
+            { scale: 'minor',            why: 'v를 평이하게.' },
+          ],
+
+          // Half-diminished by role
+          'm7b5|VII': [
+            { scale: 'locrian',          why: 'vii°7 자연 모드.' },
+            { scale: 'locrianNat2',      why: '2도 살린 모던 사운드.' },
+          ],
+          'm7b5|II':  [
+            { scale: 'locrianNat2',      why: '단조 ii–V–i의 ii. 모던 표준.' },
+            { scale: 'locrian',          why: '전통적 마이너 ii–V.' },
+          ],
+
+          // Diminished7 by role
+          'dim7|VII':   [
+            { scale: 'wholeHalfDim',     why: '코드 톤 + 텐션 일치.' },
+            { scale: 'harmonicMinor',    why: '한 음 위 하모닉 마이너의 vii°7.' },
+          ],
+          'dim7|bIII':  [
+            { scale: 'wholeHalfDim',     why: '패싱 디미니쉬드.' },
+          ],
+          'dim7|bV':    [
+            { scale: 'wholeHalfDim',     why: '패싱/연결 디미니쉬드.' },
+          ],
+          'dim7|bVI':   [
+            { scale: 'wholeHalfDim',     why: '패싱 디미니쉬드.' },
+          ],
+
+          // Minor (no 7) by role
+          'm|VI':     [
+            { scale: 'minor',            why: 'vi 관계단조.' },
+            { scale: 'minorPentatonic',  why: '안전.' },
+          ],
+          'm|II':     [
+            { scale: 'dorian',           why: 'ii 자리 모달.' },
+          ],
+          'm|I':      [
+            { scale: 'minor',            why: 'i 자연단조.' },
+            { scale: 'dorian',           why: 'i 모달 (도리안).' },
+            { scale: 'harmonicMinor',    why: 'i 하모닉 마이너 컬러.' },
+            { scale: 'melodicMinor',     why: 'i 멜로딕 마이너.' },
+          ],
+
+          // Major (no 7) by role
+          'maj|I':    [
+            { scale: 'major',            why: 'I 장조 토닉.' },
+            { scale: 'majorPentatonic',  why: '안전.' },
+            { scale: 'lydian',           why: '#11 모던 컬러.' },
+          ],
+          'maj|IV':   [
+            { scale: 'lydian',           why: 'IV 자연 모드.' },
+            { scale: 'major',            why: '평이한 IV.' },
+          ],
+          'maj|V':    [
+            { scale: 'mixolydian',       why: 'V (도미넌트 기능, 7 없는 트라이아드).' },
+          ],
+          'maj|bVII': [
+            { scale: 'lydian',           why: 'bVII 모달 인터체인지.' },
+            { scale: 'major',            why: '평이한 bVII.' },
+          ],
+          'maj|bVI':  [
+            { scale: 'lydian',           why: 'bVI 모달 인터체인지.' },
+          ],
+          'maj|bIII': [
+            { scale: 'lydian',           why: 'bIII 모달 인터체인지.' },
+          ],
+        };
+
+        function classifyChordForSuggestions(chord) {
+            if (!chord) return null;
+            const q = chord.quality;
+            const s = chord.seventh || '';
+            const t = chord.tensions || [];
+            const has = function(x) { return t.indexOf(x) !== -1; };
+
+            if (q === 'diminished7') return 'dim7';
+            if (q === 'halfDiminished') return 'm7b5';
+            if (q === 'augmented') return 'aug';
+
+            if (q === 'minor') {
+                if (s === 'major7') return 'mMaj7';
+                if (s === 'dominant') return 'm7';
+                if (has('13') && !s) return 'm6';
+                return 'm';
+            }
+
+            if (q === 'major') {
+                if (s === 'major7') {
+                    if (has('#11')) return 'maj7#11';
+                    return 'maj7';
+                }
+                if (s === 'dominant') {
+                    const altish = (has('b9') || has('#9')) && (has('b13') || has('#11'));
+                    if (altish) return '7alt';
+                    if (has('#11') && !has('b9') && !has('#9') && !has('b13')) return '7#11';
+                    if (has('b9')) return '7b9';
+                    if (has('b13')) return '7b13';
+                    return '7';
+                }
+                return 'maj';
+            }
+
+            if (q === 'diminished') return 'dim7';
+            return null;
+        }
+
+        const chordPresets = {
+            'pop_1_5_6_4':   { label: 'I-V-vi-IV (Pop)',        chords: ['C', 'G', 'Am', 'F'] },
+            'fifties_1_6_4_5': { label: 'I-vi-IV-V (50s)',      chords: ['C', 'Am', 'F', 'G'] },
+            'pop_6_4_1_5':   { label: 'vi-IV-I-V (감성팝)',     chords: ['Am', 'F', 'C', 'G'] },
+            'andalusian':    { label: 'Andalusian (Am-G-F-E)',  chords: ['Am', 'G', 'F', 'E'] },
+            'jazz_ii_v_i':   { label: 'ii-V-I (C major)',       chords: ['Dm7', 'G7', 'Cmaj7', 'Cmaj7'] },
+            'jazz_minor_ii_v_i': { label: 'ii-V-i (A minor)',   chords: ['Bm7b5', 'E7', 'Am7', 'Am7'] },
+            'rhythm_changes': { label: 'Rhythm Changes A (Bb)', chords: ['Bbmaj7', 'G7', 'Cm7', 'F7'] },
+            'blues_12':      { label: '12-bar Blues (C7)',      chords: ['C7','C7','C7','C7','F7','F7','C7','C7','G7','F7','C7','G7'] },
+            'jazz_blues':    { label: 'Jazz Blues (Bb)',        chords: ['Bb7','Eb7','Bb7','Bb7','Eb7','Eb7','Bb7','G7','Cm7','F7','Bb7','F7'] },
+            'canon':         { label: 'Canon in D',             chords: ['D','A','Bm','F#m','G','D','G','A'] },
+            'autumn_leaves': { label: 'Autumn Leaves (Gm)',     chords: ['Cm7','F7','Bbmaj7','Ebmaj7','Am7b5','D7','Gm','Gm'] },
+            'giant_steps':   { label: 'Giant Steps (일부)',      chords: ['Bmaj7','D7','Gmaj7','Bb7','Ebmaj7','Am7','D7','Gmaj7'] },
+            'modal_dorian':  { label: 'D Dorian Vamp',          chords: ['Dm7','G7','Dm7','G7'] },
+            'bossa_1':       { label: 'Bossa Nova',             chords: ['Fmaj7','Gm7','Am7','Gm7'] }
+        };
+
+    // ── Chord parser ───────────────────────────────────────────────────────────
+    const FLAT_TO_SHARP = { 'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#' };
+    function normalizeRoot(r) { return FLAT_TO_SHARP[r] || r; }
+
+    function parseChord(input) {
+      if (!input || typeof input !== 'string') return null;
+      const s = input.trim();
+      const rootMatch = s.match(/^([A-G])([#b]?)/);
+      if (!rootMatch) return null;
+      let root = normalizeRoot(rootMatch[1] + (rootMatch[2] || ''));
+      let rest = s.slice(rootMatch[0].length);
+
+      let quality = 'major';
+      let seventh = '';
+
+      if (/^m7b5/.test(rest) || /^ø7?/.test(rest)) {
+        quality = 'halfDiminished'; seventh = 'dominant';
+        rest = rest.replace(/^m7b5/, '').replace(/^ø7?/, '');
+      } else if (/^dim7/i.test(rest) || /^°7/.test(rest)) {
+        quality = 'diminished7';
+        rest = rest.replace(/^dim7/i, '').replace(/^°7/, '');
+      } else if (/^dim/i.test(rest) || /^°/.test(rest)) {
+        quality = 'diminished';
+        rest = rest.replace(/^dim/i, '').replace(/^°/, '');
+      } else if (/^aug/i.test(rest) || /^\+/.test(rest)) {
+        quality = 'augmented';
+        rest = rest.replace(/^aug/i, '').replace(/^\+/, '');
+      } else if (/^(mMaj7|mM7|m\(maj7\)|minMaj7)/.test(rest)) {
+        quality = 'minor'; seventh = 'major7';
+        rest = rest.replace(/^(mMaj7|mM7|m\(maj7\)|minMaj7)/, '');
+      } else if (/^(maj7|M7|Δ7?)/.test(rest)) {
+        quality = 'major'; seventh = 'major7';
+        rest = rest.replace(/^(maj7|M7|Δ7?)/, '');
+      } else if (/^(m|min|-)/.test(rest)) {
+        quality = 'minor';
+        rest = rest.replace(/^(m|min|-)/, '');
+        if (/^7/.test(rest)) { seventh = 'dominant'; rest = rest.slice(1); }
+      } else if (/^(7|9|11|13)/.test(rest)) {
+        seventh = 'dominant';
+        if (/^7/.test(rest)) rest = rest.slice(1);
+      }
+
+      const tensions = [];
+      const tensionRe = /([b#]?)(13|11|9|5)/g;
+      let m;
+      while ((m = tensionRe.exec(rest)) !== null) {
+        const acc = m[1], num = m[2];
+        if (num === '5') {
+          if (acc === 'b' || acc === '#') tensions.push(acc + '5');
+        } else {
+          tensions.push((acc || '') + num);
+        }
+      }
+      const seen = new Set();
+      const uniq = [];
+      for (const t of tensions) { if (!seen.has(t)) { seen.add(t); uniq.push(t); } }
+
+      return { root, quality, seventh, tensions: uniq, duration: 4, extras: [] };
+    }
+
+    function runChordParserTests() {
+      const cases = [
+        ['C',        { root:'C',  quality:'major',          seventh:'',         tensions:[] }],
+        ['Cmaj7',    { root:'C',  quality:'major',          seventh:'major7',   tensions:[] }],
+        ['Cm7',      { root:'C',  quality:'minor',          seventh:'dominant', tensions:[] }],
+        ['Cm7b5',    { root:'C',  quality:'halfDiminished', seventh:'dominant', tensions:[] }],
+        ['Cdim7',    { root:'C',  quality:'diminished7',    seventh:'',         tensions:[] }],
+        ['C7b9',     { root:'C',  quality:'major',          seventh:'dominant', tensions:['b9'] }],
+        ['F#m7b5',   { root:'F#', quality:'halfDiminished', seventh:'dominant', tensions:[] }],
+        ['Bb13',     { root:'A#', quality:'major',          seventh:'dominant', tensions:['13'] }],
+        ['Cmaj7#11', { root:'C',  quality:'major',          seventh:'major7',   tensions:['#11'] }],
+        ['CmMaj7',   { root:'C',  quality:'minor',          seventh:'major7',   tensions:[] }],
+      ];
+      let pass = 0, fail = 0;
+      for (const [input, expected] of cases) {
+        const got = parseChord(input);
+        const ok = got && got.root === expected.root
+          && got.quality === expected.quality
+          && got.seventh === expected.seventh
+          && JSON.stringify(got.tensions) === JSON.stringify(expected.tensions);
+        if (ok) pass++;
+        else { fail++; console.warn('chord parser FAIL', input, '→', got, 'expected', expected); }
+      }
+      console.log('chord parser: ' + pass + '/' + (pass + fail) + ' passed');
+    }
+    runChordParserTests();
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function fmtPct(v) { return Math.round(v * 100) + '%'; }
+
+    function chordDisplayName(chord) {
+      const { root, quality, seventh, tensions } = chord;
+      let suffix = '';
+      if (quality === 'major') {
+        if (seventh === 'major7') suffix = 'maj7';
+        else if (seventh === 'dominant') suffix = '7';
+        else suffix = '';
+      } else if (quality === 'minor') {
+        if (seventh === 'dominant') suffix = 'm7';
+        else if (seventh === 'major7') suffix = 'mMaj7';
+        else suffix = 'm';
+      } else if (quality === 'halfDiminished') {
+        suffix = 'm7b5';
+      } else if (quality === 'diminished7') {
+        suffix = 'dim7';
+      } else if (quality === 'diminished') {
+        suffix = 'dim';
+      } else if (quality === 'augmented') {
+        suffix = 'aug';
+      } else {
+        suffix = quality || '';
+      }
+      const tens = (tensions && tensions.length) ? tensions.join('') : '';
+      return root + suffix + tens;
+    }
+
+    const ROOTS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const QUALITIES = [
+      { value: 'major', label: 'maj' },
+      { value: 'minor', label: 'min' },
+      { value: 'diminished', label: 'dim' },
+      { value: 'augmented', label: 'aug' },
+      { value: 'halfDiminished', label: 'halfDim' },
+      { value: 'diminished7', label: 'dim7' },
+      { value: 'major7', label: 'maj7' },
+      { value: 'dominant', label: 'dom7' },
+    ];
+
+    // ── Render: Beat Indicator ─────────────────────────────────────────────────
+    function renderBeatIndicator() {
+      const container = document.getElementById('beatIndicator');
+      const sig = state.timeSignature;
+      const beats = sig === '6/8' ? 6 : parseInt(sig.split('/')[0], 10) || 4;
+      container.innerHTML = '';
+      for (let i = 0; i < beats; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'beat-dot' + (i === 0 ? ' accent' : '');
+        container.appendChild(dot);
+      }
+    }
+
+    // ── Render: Chord List ─────────────────────────────────────────────────────
+    function renderChordList() {
+      const container = document.getElementById('chordList');
+      container.innerHTML = '';
+      state.chordProgression.forEach((chord, idx) => {
+        const card = document.createElement('div');
+        card.className = 'chord-card';
+
+        // Remove button
+        const xBtn = document.createElement('button');
+        xBtn.className = 'card-x';
+        xBtn.dataset.idx = idx;
+        xBtn.textContent = '✕';
+        xBtn.addEventListener('click', () => {
+          state.chordProgression.splice(idx, 1);
+          setState({ chordProgression: [...state.chordProgression] });
+          renderChordList();
+          renderSuggestEmpty();
+        });
+
+        // Chord name
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'chord-name';
+        nameDiv.textContent = chordDisplayName(chord);
+
+        // Controls
+        const controls = document.createElement('div');
+        controls.className = 'chord-controls';
+
+        // Root select
+        const rootSel = document.createElement('select');
+        rootSel.className = 'root-sel';
+        ROOTS.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = r;
+          if (r === chord.root) opt.selected = true;
+          rootSel.appendChild(opt);
+        });
+        rootSel.addEventListener('change', () => {
+          state.chordProgression[idx].root = rootSel.value;
+          setState({ chordProgression: [...state.chordProgression] });
+          nameDiv.textContent = chordDisplayName(state.chordProgression[idx]);
+        });
+
+        // Quality select
+        const qualSel = document.createElement('select');
+        qualSel.className = 'qual-sel';
+        QUALITIES.forEach(q => {
+          const opt = document.createElement('option');
+          opt.value = q.value;
+          opt.textContent = q.label;
+          if (q.value === chord.quality) opt.selected = true;
+          qualSel.appendChild(opt);
+        });
+        qualSel.addEventListener('change', () => {
+          state.chordProgression[idx].quality = qualSel.value;
+          setState({ chordProgression: [...state.chordProgression] });
+          nameDiv.textContent = chordDisplayName(state.chordProgression[idx]);
+        });
+
+        controls.appendChild(rootSel);
+        controls.appendChild(qualSel);
+
+        // Duration row
+        const durRow = document.createElement('div');
+        durRow.className = 'duration-row';
+        const decBtn = document.createElement('button');
+        decBtn.className = 'stepper';
+        decBtn.dataset.action = 'dec';
+        decBtn.dataset.idx = idx;
+        decBtn.textContent = '−';
+        const durNum = document.createElement('span');
+        durNum.className = 'duration-num';
+        durNum.textContent = chord.duration + '박';
+        const incBtn = document.createElement('button');
+        incBtn.className = 'stepper';
+        incBtn.dataset.action = 'inc';
+        incBtn.dataset.idx = idx;
+        incBtn.textContent = '+';
+
+        decBtn.addEventListener('click', () => {
+          if (state.chordProgression[idx].duration > 1) {
+            state.chordProgression[idx].duration--;
+            setState({ chordProgression: [...state.chordProgression] });
+            durNum.textContent = state.chordProgression[idx].duration + '박';
+          }
+        });
+        incBtn.addEventListener('click', () => {
+          if (state.chordProgression[idx].duration < 16) {
+            state.chordProgression[idx].duration++;
+            setState({ chordProgression: [...state.chordProgression] });
+            durNum.textContent = state.chordProgression[idx].duration + '박';
+          }
+        });
+
+        durRow.appendChild(decBtn);
+        durRow.appendChild(durNum);
+        durRow.appendChild(incBtn);
+
+        card.appendChild(xBtn);
+        card.appendChild(nameDiv);
+        card.appendChild(controls);
+        card.appendChild(durRow);
+        container.appendChild(card);
+      });
+    }
+
+    // ── Render: Suggest empty state ────────────────────────────────────────────
+    function renderSuggestEmpty() {
+      const empty = document.getElementById('suggestEmpty');
+      const list = document.getElementById('suggestList');
+      if (state.chordProgression.length === 0) {
+        empty.style.display = '';
+        list.style.display = 'none';
+      } else {
+        empty.style.display = 'none';
+        list.style.display = '';
+      }
+    }
+
+    // ── Render: Volume values ──────────────────────────────────────────────────
+    function renderVolumes() {
+      document.getElementById('volMetronome').value = state.volumes.metronome;
+      document.getElementById('volMetronomeVal').textContent = fmtPct(state.volumes.metronome);
+      document.getElementById('volChord').value = state.volumes.chord;
+      document.getElementById('volChordVal').textContent = fmtPct(state.volumes.chord);
+      document.getElementById('volDrum').value = state.volumes.drum;
+      document.getElementById('volDrumVal').textContent = fmtPct(state.volumes.drum);
+      document.getElementById('volFretboard').value = state.volumes.fretboard;
+      document.getElementById('volFretboardVal').textContent = fmtPct(state.volumes.fretboard);
+    }
+
+    // ── Theme ──────────────────────────────────────────────────────────────────
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const themeBtn = document.getElementById('themeBtn');
+      themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      const drawerThemeBtn = document.getElementById('drawerThemeBtn');
+      drawerThemeBtn.textContent = theme === 'dark' ? '라이트 모드로' : '다크 모드로';
+    }
+
+    // ── Tabs ───────────────────────────────────────────────────────────────────
+    function applyActiveTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(sec => {
+        sec.dataset.active = sec.dataset.tab === tabName ? 'true' : 'false';
+      });
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+    }
+
+    // ── Play button ────────────────────────────────────────────────────────────
+    let isPlaying = false;
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('playBtn');
+      btn.textContent = isPlaying ? '■ 정지' : '▶ 재생';
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      // Apply persisted state
+      applyTheme(state.theme);
+      applyActiveTab(state.activeTab);
+
+      // BPM
+      document.getElementById('bpmInput').value = state.bpm;
+      // Time sig
+      document.getElementById('timeSigSelect').value = state.timeSignature;
+      // Subdivision
+      document.querySelectorAll('#subdivisionBtns [data-subdivision]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subdivision === state.subdivision);
+      });
+      // Sound
+      document.querySelectorAll('#soundBtns [data-sound]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sound === state.metronomeSound);
+      });
+      // Count in
+      document.getElementById('countInBtn').classList.toggle('active', state.countIn);
+      // Song key
+      document.getElementById('songKeySelect').value = state.songKey;
+      // Instrument
+      document.querySelectorAll('#instrumentBtns [data-instrument]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.instrument === state.instrument);
+      });
+      // Left handed
+      document.getElementById('leftHandedBtn').classList.toggle('active', state.leftHanded);
+      // Scale key
+      document.getElementById('scaleKeySelect').value = state.scaleKeyCenter;
+      // Scale type
+      document.getElementById('scaleTypeSelect').value = state.scaleType;
+      // Speed
+      document.getElementById('speedSlider').value = state.backing.speed;
+      document.getElementById('speedVal').textContent = Number(state.backing.speed).toFixed(1) + 'x';
+
+      renderBeatIndicator();
+      renderChordList();
+      renderSuggestEmpty();
+      renderVolumes();
+
+      // ── Event listeners ────────────────────────────────────────────────────
+
+      // Theme toggle (header)
+      document.getElementById('themeBtn').addEventListener('click', () => {
+        const newTheme = state.theme === 'dark' ? 'light' : 'dark';
+        setState({ theme: newTheme });
+        applyTheme(newTheme);
+      });
+
+      // Share button
+      document.getElementById('shareBtn').addEventListener('click', () => {
+        if (navigator.share) {
+          navigator.share({ title: 'Guitar Master', url: location.href }).catch(() => {});
+        } else {
+          navigator.clipboard && navigator.clipboard.writeText(location.href);
+        }
+      });
+
+      // Settings drawer open
+      document.getElementById('settingsBtn').addEventListener('click', () => {
+        document.getElementById('settingsDrawer').dataset.open = 'true';
+      });
+      document.getElementById('drawerCloseBtn').addEventListener('click', () => {
+        document.getElementById('settingsDrawer').dataset.open = 'false';
+      });
+      document.getElementById('drawerBackdrop').addEventListener('click', () => {
+        document.getElementById('settingsDrawer').dataset.open = 'false';
+      });
+
+      // Drawer theme button
+      document.getElementById('drawerThemeBtn').addEventListener('click', () => {
+        const newTheme = state.theme === 'dark' ? 'light' : 'dark';
+        setState({ theme: newTheme });
+        applyTheme(newTheme);
+      });
+
+      // Tab bar
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setState({ activeTab: btn.dataset.tab });
+          applyActiveTab(btn.dataset.tab);
+        });
+      });
+
+      // BPM input
+      document.getElementById('bpmInput').addEventListener('input', e => {
+        const v = parseInt(e.target.value, 10);
+        if (v >= 40 && v <= 240) setState({ bpm: v });
+      });
+
+      // Time signature
+      document.getElementById('timeSigSelect').addEventListener('change', e => {
+        setState({ timeSignature: e.target.value });
+        renderBeatIndicator();
+      });
+
+      // Subdivision
+      document.querySelectorAll('#subdivisionBtns [data-subdivision]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setState({ subdivision: btn.dataset.subdivision });
+          document.querySelectorAll('#subdivisionBtns [data-subdivision]').forEach(b => {
+            b.classList.toggle('active', b.dataset.subdivision === state.subdivision);
+          });
+        });
+      });
+
+      // Sound
+      document.querySelectorAll('#soundBtns [data-sound]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setState({ metronomeSound: btn.dataset.sound });
+          document.querySelectorAll('#soundBtns [data-sound]').forEach(b => {
+            b.classList.toggle('active', b.dataset.sound === state.metronomeSound);
+          });
+        });
+      });
+
+      // Count in
+      document.getElementById('countInBtn').addEventListener('click', () => {
+        setState({ countIn: !state.countIn });
+        document.getElementById('countInBtn').classList.toggle('active', state.countIn);
+      });
+
+      // TAP
+      document.getElementById('tapBtn').addEventListener('click', () => {
+        console.log('[gtmaster] TAP at', Date.now());
+      });
+
+      // Play / Stop
+      document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+      // Song key
+      document.getElementById('songKeySelect').addEventListener('change', e => {
+        setState({ songKey: e.target.value });
+      });
+
+      // Song key auto-detect from first chord
+      document.getElementById('songKeyDetectBtn').addEventListener('click', () => {
+        if (state.chordProgression.length > 0) {
+          const root = state.chordProgression[0].root;
+          setState({ songKey: root });
+          document.getElementById('songKeySelect').value = root;
+        }
+      });
+
+      // Preset
+      (function populatePresets() {
+        const sel = document.getElementById('presetSelect');
+        if (!sel) return;
+        for (const key of Object.keys(chordPresets)) {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = chordPresets[key].label;
+          sel.appendChild(opt);
+        }
+      })();
+      document.getElementById('presetSelect').addEventListener('change', e => {
+        const key = e.target.value;
+        if (key && chordPresets[key]) {
+          const prog = chordPresets[key].chords.map(parseChord).filter(Boolean);
+          setState({ chordProgression: prog });
+          if (prog.length > 0) {
+            setState({ songKey: prog[0].root });
+            document.getElementById('songKeySelect').value = prog[0].root;
+          }
+          renderChordList();
+          renderSuggestEmpty();
+        }
+        e.target.value = '';
+      });
+
+      // Chord add button (parser-driven)
+      function addChordFromInput() {
+        const inputEl = document.getElementById('chordInput');
+        const parsed = parseChord(inputEl.value);
+        if (!parsed) {
+          inputEl.style.borderColor = 'var(--danger)';
+          setTimeout(() => { inputEl.style.borderColor = ''; }, 600);
+          return;
+        }
+        const wasEmpty = state.chordProgression.length === 0;
+        const prog = [...state.chordProgression, parsed];
+        setState({ chordProgression: prog });
+        if (wasEmpty) {
+          setState({ songKey: parsed.root });
+          document.getElementById('songKeySelect').value = parsed.root;
+        }
+        renderChordList();
+        renderSuggestEmpty();
+        inputEl.value = '';
+      }
+      document.getElementById('chordAddBtn').addEventListener('click', addChordFromInput);
+      document.getElementById('chordInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); addChordFromInput(); }
+      });
+
+      // Add basic chord
+      document.getElementById('addBasicBtn').addEventListener('click', () => {
+        const prog = [...state.chordProgression, {
+          root: 'C', quality: 'major', seventh: '', tensions: [], duration: 4
+        }];
+        setState({ chordProgression: prog });
+        renderChordList();
+        renderSuggestEmpty();
+      });
+
+      // Reset progression
+      document.getElementById('resetProgBtn').addEventListener('click', () => {
+        setState({ chordProgression: [] });
+        renderChordList();
+        renderSuggestEmpty();
+      });
+
+      // Instrument buttons
+      document.querySelectorAll('#instrumentBtns [data-instrument]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setState({ instrument: btn.dataset.instrument });
+          document.querySelectorAll('#instrumentBtns [data-instrument]').forEach(b => {
+            b.classList.toggle('active', b.dataset.instrument === state.instrument);
+          });
+        });
+      });
+
+      // Left-handed
+      document.getElementById('leftHandedBtn').addEventListener('click', () => {
+        setState({ leftHanded: !state.leftHanded });
+        document.getElementById('leftHandedBtn').classList.toggle('active', state.leftHanded);
+      });
+
+      // Scale key
+      document.getElementById('scaleKeySelect').addEventListener('change', e => {
+        setState({ scaleKeyCenter: e.target.value });
+      });
+
+      // Scale type
+      document.getElementById('scaleTypeSelect').addEventListener('change', e => {
+        setState({ scaleType: e.target.value });
+      });
+
+      // YouTube load (placeholder)
+      document.getElementById('ytLoadBtn').addEventListener('click', () => {
+        const url = document.getElementById('ytUrlInput').value.trim();
+        if (!url) return;
+        // Phase 3 will implement
+        console.log('[gtmaster] YT load:', url);
+      });
+
+      // Loop controls (placeholder)
+      document.getElementById('loopABtn').addEventListener('click', () => {
+        console.log('[gtmaster] Loop A set');
+      });
+      document.getElementById('loopBBtn').addEventListener('click', () => {
+        console.log('[gtmaster] Loop B set');
+      });
+      document.getElementById('loopToggleBtn').addEventListener('click', () => {
+        const loopEnabled = !state.backing.loopEnabled;
+        setState({ backing: { ...state.backing, loopEnabled } });
+        document.getElementById('loopToggleBtn').classList.toggle('active', loopEnabled);
+      });
+      document.getElementById('loopClearBtn').addEventListener('click', () => {
+        setState({ backing: { ...state.backing, loopA: null, loopB: null, loopEnabled: false } });
+        document.getElementById('loopStatus').innerHTML = 'A: --:--&nbsp;&nbsp;&nbsp;B: --:--';
+        document.getElementById('loopToggleBtn').classList.remove('active');
+      });
+
+      // Speed slider
+      document.getElementById('speedSlider').addEventListener('input', e => {
+        const speed = parseFloat(e.target.value);
+        setState({ backing: { ...state.backing, speed } });
+        document.getElementById('speedVal').textContent = speed.toFixed(1) + 'x';
+      });
+
+      // Add favorite (placeholder)
+      document.getElementById('addFavoriteBtn').addEventListener('click', () => {
+        console.log('[gtmaster] Add favorite placeholder');
+      });
+
+      // Volume sliders
+      document.getElementById('volMetronome').addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        state.volumes.metronome = v;
+        setState({ volumes: { ...state.volumes } });
+        document.getElementById('volMetronomeVal').textContent = fmtPct(v);
+      });
+      document.getElementById('volChord').addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        state.volumes.chord = v;
+        setState({ volumes: { ...state.volumes } });
+        document.getElementById('volChordVal').textContent = fmtPct(v);
+      });
+      document.getElementById('volDrum').addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        state.volumes.drum = v;
+        setState({ volumes: { ...state.volumes } });
+        document.getElementById('volDrumVal').textContent = fmtPct(v);
+      });
+      document.getElementById('volFretboard').addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        state.volumes.fretboard = v;
+        setState({ volumes: { ...state.volumes } });
+        document.getElementById('volFretboardVal').textContent = fmtPct(v);
+      });
+    });
+  </script>
+</body>
+</html>
