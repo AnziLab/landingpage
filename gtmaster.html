@@ -243,8 +243,10 @@
       border-radius: 50%;
       background: var(--border);
       border: 1px solid var(--text-dim);
+      transition: background 0.25s, border-color 0.25s;
     }
     .beat-dot.accent { background: var(--accent); border-color: var(--accent); }
+    .beat-dot.flash { background: var(--accent); border-color: var(--accent); transition: none; }
 
     /* Chord list */
     .chord-list {
@@ -1536,12 +1538,222 @@
       });
     }
 
-    // ── Play button ────────────────────────────────────────────────────────────
-    let isPlaying = false;
-    function togglePlay() {
-      isPlaying = !isPlaying;
+    // ── Audio system (lazy init) ───────────────────────────────────────────────
+    const audioSystem = {
+      ctx: null,
+      master: null,
+      gains: { metronome: null, chord: null, drum: null, fretboard: null },
+      ensureStarted() {
+        if (this.ctx) return this.ctx;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new Ctx();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 1.0;
+        this.master.connect(this.ctx.destination);
+        for (const k of Object.keys(this.gains)) {
+          const g = this.ctx.createGain();
+          g.gain.value = state.volumes[k];
+          g.connect(this.master);
+          this.gains[k] = g;
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        return this.ctx;
+      },
+      setVolume(key, v) {
+        if (!this.gains[key]) return;
+        this.gains[key].gain.value = v;
+      }
+    };
+
+    // ── Tone helpers ───────────────────────────────────────────────────────────
+    function tone(freq, when, duration, type, gain) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, when);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(gain || 0.6, when + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+      osc.connect(env);
+      env.connect(audioSystem.gains.metronome);
+      osc.start(when);
+      osc.stop(when + duration + 0.02);
+    }
+
+    function clickBeep(when, accent) {
+      const freq = accent === 'down' ? 1400 : (accent === 'weak' ? 1000 : 750);
+      const dur  = accent === 'down' ? 0.08 : 0.05;
+      const gain = accent === 'down' ? 0.7  : (accent === 'weak' ? 0.5 : 0.35);
+      tone(freq, when, dur, 'sine', gain);
+    }
+
+    function clickKick(when) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, when);
+      osc.frequency.exponentialRampToValueAtTime(40, when + 0.18);
+      env.gain.setValueAtTime(0.0001, when);
+      env.gain.exponentialRampToValueAtTime(0.9, when + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, when + 0.22);
+      osc.connect(env); env.connect(audioSystem.gains.metronome);
+      osc.start(when); osc.stop(when + 0.25);
+    }
+
+    function clickHat(when) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      const bufSize = Math.floor(0.05 * ctx.sampleRate);
+      const buffer  = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data    = buffer.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2);
+      const src = ctx.createBufferSource(); src.buffer = buffer;
+      const hp  = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000;
+      const env = ctx.createGain(); env.gain.value = 0.35;
+      src.connect(hp); hp.connect(env); env.connect(audioSystem.gains.metronome);
+      src.start(when);
+    }
+
+    function clickDrumSound(when, accent) {
+      if (accent === 'down') clickKick(when);
+      else clickHat(when);
+    }
+
+    // ── Metronome scheduler ────────────────────────────────────────────────────
+    const SCHEDULE_AHEAD_S    = 0.1;
+    const SCHEDULE_INTERVAL_MS = 25;
+
+    const metronome = {
+      isPlaying:          false,
+      nextNoteTime:       0,
+      currentTick:        0,
+      ticksPerBar:        16,
+      subdivisionsPerBeat: 1,
+      beatsPerBar:        4,
+      countInRemaining:   0,
+      schedulerId:        null,
+    };
+
+    function computeMetronomeShape() {
+      const [num] = state.timeSignature.split('/').map(Number);
+      metronome.beatsPerBar = num;
+      switch (state.subdivision) {
+        case 'eighth':    metronome.subdivisionsPerBeat = 2; break;
+        case 'sixteenth': metronome.subdivisionsPerBeat = 4; break;
+        case 'triplet':   metronome.subdivisionsPerBeat = 3; break;
+        case 'quarter':
+        default:          metronome.subdivisionsPerBeat = 1; break;
+      }
+      metronome.ticksPerBar = metronome.beatsPerBar * metronome.subdivisionsPerBeat;
+    }
+
+    function scheduleTick(tickIdx, when) {
+      const subPerBeat = metronome.subdivisionsPerBeat;
+      const isBeat     = tickIdx % subPerBeat === 0;
+      const beatNum    = Math.floor(tickIdx / subPerBeat);
+      const isDownbeat = isBeat && beatNum === 0;
+      const accent     = isDownbeat ? 'down' : (isBeat ? 'weak' : 'sub');
+
+      if (state.metronomeSound === 'drum') {
+        clickDrumSound(when, accent);
+      } else {
+        clickBeep(when, accent);
+      }
+
+      if (isBeat) {
+        const delayMs = Math.max(0, (when - audioSystem.ctx.currentTime) * 1000);
+        setTimeout(() => flashBeatDot(beatNum), delayMs);
+      }
+    }
+
+    function nextSubdivisionInterval() {
+      return (60 / state.bpm) / metronome.subdivisionsPerBeat;
+    }
+
+    function metronomeScheduler() {
+      if (!metronome.isPlaying) return;
+      const ctx = audioSystem.ctx;
+      while (metronome.nextNoteTime < ctx.currentTime + SCHEDULE_AHEAD_S) {
+        if (metronome.countInRemaining > 0) {
+          const accent = (metronome.countInRemaining === 1) ? 'down' : 'weak';
+          if (state.metronomeSound === 'drum') clickDrumSound(metronome.nextNoteTime, accent);
+          else clickBeep(metronome.nextNoteTime, accent);
+          metronome.countInRemaining--;
+          metronome.nextNoteTime += 60 / state.bpm;
+          if (metronome.countInRemaining === 0) {
+            metronome.currentTick = 0;
+          }
+          continue;
+        }
+        scheduleTick(metronome.currentTick, metronome.nextNoteTime);
+        metronome.nextNoteTime += nextSubdivisionInterval();
+        metronome.currentTick = (metronome.currentTick + 1) % metronome.ticksPerBar;
+      }
+    }
+
+    function startMetronome() {
+      audioSystem.ensureStarted();
+      if (metronome.isPlaying) return;
+      computeMetronomeShape();
+      metronome.isPlaying       = true;
+      metronome.currentTick     = 0;
+      metronome.countInRemaining = state.countIn ? metronome.beatsPerBar : 0;
+      metronome.nextNoteTime    = audioSystem.ctx.currentTime + 0.05;
+      metronome.schedulerId     = setInterval(metronomeScheduler, SCHEDULE_INTERVAL_MS);
       const btn = document.getElementById('playBtn');
-      btn.textContent = isPlaying ? '■ 정지' : '▶ 재생';
+      btn.textContent = '■ 정지';
+      btn.classList.add('danger');
+      btn.classList.remove('primary');
+    }
+
+    function stopMetronome() {
+      metronome.isPlaying = false;
+      if (metronome.schedulerId) clearInterval(metronome.schedulerId);
+      metronome.schedulerId = null;
+      const btn = document.getElementById('playBtn');
+      btn.textContent = '▶ 재생';
+      btn.classList.add('primary');
+      btn.classList.remove('danger');
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('flash'));
+    }
+
+    // ── Beat dot flash ─────────────────────────────────────────────────────────
+    function flashBeatDot(beatIdx) {
+      const dots = document.querySelectorAll('#beatIndicator .beat-dot');
+      if (!dots[beatIdx]) return;
+      dots[beatIdx].classList.add('flash');
+      setTimeout(() => dots[beatIdx].classList.remove('flash'), 80);
+    }
+
+    // ── Tap tempo ──────────────────────────────────────────────────────────────
+    const tap = { history: [], lastTime: 0 };
+    function handleTap() {
+      const now = performance.now();
+      if (now - tap.lastTime > 2000) tap.history = [];
+      tap.history.push(now);
+      if (tap.history.length > 4) tap.history.shift();
+      tap.lastTime = now;
+      if (tap.history.length >= 2) {
+        const intervals = [];
+        for (let i = 1; i < tap.history.length; i++) intervals.push(tap.history[i] - tap.history[i-1]);
+        const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const bpm = Math.round(60000 / avg);
+        if (bpm >= 40 && bpm <= 240) {
+          setState({ bpm });
+          document.getElementById('bpmInput').value = bpm;
+          if (metronome.isPlaying) computeMetronomeShape();
+        }
+      }
+    }
+
+    // ── Play / stop ────────────────────────────────────────────────────────────
+    function togglePlay() {
+      if (metronome.isPlaying) stopMetronome();
+      else startMetronome();
     }
 
     // ── Init ───────────────────────────────────────────────────────────────────
@@ -1632,13 +1844,17 @@
       // BPM input
       document.getElementById('bpmInput').addEventListener('input', e => {
         const v = parseInt(e.target.value, 10);
-        if (v >= 40 && v <= 240) setState({ bpm: v });
+        if (v >= 40 && v <= 240) {
+          setState({ bpm: v });
+          if (metronome.isPlaying) computeMetronomeShape();
+        }
       });
 
       // Time signature
       document.getElementById('timeSigSelect').addEventListener('change', e => {
         setState({ timeSignature: e.target.value });
         renderBeatIndicator();
+        if (metronome.isPlaying) computeMetronomeShape();
       });
 
       // Subdivision
@@ -1648,6 +1864,7 @@
           document.querySelectorAll('#subdivisionBtns [data-subdivision]').forEach(b => {
             b.classList.toggle('active', b.dataset.subdivision === state.subdivision);
           });
+          if (metronome.isPlaying) computeMetronomeShape();
         });
       });
 
@@ -1658,6 +1875,7 @@
           document.querySelectorAll('#soundBtns [data-sound]').forEach(b => {
             b.classList.toggle('active', b.dataset.sound === state.metronomeSound);
           });
+          if (metronome.isPlaying) computeMetronomeShape();
         });
       });
 
@@ -1668,9 +1886,7 @@
       });
 
       // TAP
-      document.getElementById('tapBtn').addEventListener('click', () => {
-        console.log('[gtmaster] TAP at', Date.now());
-      });
+      document.getElementById('tapBtn').addEventListener('click', handleTap);
 
       // Play / Stop
       document.getElementById('playBtn').addEventListener('click', togglePlay);
@@ -1846,24 +2062,40 @@
         state.volumes.metronome = v;
         setState({ volumes: { ...state.volumes } });
         document.getElementById('volMetronomeVal').textContent = fmtPct(v);
+        audioSystem.setVolume('metronome', v);
       });
       document.getElementById('volChord').addEventListener('input', e => {
         const v = parseFloat(e.target.value);
         state.volumes.chord = v;
         setState({ volumes: { ...state.volumes } });
         document.getElementById('volChordVal').textContent = fmtPct(v);
+        audioSystem.setVolume('chord', v);
       });
       document.getElementById('volDrum').addEventListener('input', e => {
         const v = parseFloat(e.target.value);
         state.volumes.drum = v;
         setState({ volumes: { ...state.volumes } });
         document.getElementById('volDrumVal').textContent = fmtPct(v);
+        audioSystem.setVolume('drum', v);
       });
       document.getElementById('volFretboard').addEventListener('input', e => {
         const v = parseFloat(e.target.value);
         state.volumes.fretboard = v;
         setState({ volumes: { ...state.volumes } });
         document.getElementById('volFretboardVal').textContent = fmtPct(v);
+        audioSystem.setVolume('fretboard', v);
+      });
+
+      // Spacebar / T key global shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          togglePlay();
+        } else if (e.key === 't' || e.key === 'T') {
+          e.preventDefault();
+          handleTap();
+        }
       });
     });
   </script>
