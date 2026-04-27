@@ -866,6 +866,29 @@
                     <span class="text-sm opacity-80">🎼 현재 코드 추천 스케일</span>
                     <span id="chordScaleCurrentChord" class="text-sm font-bold">-</span>
                 </div>
+                <div class="flex items-center gap-2 mb-2 text-xs">
+                  <span class="opacity-70">곡의 키:</span>
+                  <select id="songKey" class="input-bg rounded px-2 py-1 border text-xs"
+                          style="min-width:60px;">
+                    <option value="C">C</option>
+                    <option value="C#">C#</option>
+                    <option value="D">D</option>
+                    <option value="D#">D#</option>
+                    <option value="E">E</option>
+                    <option value="F">F</option>
+                    <option value="F#">F#</option>
+                    <option value="G">G</option>
+                    <option value="G#">G#</option>
+                    <option value="A">A</option>
+                    <option value="A#">A#</option>
+                    <option value="B">B</option>
+                  </select>
+                  <button id="songKeyDetect" class="text-xs opacity-70 underline cursor-pointer"
+                          style="background:transparent;border:none;padding:2px 4px;">
+                    첫 코드로 자동 설정
+                  </button>
+                  <span class="opacity-50 text-xs" style="margin-left:auto;">역할 계산용 (프렛보드와 별개)</span>
+                </div>
                 <div id="chordScaleSuggestionList" class="flex flex-wrap gap-2"></div>
                 <div id="chordScaleSuggestionEmpty" class="text-xs opacity-60" style="display:none;">추천 정보가 없는 코드입니다.</div>
             </div>
@@ -2683,9 +2706,10 @@
                 return;
             }
 
-            const keyCenter = document.getElementById('keyCenter') ? document.getElementById('keyCenter').value : null;
-            const role = keyCenter ? getChordRoleInKey(chord.root, keyCenter) : null;
-            chordLabel.textContent = getChordName(chord) + (role && keyCenter ? ' (' + role + ' of ' + keyCenter + ')' : '');
+            const songKeyEl = document.getElementById('songKey');
+            const songKey = songKeyEl ? songKeyEl.value : null;
+            const role = songKey ? getChordRoleInKey(chord.root, songKey) : null;
+            chordLabel.textContent = getChordName(chord) + (role && songKey ? ' (' + role + ' of ' + songKey + ')' : '');
 
             const type = classifyChordForSuggestions(chord);
             const contextual = (type && role) ? (chordScaleSuggestionsByRole[type + '|' + role] || []) : [];
@@ -3791,6 +3815,10 @@
             updateChordProgressionUI();
             renderChordTimeline();
             updateTimerDisplay();
+            const songKeyElInit = document.getElementById('songKey');
+            if (songKeyElInit && chordProgression && chordProgression.length > 0 && chordProgression[0].root) {
+                songKeyElInit.value = chordProgression[0].root;
+            }
             updateChordScaleSuggestions();
 
             if (saved && saved.instrument && saved.instrument !== 'guitar') {
@@ -3808,6 +3836,13 @@
                     chordProgression.forEach(chord => {
                         chord.root = notes[(getNoteIndex(chord.root) + delta + 12) % 12];
                     });
+                    const songKeyEl = document.getElementById('songKey');
+                    if (songKeyEl) {
+                        const oldKeyIdx = getNoteIndex(songKeyEl.value);
+                        if (oldKeyIdx !== -1) {
+                            songKeyEl.value = notes[(oldKeyIdx + delta + 12) % 12];
+                        }
+                    }
                     updateChordProgressionUI();
                     updateCurrentChordDisplay();
                 }
@@ -3815,6 +3850,25 @@
                 updateScale();
                 updateChordScaleSuggestions();
             });
+
+            const songKeyEl = document.getElementById('songKey');
+            if (songKeyEl) {
+                songKeyEl.addEventListener('change', updateChordScaleSuggestions);
+            }
+
+            const songKeyDetectBtn = document.getElementById('songKeyDetect');
+            if (songKeyDetectBtn) {
+                songKeyDetectBtn.addEventListener('click', function() {
+                    if (!chordProgression || chordProgression.length === 0) return;
+                    const first = chordProgression[0];
+                    if (!first || !first.root) return;
+                    if (songKeyEl) {
+                        songKeyEl.value = first.root;
+                        updateChordScaleSuggestions();
+                    }
+                });
+            }
+
             document.getElementById('scaleType').addEventListener('change', updateScale);
             
             // 프렛보드 모드 변경
