@@ -2875,49 +2875,28 @@
         }
       });
 
-      // YouTube load (placeholder)
-      document.getElementById('ytLoadBtn').addEventListener('click', () => {
-        const url = document.getElementById('ytUrlInput').value.trim();
-        if (!url) return;
-        // Phase 3 will implement
-        console.log('[gtmaster] YT load:', url);
-        // Auto-expand on load
-        const expanded = document.getElementById('backingExpanded');
-        if (expanded.hasAttribute('hidden')) {
-          expanded.removeAttribute('hidden');
-          document.getElementById('backingToggleBtn').textContent = '▼';
-        }
+      // YouTube load
+      document.getElementById('ytLoadBtn').addEventListener('click', loadBacking);
+      document.getElementById('ytUrlInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); loadBacking(); }
       });
 
-      // Loop controls (placeholder)
-      document.getElementById('loopABtn').addEventListener('click', () => {
-        console.log('[gtmaster] Loop A set');
-      });
-      document.getElementById('loopBBtn').addEventListener('click', () => {
-        console.log('[gtmaster] Loop B set');
-      });
-      document.getElementById('loopToggleBtn').addEventListener('click', () => {
-        const loopEnabled = !state.backing.loopEnabled;
-        setState({ backing: { ...state.backing, loopEnabled } });
-        document.getElementById('loopToggleBtn').classList.toggle('active', loopEnabled);
-      });
-      document.getElementById('loopClearBtn').addEventListener('click', () => {
-        setState({ backing: { ...state.backing, loopA: null, loopB: null, loopEnabled: false } });
-        document.getElementById('loopStatus').innerHTML = 'A: --:--&nbsp;&nbsp;&nbsp;B: --:--';
-        document.getElementById('loopToggleBtn').classList.remove('active');
-      });
+      // Loop controls
+      document.getElementById('loopABtn').addEventListener('click', setLoopA);
+      document.getElementById('loopBBtn').addEventListener('click', setLoopB);
+      document.getElementById('loopToggleBtn').addEventListener('click', toggleLoop);
+      document.getElementById('loopClearBtn').addEventListener('click', clearLoop);
 
       // Speed slider
       document.getElementById('speedSlider').addEventListener('input', e => {
-        const speed = parseFloat(e.target.value);
-        setState({ backing: { ...state.backing, speed } });
-        document.getElementById('speedVal').textContent = speed.toFixed(1) + 'x';
+        const v = parseFloat(e.target.value);
+        setState({ backing: { ...state.backing, speed: v } });
+        document.getElementById('speedVal').textContent = v.toFixed(1) + 'x';
+        if (ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(v);
       });
 
-      // Add favorite (placeholder)
-      document.getElementById('addFavoriteBtn').addEventListener('click', () => {
-        console.log('[gtmaster] Add favorite placeholder');
-      });
+      // Add favorite
+      document.getElementById('addFavoriteBtn').addEventListener('click', addFavorite);
 
       // Volume sliders
       document.getElementById('volMetronome').addEventListener('input', e => {
@@ -2949,7 +2928,7 @@
         audioSystem.setVolume('fretboard', v);
       });
 
-      // Spacebar / T key global shortcuts
+      // Spacebar / T / arrow key global shortcuts
       document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
         if (e.code === 'Space') {
@@ -2958,6 +2937,20 @@
         } else if (e.key === 't' || e.key === 'T') {
           e.preventDefault();
           handleTap();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          if (!state.chordProgression || state.chordProgression.length === 0) return;
+          e.preventDefault();
+          const len = state.chordProgression.length;
+          const dir = e.key === 'ArrowRight' ? 1 : -1;
+          chordPlayback.currentChordIdx = (chordPlayback.currentChordIdx + dir + len) % len;
+          chordPlayback.beatInChord = 0;
+          if (metronome.isPlaying && audioSystem.ctx) {
+            const when = audioSystem.ctx.currentTime + 0.02;
+            playChordSound(state.chordProgression[chordPlayback.currentChordIdx], when);
+          }
+          updateCurrentChordLabel();
+          highlightChordCard();
+          renderSuggestions();
         }
       });
     });
