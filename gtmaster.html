@@ -2302,6 +2302,281 @@
       else startMetronome();
     }
 
+    // ── YouTube backing track ──────────────────────────────────────────────────
+    let ytPlayer = null;
+    let ytApiPromise = null;
+    let ytLoopTimer = null;
+
+    function loadYouTubeAPI() {
+      if (ytApiPromise) return ytApiPromise;
+      ytApiPromise = new Promise((resolve) => {
+        if (window.YT && window.YT.Player) { resolve(window.YT); return; }
+        window.onYouTubeIframeAPIReady = () => resolve(window.YT);
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      });
+      return ytApiPromise;
+    }
+
+    // Parse: full URL or bare 11-char ID. Returns videoId or null.
+    function parseYouTubeId(input) {
+      if (!input) return null;
+      const s = String(input).trim();
+      // Bare ID: 11 chars, [A-Za-z0-9_-]
+      if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+      // youtu.be/<id>
+      let m = s.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      // youtube.com/watch?v=<id>
+      m = s.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      // youtube.com/embed/<id>
+      m = s.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      return null;
+    }
+
+    async function loadBacking() {
+      const inputEl = document.getElementById('ytUrlInput');
+      const id = parseYouTubeId(inputEl.value);
+      if (!id) {
+        inputEl.style.borderColor = 'var(--danger)';
+        setTimeout(() => { inputEl.style.borderColor = ''; }, 600);
+        return;
+      }
+      // Make sure expanded panel is open
+      const expanded = document.getElementById('backingExpanded');
+      if (expanded.hasAttribute('hidden')) {
+        expanded.removeAttribute('hidden');
+        document.getElementById('backingToggleBtn').textContent = '▼';
+      }
+      // Load API
+      await loadYouTubeAPI();
+      // Create player container if not present
+      let host = document.getElementById('ytPlayerHost');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'ytPlayerHost';
+        host.style.cssText = 'aspect-ratio:16/9; width:100%; max-width:480px; margin-top:8px; background:#000; border-radius:8px; overflow:hidden;';
+        expanded.insertBefore(host, expanded.firstChild);
+      }
+      if (ytPlayer && ytPlayer.loadVideoById) {
+        ytPlayer.loadVideoById(id);
+      } else {
+        const prevId = state.backing.videoId;
+        ytPlayer = new YT.Player(host, {
+          videoId: id,
+          playerVars: { rel: 0, modestbranding: 1 },
+          events: {
+            onReady: (e) => {
+              e.target.setPlaybackRate(state.backing.speed || 1.0);
+            }
+          }
+        });
+      }
+      // Reset A/B if new video
+      if (state.backing.videoId !== id) {
+        setState({ backing: { ...state.backing, videoId: id, loopA: null, loopB: null, loopEnabled: false } });
+        updateLoopStatus();
+        document.getElementById('loopToggleBtn').classList.remove('active');
+        stopLoopWatcher();
+      } else {
+        setState({ backing: { ...state.backing, videoId: id } });
+      }
+    }
+
+    // ── A-B loop ───────────────────────────────────────────────────────────────
+    function fmtTime(sec) {
+      if (sec == null || isNaN(sec)) return '--:--';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function updateLoopStatus() {
+      const el = document.getElementById('loopStatus');
+      if (!el) return;
+      const a = state.backing.loopA, b = state.backing.loopB;
+      el.textContent = 'A: ' + fmtTime(a) + '  B: ' + fmtTime(b) + (state.backing.loopEnabled ? ' • 루프 ON' : '');
+    }
+
+    function setLoopA() {
+      if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+      const t = ytPlayer.getCurrentTime();
+      setState({ backing: { ...state.backing, loopA: t } });
+      updateLoopStatus();
+      startLoopWatcher();
+    }
+
+    function setLoopB() {
+      if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+      const t = ytPlayer.getCurrentTime();
+      setState({ backing: { ...state.backing, loopB: t } });
+      updateLoopStatus();
+      startLoopWatcher();
+    }
+
+    function toggleLoop() {
+      setState({ backing: { ...state.backing, loopEnabled: !state.backing.loopEnabled } });
+      updateLoopStatus();
+      document.getElementById('loopToggleBtn').classList.toggle('active', state.backing.loopEnabled);
+      startLoopWatcher();
+    }
+
+    function clearLoop() {
+      setState({ backing: { ...state.backing, loopA: null, loopB: null, loopEnabled: false } });
+      updateLoopStatus();
+      document.getElementById('loopToggleBtn').classList.remove('active');
+      stopLoopWatcher();
+    }
+
+    function startLoopWatcher() {
+      stopLoopWatcher();
+      if (!state.backing.loopEnabled) return;
+      if (state.backing.loopA == null || state.backing.loopB == null) return;
+      if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+      ytLoopTimer = setInterval(() => {
+        if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+        const t = ytPlayer.getCurrentTime();
+        const { loopA, loopB } = state.backing;
+        if (loopA == null || loopB == null) return;
+        if (t > loopB) ytPlayer.seekTo(loopA, true);
+        if (t < loopA - 0.5) ytPlayer.seekTo(loopA, true);
+      }, 200);
+    }
+
+    function stopLoopWatcher() {
+      if (ytLoopTimer) clearInterval(ytLoopTimer);
+      ytLoopTimer = null;
+    }
+
+    // ── Favorites ──────────────────────────────────────────────────────────────
+    function renderFavorites() {
+      const list = document.getElementById('favoritesList');
+      if (!list) return;
+      list.innerHTML = '';
+      const favs = state.backing.favorites || [];
+      if (favs.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'empty';
+        empty.style.fontSize = '11px';
+        empty.textContent = '없음';
+        list.appendChild(empty);
+        return;
+      }
+      for (let i = 0; i < favs.length; i++) {
+        const f = favs[i];
+        const chip = document.createElement('button');
+        chip.className = 'btn btn-sm';
+        chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; padding:3px 8px;';
+        const lbl = document.createElement('span');
+        lbl.textContent = f.label || f.videoId;
+        lbl.style.maxWidth = '120px';
+        lbl.style.overflow = 'hidden';
+        lbl.style.textOverflow = 'ellipsis';
+        lbl.style.whiteSpace = 'nowrap';
+        chip.appendChild(lbl);
+        if (f.loopA != null && f.loopB != null) {
+          const lp = document.createElement('span');
+          lp.textContent = '🔁';
+          lp.style.fontSize = '10px';
+          chip.appendChild(lp);
+        }
+        chip.addEventListener('click', () => loadFavorite(i));
+        const x = document.createElement('span');
+        x.textContent = '✕';
+        x.style.cssText = 'opacity:0.5; font-size:10px; padding-left:4px; cursor:pointer;';
+        x.addEventListener('click', (e) => { e.stopPropagation(); deleteFavorite(i); });
+        chip.appendChild(x);
+        list.appendChild(chip);
+      }
+    }
+
+    function addFavorite() {
+      const id = state.backing.videoId;
+      if (!id) {
+        alert('먼저 영상을 불러오세요.');
+        return;
+      }
+      const label = (ytPlayer && ytPlayer.getVideoData && ytPlayer.getVideoData().title) || id;
+      const fav = {
+        label: label.slice(0, 60),
+        videoId: id,
+        loopA: state.backing.loopA,
+        loopB: state.backing.loopB,
+      };
+      const favs = [...(state.backing.favorites || []), fav];
+      setState({ backing: { ...state.backing, favorites: favs } });
+      renderFavorites();
+    }
+
+    function loadFavorite(i) {
+      const fav = state.backing.favorites[i];
+      if (!fav) return;
+      document.getElementById('ytUrlInput').value = fav.videoId;
+      loadBacking().then(() => {
+        if (fav.loopA != null) {
+          setState({ backing: { ...state.backing, loopA: fav.loopA, loopB: fav.loopB, loopEnabled: !!(fav.loopA && fav.loopB) } });
+        }
+        updateLoopStatus();
+        document.getElementById('loopToggleBtn').classList.toggle('active', state.backing.loopEnabled);
+        startLoopWatcher();
+      });
+    }
+
+    function deleteFavorite(i) {
+      const favs = state.backing.favorites.slice();
+      favs.splice(i, 1);
+      setState({ backing: { ...state.backing, favorites: favs } });
+      renderFavorites();
+    }
+
+    // ── URL hash sharing ───────────────────────────────────────────────────────
+    function progressionToHash(prog) {
+      if (!prog || prog.length === 0) return '';
+      const parts = prog.map(c => chordDisplayName(c) + ':' + (c.duration || 4));
+      return '#p=' + encodeURIComponent(parts.join(','));
+    }
+
+    function progressionFromHash() {
+      const m = location.hash.match(/[#&]p=([^&]+)/);
+      if (!m) return null;
+      let raw;
+      try { raw = decodeURIComponent(m[1]); } catch (e) { return null; }
+      const parts = raw.split(',');
+      const prog = [];
+      for (const p of parts) {
+        const colonIdx = p.lastIndexOf(':');
+        const name = colonIdx > 0 ? p.slice(0, colonIdx) : p;
+        const dur = colonIdx > 0 ? p.slice(colonIdx + 1) : '4';
+        const parsed = parseChord(name);
+        if (parsed) {
+          parsed.duration = Math.max(1, Math.min(16, parseInt(dur, 10) || 4));
+          prog.push(parsed);
+        }
+      }
+      return prog.length > 0 ? prog : null;
+    }
+
+    async function shareProgression() {
+      const hash = progressionToHash(state.chordProgression);
+      const url = location.origin + location.pathname + hash;
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(url);
+        copied = true;
+      } catch (e) {
+        try { history.replaceState(null, '', hash); } catch (e2) {}
+      }
+      const btn = document.getElementById('shareBtn');
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = copied ? '✅' : '⚠️';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }
+    }
+
     // ── Audio resume on visibility change ──────────────────────────────────────
     // Browsers suspend AudioContext when the tab is backgrounded (especially on
     // iOS / mobile Chrome). Resume + realign scheduler when we come back.
@@ -2326,6 +2601,16 @@
 
     // ── Init ───────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
+      // ── URL hash: restore chord progression ───────────────────────────────
+      const hashProg = progressionFromHash();
+      if (hashProg) {
+        state.chordProgression = hashProg;
+        saveState();
+        if (state.chordProgression[0] && state.chordProgression[0].root) {
+          state.songKey = state.chordProgression[0].root;
+        }
+      }
+
       // Apply persisted state
       applyTheme(state.theme);
       applyActiveTab(state.activeTab);
@@ -2360,11 +2645,18 @@
       document.getElementById('speedSlider').value = state.backing.speed;
       document.getElementById('speedVal').textContent = Number(state.backing.speed).toFixed(1) + 'x';
 
+      // Sync song key display after possible hash override
+      document.getElementById('songKeySelect').value = state.songKey;
+
       renderBeatIndicator();
       renderChordList();
       renderSuggestions();
       renderVolumes();
       renderFretboard();
+      renderFavorites();
+      updateLoopStatus();
+      // Restore loopEnabled button state
+      document.getElementById('loopToggleBtn').classList.toggle('active', state.backing.loopEnabled);
 
       // ── Event listeners ────────────────────────────────────────────────────
 
@@ -2375,14 +2667,8 @@
         applyTheme(newTheme);
       });
 
-      // Share button
-      document.getElementById('shareBtn').addEventListener('click', () => {
-        if (navigator.share) {
-          navigator.share({ title: 'Guitar Master', url: location.href }).catch(() => {});
-        } else {
-          navigator.clipboard && navigator.clipboard.writeText(location.href);
-        }
-      });
+      // Share button — copies URL with #p= chord progression hash
+      document.getElementById('shareBtn').addEventListener('click', shareProgression);
 
       // Settings drawer open
       document.getElementById('settingsBtn').addEventListener('click', () => {
