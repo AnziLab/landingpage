@@ -1124,7 +1124,7 @@
             ],
             'dim7': [
                 { scale: 'wholeHalfDim',  why: '코드 톤과 텐션 모두 일치.' },
-                { scale: 'harmonicMinor', why: '한 음 위 하모닉 마이너에 vii°7로 내장.' },
+                { scale: 'harmonicMinor', why: '반음 위 하모닉 마이너의 vii°7. (예: Bdim7 → C 하모닉 마이너)', keyOffset: 1 },
             ],
             'aug': [
                 { scale: 'wholeTone',      why: '#5 사운드 강조.' },
@@ -1250,7 +1250,7 @@
           // Diminished7 by role
           'dim7|VII':   [
             { scale: 'wholeHalfDim',     why: '코드 톤 + 텐션 일치.' },
-            { scale: 'harmonicMinor',    why: '한 음 위 하모닉 마이너의 vii°7.' },
+            { scale: 'harmonicMinor',    why: '반음 위 하모닉 마이너의 vii°7. (예: Bdim7 → C 하모닉 마이너)', keyOffset: 1 },
           ],
           'dim7|bIII':  [
             { scale: 'wholeHalfDim',     why: '패싱 디미니쉬드.' },
@@ -1686,7 +1686,17 @@
         const name = SUGGESTION_LABEL_MAP[sug.scale] || sug.scale;
         btn.innerHTML = `<span class="chip-name">${name}</span><span class="chip-why">${sug.why || ''}</span>`;
         btn.addEventListener('click', () => {
-          const newKey = chord.root || state.scaleKeyCenter;
+          // Most suggestions render from the chord root (e.g., C Lydian over
+          // Cmaj7, G Mixolydian over G7). A few — currently Harmonic Minor over
+          // a dim7 — must shift by an interval (vii°7 of C minor uses C
+          // Harmonic Minor, not B). The optional sug.keyOffset (in semitones)
+          // handles those cases.
+          const baseRoot = chord.root || state.scaleKeyCenter;
+          const offset = sug.keyOffset || 0;
+          const baseIdx = NOTE_TO_SEMITONE[baseRoot];
+          const newKey = (baseIdx !== undefined && offset)
+            ? NOTE_NAMES_FRETBOARD[((baseIdx + offset) % 12 + 12) % 12]
+            : baseRoot;
           setState({ scaleType: sug.scale, scaleKeyCenter: newKey });
           const ksSel = document.getElementById('scaleKeySelect');
           const stSel = document.getElementById('scaleTypeSelect');
