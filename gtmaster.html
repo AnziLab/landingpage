@@ -2072,29 +2072,87 @@
       return pitches.map(p => ({ ...p, freq: 440 * Math.pow(2, (p.midi - 69) / 12) }));
     }
 
+    // Voice a single piano-ish note: detuned dual-oscillator (sine fundamental
+    // + triangle harmonic), ADSR envelope, gentle low-pass filter for warmth.
+    function pianoVoice(freq, when, gain, lenSec) {
+      const ctx = audioSystem.ctx;
+      const len = lenSec || 1.4;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.Q.value = 0.7;
+      lp.frequency.setValueAtTime(2400, when);
+      lp.frequency.exponentialRampToValueAtTime(900, when + len);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(gain, when + 0.008);     // very fast attack
+      env.gain.exponentialRampToValueAtTime(gain * 0.4, when + 0.18); // decay to sustain
+      env.gain.exponentialRampToValueAtTime(0.0001, when + len);     // long release
+      // Two slightly detuned oscillators for chorus
+      for (const detune of [-4, 4]) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, when);
+        osc.detune.setValueAtTime(detune, when);
+        osc.connect(lp);
+        osc.start(when);
+        osc.stop(when + len + 0.05);
+      }
+      // Higher harmonic for body (fifth above, quieter triangle)
+      const har = ctx.createOscillator();
+      har.type = 'triangle';
+      har.frequency.setValueAtTime(freq * 2, when);
+      const harGain = ctx.createGain();
+      harGain.gain.setValueAtTime(0, when);
+      harGain.gain.linearRampToValueAtTime(gain * 0.18, when + 0.01);
+      harGain.gain.exponentialRampToValueAtTime(0.0001, when + len * 0.7);
+      har.connect(harGain);
+      harGain.connect(lp);
+      har.start(when);
+      har.stop(when + len * 0.7 + 0.05);
+      lp.connect(env);
+      env.connect(audioSystem.gains.chord);
+    }
+
+    // Voice the bass note: detuned saws + low-pass at 600 Hz for thickness.
+    function bassVoice(freq, when, gain, lenSec) {
+      const ctx = audioSystem.ctx;
+      const len = lenSec || 1.6;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.Q.value = 0.5;
+      lp.frequency.setValueAtTime(900, when);
+      lp.frequency.exponentialRampToValueAtTime(350, when + len);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(gain, when + 0.012);
+      env.gain.exponentialRampToValueAtTime(gain * 0.35, when + 0.25);
+      env.gain.exponentialRampToValueAtTime(0.0001, when + len);
+      for (const detune of [-6, 6]) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, when);
+        osc.detune.setValueAtTime(detune, when);
+        osc.connect(lp);
+        osc.start(when);
+        osc.stop(when + len + 0.05);
+      }
+      lp.connect(env);
+      env.connect(audioSystem.gains.chord);
+    }
+
     function playChordSound(chord, when) {
       if (!audioSystem.ctx) return;
-      const ctx = audioSystem.ctx;
       const pitches = chordToPitches(chord);
-      for (const p of pitches) {
-        const osc = ctx.createOscillator();
-        const env = ctx.createGain();
-        if (p.voice === 'bass') {
-          osc.type = 'sawtooth';
-          env.gain.setValueAtTime(0, when);
-          env.gain.linearRampToValueAtTime(0.4, when + 0.02);
-          env.gain.exponentialRampToValueAtTime(0.0001, when + 1.2);
-        } else {
-          osc.type = 'triangle';
-          env.gain.setValueAtTime(0, when);
-          env.gain.linearRampToValueAtTime(0.18, when + 0.015);
-          env.gain.exponentialRampToValueAtTime(0.0001, when + 1.6);
-        }
-        osc.frequency.setValueAtTime(p.freq, when);
-        osc.connect(env);
-        env.connect(audioSystem.gains.chord);
-        osc.start(when);
-        osc.stop(when + 1.7);
+      // Slight strum: stagger piano voices by 8 ms each in pitch order; bass on the downbeat.
+      const pianoVoices = pitches.filter(p => p.voice === 'piano')
+                                  .sort((a, b) => a.freq - b.freq);
+      const bassVoices = pitches.filter(p => p.voice === 'bass');
+      for (const p of bassVoices) {
+        bassVoice(p.freq, when, 0.32, 1.6);
+      }
+      for (let i = 0; i < pianoVoices.length; i++) {
+        const p = pianoVoices[i];
+        pianoVoice(p.freq, when + i * 0.008, 0.16, 1.4);
       }
     }
 
@@ -2606,9 +2664,7 @@
       if (hashProg) {
         state.chordProgression = hashProg;
         saveState();
-        if (state.chordProgression[0] && state.chordProgression[0].root) {
-          state.songKey = state.chordProgression[0].root;
-        }
+        // Note: songKey is intentionally not auto-set — user picks the key.
       }
 
       // Apply persisted state
@@ -2778,10 +2834,7 @@
         if (key && chordPresets[key]) {
           const prog = chordPresets[key].chords.map(parseChord).filter(Boolean);
           setState({ chordProgression: prog });
-          if (prog.length > 0) {
-            setState({ songKey: prog[0].root });
-            document.getElementById('songKeySelect').value = prog[0].root;
-          }
+          // songKey is NOT auto-set — user picks via the dropdown or 자동 button.
           renderChordList();
           renderSuggestions();
         }
@@ -2797,13 +2850,9 @@
           setTimeout(() => { inputEl.style.borderColor = ''; }, 600);
           return;
         }
-        const wasEmpty = state.chordProgression.length === 0;
         const prog = [...state.chordProgression, parsed];
         setState({ chordProgression: prog });
-        if (wasEmpty) {
-          setState({ songKey: parsed.root });
-          document.getElementById('songKeySelect').value = parsed.root;
-        }
+        // songKey is NOT auto-set on first chord — user picks.
         renderChordList();
         renderSuggestions();
         inputEl.value = '';
