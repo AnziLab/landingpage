@@ -1793,15 +1793,14 @@
         if (navigator.audioSession) {
           try { navigator.audioSession.type = 'playback'; } catch (e) {}
         }
-        // Older iOS: trigger the hidden silent <audio> element briefly so the
-        // page's audio session flips to media playback, then stop it. Keeping
-        // it looping forever steals the audio session from YouTube iframes and
-        // causes their video to freeze with playhead still advancing.
+        // Older iOS: loop a hidden silent <audio> so the page's audio session
+        // is treated as media playback. Required to bypass the ringer/silent
+        // switch on iOS 14–16 where navigator.audioSession is unavailable.
+        // We pause it explicitly inside loadBacking() so YouTube iframes don't
+        // fight us for the audio session.
         const silent = document.getElementById('silentUnlock');
         if (silent) {
-          silent.play()
-            .then(() => setTimeout(() => { try { silent.pause(); } catch (e) {} }, 800))
-            .catch(() => {});
+          silent.play().catch(() => {});
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         this.ctx = new Ctx();
@@ -2443,6 +2442,11 @@
         setTimeout(() => { inputEl.style.borderColor = ''; }, 600);
         return;
       }
+      // Release the iOS audio session so the YouTube iframe can play. The
+      // silent <audio> loop steals the playback session and makes YouTube
+      // freeze while its playhead keeps advancing.
+      const silentEl = document.getElementById('silentUnlock');
+      if (silentEl) { try { silentEl.pause(); } catch (e) {} }
       // Make sure expanded panel is open
       const expanded = document.getElementById('backingExpanded');
       if (expanded.hasAttribute('hidden')) {
