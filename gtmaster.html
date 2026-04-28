@@ -1793,11 +1793,15 @@
         if (navigator.audioSession) {
           try { navigator.audioSession.type = 'playback'; } catch (e) {}
         }
-        // Older iOS: trigger the hidden silent <audio> element so the page's
-        // audio session is treated as media playback.
+        // Older iOS: trigger the hidden silent <audio> element briefly so the
+        // page's audio session flips to media playback, then stop it. Keeping
+        // it looping forever steals the audio session from YouTube iframes and
+        // causes their video to freeze with playhead still advancing.
         const silent = document.getElementById('silentUnlock');
         if (silent) {
-          silent.play().catch(() => {});
+          silent.play()
+            .then(() => setTimeout(() => { try { silent.pause(); } catch (e) {} }, 800))
+            .catch(() => {});
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         this.ctx = new Ctx();
@@ -2461,7 +2465,10 @@
         const prevId = state.backing.videoId;
         ytPlayer = new YT.Player(host, {
           videoId: id,
-          playerVars: { rel: 0, modestbranding: 1 },
+          // playsinline:1 keeps the video inside the iframe on iOS (instead of
+          // forcing fullscreen / freezing). enablejsapi:1 ensures the JS API
+          // remains responsive for the loop watcher.
+          playerVars: { rel: 0, modestbranding: 1, playsinline: 1, enablejsapi: 1 },
           events: {
             onReady: (e) => {
               e.target.setPlaybackRate(state.backing.speed || 1.0);
