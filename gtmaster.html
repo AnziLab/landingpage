@@ -1875,9 +1875,14 @@
       const numStrings = tuning.length;
 
       const FRET_W = 56;
-      const STR_GAP = 22;
       const TOP_PAD = 16;
       const BOT_PAD = 38;
+      // Stretch string spacing to fill the container's available height so the
+      // fretboard card never shows a big empty area below the lowest string.
+      const availH = container.clientHeight || 0;
+      const usable = Math.max(0, availH - TOP_PAD - BOT_PAD);
+      const dynGap = numStrings > 1 ? Math.floor(usable / (numStrings - 1)) : 0;
+      const STR_GAP = Math.max(22, Math.min(64, dynGap || 22));
       const innerWidth = FRET_W * (NUM_FRETS + 1) + 30;
       const innerHeight = TOP_PAD + (numStrings - 1) * STR_GAP + BOT_PAD;
 
@@ -2724,6 +2729,14 @@
       renderFretboard();
       renderFavorites();
       updateLoopStatus();
+      // Re-render fretboard on viewport / orientation changes so the dynamic
+      // string spacing follows the available card height.
+      let resizeRenderTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeRenderTimer);
+        resizeRenderTimer = setTimeout(renderFretboard, 120);
+      });
+      window.addEventListener('orientationchange', () => setTimeout(renderFretboard, 200));
       // Restore loopEnabled button state
       document.getElementById('loopToggleBtn').classList.toggle('active', state.backing.loopEnabled);
 
