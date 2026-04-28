@@ -1770,6 +1770,17 @@
       gains: { metronome: null, chord: null, drum: null, fretboard: null },
       ensureStarted() {
         if (this.ctx) return this.ctx;
+        // iOS 17+: explicitly request the playback session so audio plays even
+        // when the ringer/silent switch is on (matches music/video apps).
+        if (navigator.audioSession) {
+          try { navigator.audioSession.type = 'playback'; } catch (e) {}
+        }
+        // Older iOS: trigger the hidden silent <audio> element so the page's
+        // audio session is treated as media playback.
+        const silent = document.getElementById('silentUnlock');
+        if (silent) {
+          silent.play().catch(() => {});
+        }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         this.ctx = new Ctx();
         this.master = this.ctx.createGain();
@@ -3004,5 +3015,14 @@
       });
     });
   </script>
+
+  <!--
+    iOS Safari respects the silent switch for Web Audio API by default. Looping
+    a silent <audio> element with playsinline elevates the page's audio session
+    to media playback so AudioContext output keeps playing in silent mode. The
+    src is a tiny silent WAV (~50 bytes) inlined as a data URL.
+  -->
+  <audio id="silentUnlock" playsinline loop preload="auto" style="display:none"
+         src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
 </body>
 </html>
