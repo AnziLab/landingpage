@@ -2199,9 +2199,10 @@
       if (!state.chordProgression || state.chordProgression.length === 0) return;
       if (metronome.countInRemaining > 0) return;
 
-      chordPlayback.beatInChord++;
       const cur = state.chordProgression[chordPlayback.currentChordIdx];
       if (!cur) return;
+      // Check BEFORE incrementing: if beats already elapsed reach the chord's
+      // duration, this beat is the FIRST beat of the next chord — play it now.
       if (chordPlayback.beatInChord >= (cur.duration || 4)) {
         chordPlayback.beatInChord = 0;
         chordPlayback.currentChordIdx = (chordPlayback.currentChordIdx + 1) % state.chordProgression.length;
@@ -2214,6 +2215,7 @@
           renderSuggestions();
         }, delayMs);
       }
+      chordPlayback.beatInChord++;
     }
 
     // ── Metronome scheduler ────────────────────────────────────────────────────
