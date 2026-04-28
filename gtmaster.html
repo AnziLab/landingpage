@@ -2716,6 +2716,28 @@
     window.addEventListener('pageshow', resumeAudioIfNeeded);
 
     // ── Init ───────────────────────────────────────────────────────────────────
+    // ── Pre-warm AudioContext on the FIRST touch anywhere on the page ──────
+    // iOS standalone PWA mode is stricter than Safari about Web Audio unlock.
+    // Listening for the first touchstart and creating the context inside that
+    // gesture is more reliable than waiting until the user taps the play button
+    // (which fires a synthesized click that can have a stale gesture context
+    // in PWA mode).
+    (function setupFirstTouchUnlock() {
+      let unlocked = false;
+      function unlock() {
+        if (unlocked) return;
+        unlocked = true;
+        try { audioSystem.ensureStarted(); } catch (e) {}
+        // Remove all listeners
+        for (const ev of ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click']) {
+          document.removeEventListener(ev, unlock, true);
+        }
+      }
+      for (const ev of ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click']) {
+        document.addEventListener(ev, unlock, { capture: true, passive: true });
+      }
+    })();
+
     document.addEventListener('DOMContentLoaded', () => {
       // ── URL hash: restore chord progression ───────────────────────────────
       const hashProg = progressionFromHash();
