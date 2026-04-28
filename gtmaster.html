@@ -1813,6 +1813,17 @@
           g.connect(this.master);
           this.gains[k] = g;
         }
+        // iOS PWA mode (added-to-home-screen) is stricter than Safari and the
+        // <audio> element trick alone may not unlock playback. Play a 1-sample
+        // silent buffer through Web Audio inside the same user-gesture tick —
+        // this is the canonical iOS unlock pattern for AudioContext.
+        try {
+          const buf = this.ctx.createBuffer(1, 1, 22050);
+          const src = this.ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(this.ctx.destination);
+          src.start(0);
+        } catch (e) {}
         if (this.ctx.state === 'suspended') this.ctx.resume();
         return this.ctx;
       },
