@@ -1071,6 +1071,7 @@
             ],
             '7': [
                 { scale: 'mixolydian',      why: '기본 도미넌트 스케일.' },
+                { scale: 'major',           why: '부모 메이저 (4도 위). 예: G7 → C 메이저', keyOffset: 5 },
                 { scale: 'bebopDominant',   why: '비밥 라인. 8분음 패싱이 자연스러움.' },
                 { scale: 'lydianDominant',  why: '#11 텐션 (트라이톤 서브, 비기능 V7).' },
                 { scale: 'mixolydianb6',    why: 'b13 살짝. 인도/힌두 컬러.' },
@@ -1080,6 +1081,7 @@
             ],
             '7alt': [
                 { scale: 'altered',          why: 'V7→Im 해결 정공법. b9 #9 b5 #5 모두.' },
+                { scale: 'melodicMinor',     why: '얼터드의 부모 멜로딕 마이너 (반음 위). 예: G7alt → Ab 멜로딕 마이너', keyOffset: 1 },
                 { scale: 'phrygianDominant', why: 'b9 b13 강조. 스페인/플라멩고 컬러.' },
                 { scale: 'halfWholeDim',     why: 'b9 #9 #11 13. 얼터드 대체 컬러.' },
             ],
@@ -1158,9 +1160,12 @@
           // Dominant 7 by role
           '7|V':      [
             { scale: 'mixolydian',       why: 'V7→I 기능 도미넌트의 정공법.' },
+            { scale: 'major',            why: '부모 메이저 (4도 위). 예: G7 → C 메이저', keyOffset: 5 },
             { scale: 'bebopDominant',    why: 'V7 비밥 라인.' },
             { scale: 'altered',          why: 'I이 마이너거나 강한 텐션을 원할 때.' },
+            { scale: 'melodicMinor',     why: '얼터드의 부모 (반음 위). 예: G7 → Ab 멜로딕 마이너', keyOffset: 1 },
             { scale: 'phrygianDominant', why: '마이너 키 V7→Im에 정공법 (b9 b13).' },
+            { scale: 'harmonicMinor',    why: '프리지안 도미넌트의 부모 (4도 위). 예: G7 → C 하모닉 마이너', keyOffset: 5 },
             { scale: 'halfWholeDim',     why: 'b9 #9 #11 13 모두 가능.' },
           ],
           '7|I':      [
@@ -1178,6 +1183,7 @@
           ],
           '7|bII':    [
             { scale: 'lydianDominant',   why: 'V7의 트라이톤 서브. #11이 자연스러움.' },
+            { scale: 'melodicMinor',     why: '리디안 도미넌트의 부모 (5도 위). 예: Db7 → Ab 멜로딕 마이너', keyOffset: 7 },
             { scale: 'altered',          why: '대체 도미넌트로 강한 텐션.' },
           ],
           '7|II':     [
@@ -1210,6 +1216,7 @@
           // Minor 7 by role
           'm7|II':    [
             { scale: 'dorian',           why: 'ii–V–I의 ii. 도리안이 정공법.' },
+            { scale: 'major',            why: '도리안의 부모 메이저 (장2도 아래). 예: Dm7 → C 메이저', keyOffset: -2 },
             { scale: 'bebopDorian',      why: 'ii 자리 비밥 라인.' },
             { scale: 'minorPentatonic',  why: '안전.' },
           ],
@@ -1244,6 +1251,7 @@
           ],
           'm7b5|II':  [
             { scale: 'locrianNat2',      why: '단조 ii–V–i의 ii. 모던 표준.' },
+            { scale: 'melodicMinor',     why: '로크리안 #2의 부모 멜로딕 마이너 (단3도 위). 예: Bm7b5 → D 멜로딕 마이너', keyOffset: 3 },
             { scale: 'locrian',          why: '전통적 마이너 ii–V.' },
           ],
 
