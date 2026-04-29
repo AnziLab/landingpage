@@ -754,6 +754,12 @@
             <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0" style="width:120px;">
             <span class="speed-val" id="speedVal">1.0x</span>
           </div>
+          <div class="btn-row" style="margin-top:6px;">
+            <button class="btn btn-sm" id="loopPrevBtn" title="루프 길이만큼 뒤로 이동">◀ 이전</button>
+            <button class="btn btn-sm" id="loopNextBtn" title="루프 길이만큼 앞으로 이동">다음 ▶</button>
+            <button class="btn btn-sm" id="loopDoubleBtn" title="루프 길이 2배 (다음 파트 합치기)">2× 길이</button>
+            <button class="btn btn-sm" id="loopHalveBtn" title="루프 길이 반으로 (원복)">½ 길이</button>
+          </div>
           <div class="row" style="margin-top:8px; align-items:center;">
             <span class="label">즐겨찾기</span>
             <div id="favoritesList" class="favorites-list" style="flex:1;"></div>
@@ -2547,6 +2553,44 @@
       stopLoopWatcher();
     }
 
+    // Shift the loop by `delta` seconds. Positive = forward, negative = back.
+    // The loop length (B - A) is preserved.
+    function shiftLoop(delta) {
+      const a = state.backing.loopA, b = state.backing.loopB;
+      if (a == null || b == null) return;
+      const dur = (ytPlayer && ytPlayer.getDuration) ? ytPlayer.getDuration() : Infinity;
+      let newA = a + delta;
+      let newB = b + delta;
+      if (newA < 0) {
+        newB -= newA;
+        newA = 0;
+      }
+      if (newB > dur) {
+        const overflow = newB - dur;
+        newB = dur;
+        newA = Math.max(0, newA - overflow);
+      }
+      setState({ backing: { ...state.backing, loopA: newA, loopB: newB } });
+      updateLoopStatus();
+      if (ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(newA, true);
+      startLoopWatcher();
+    }
+
+    // Resize the loop by a multiplier. 2 = double, 0.5 = halve. A is anchored.
+    function resizeLoop(factor) {
+      const a = state.backing.loopA, b = state.backing.loopB;
+      if (a == null || b == null) return;
+      const len = b - a;
+      if (len <= 0) return;
+      const newLen = len * factor;
+      if (newLen < 0.5) return; // don't go below half a second
+      const dur = (ytPlayer && ytPlayer.getDuration) ? ytPlayer.getDuration() : Infinity;
+      const newB = Math.min(dur, a + newLen);
+      setState({ backing: { ...state.backing, loopB: newB } });
+      updateLoopStatus();
+      startLoopWatcher();
+    }
+
     function startLoopWatcher() {
       stopLoopWatcher();
       if (!state.backing.loopEnabled) return;
@@ -3023,6 +3067,16 @@
       document.getElementById('loopBBtn').addEventListener('click', setLoopB);
       document.getElementById('loopToggleBtn').addEventListener('click', toggleLoop);
       document.getElementById('loopClearBtn').addEventListener('click', clearLoop);
+      document.getElementById('loopPrevBtn').addEventListener('click', () => {
+        const a = state.backing.loopA, b = state.backing.loopB;
+        if (a != null && b != null) shiftLoop(-(b - a));
+      });
+      document.getElementById('loopNextBtn').addEventListener('click', () => {
+        const a = state.backing.loopA, b = state.backing.loopB;
+        if (a != null && b != null) shiftLoop(b - a);
+      });
+      document.getElementById('loopDoubleBtn').addEventListener('click', () => resizeLoop(2));
+      document.getElementById('loopHalveBtn').addEventListener('click', () => resizeLoop(0.5));
 
       // Speed slider
       document.getElementById('speedSlider').addEventListener('input', e => {
