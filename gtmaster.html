@@ -205,26 +205,31 @@
 
     /* Desktop / tablet: 2-column grid, no vertical scroll */
     @media (min-width: 900px) {
-      body { overflow: hidden; }
       .app-main {
         max-width: 1280px;
         margin: 0 auto;
         padding: 12px;
         display: grid;
         grid-template-columns: minmax(320px, 1fr) minmax(420px, 1.3fr);
-        grid-template-rows: 1fr auto;
+        grid-template-rows: auto auto 1fr auto;
         grid-template-areas:
-          "practice fretboard"
-          "backing  backing";
+          "metronome instr-scale"
+          "chords    backing"
+          "suggest   backing"
+          "fretboard fretboard";
         gap: 12px;
-        height: calc(100vh - 56px);
         align-content: start;
       }
-      .tab-content[data-tab="practice"]  { grid-area: practice; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; }
-      .tab-content[data-tab="fretboard"] { grid-area: fretboard; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; }
-      .tab-content[data-tab="backing"]   { grid-area: backing; display: block; }
-      .tab-content[data-active="false"]  { display: flex; } /* override: always visible on desktop */
-      .tab-content[data-tab="backing"][data-active="false"] { display: block; }
+      /* Flatten tab-content wrappers so individual cards become grid items.
+         Override the mobile [data-active="false"] display:none rule. */
+      .tab-content,
+      .tab-content[data-active="false"] { display: contents; }
+      #card-metronome   { grid-area: metronome; }
+      #card-chords      { grid-area: chords; }
+      #card-suggest     { grid-area: suggest; }
+      #card-instr-scale { grid-area: instr-scale; }
+      #backingCard      { grid-area: backing; }
+      #card-fretboard   { grid-area: fretboard; }
       .tab-bar { display: none; }
       .section-header { display: none; }
       .card { margin-bottom: 0; }
@@ -556,7 +561,7 @@
       <div class="section-header">🥁 연습</div>
 
       <!-- 메트로놈 -->
-      <div class="card">
+      <div class="card" id="card-metronome">
         <div class="card-title">🥁 메트로놈</div>
         <div class="row" style="flex-wrap:wrap;">
           <span class="label">BPM</span>
@@ -591,7 +596,7 @@
       </div>
 
       <!-- 코드 진행 -->
-      <div class="card">
+      <div class="card" id="card-chords">
         <div class="card-title-row">
           🎹 코드진행
           <span class="subtle">현재: <span id="currentChordLabel">-</span></span>
@@ -620,7 +625,7 @@
       </div>
 
       <!-- 추천 스케일 -->
-      <div class="card">
+      <div class="card" id="card-suggest">
         <div class="card-title-row">
           🎼 추천 스케일
           <span id="suggestRoleLabel" class="subtle"></span>
@@ -634,24 +639,18 @@
     <section class="tab-content" data-tab="fretboard" data-active="false" id="tab-fretboard">
       <div class="section-header">🎸 프렛</div>
 
-      <!-- 악기 -->
-      <div class="card">
-        <div class="card-title">악기</div>
-        <div class="instrument-grid" id="instrumentBtns">
-          <button class="btn btn-sm active" data-instrument="guitar">🎸 기타</button>
-          <button class="btn btn-sm" data-instrument="bass4">🎸 4현</button>
-          <button class="btn btn-sm" data-instrument="bass5">🎸 5현</button>
-          <button class="btn btn-sm" data-instrument="violin">🎻 바이올린</button>
-        </div>
-        <div>
+      <!-- 악기 + 스케일 (한 카드에 합침) -->
+      <div class="card" id="card-instr-scale">
+        <div class="row" style="flex-wrap:wrap; align-items:center; gap:6px;">
+          <div class="btn-row" id="instrumentBtns" style="gap:4px; margin-bottom:0;">
+            <button class="btn btn-sm active" data-instrument="guitar">🎸 기타</button>
+            <button class="btn btn-sm" data-instrument="bass4">🎸 4현</button>
+            <button class="btn btn-sm" data-instrument="bass5">🎸 5현</button>
+            <button class="btn btn-sm" data-instrument="violin">🎻 바이올린</button>
+          </div>
           <button class="btn btn-sm" id="leftHandedBtn">왼손잡이</button>
         </div>
-      </div>
-
-      <!-- 스케일 설정 -->
-      <div class="card">
-        <div class="card-title">스케일 설정</div>
-        <div class="row">
+        <div class="row" style="flex-wrap:wrap; align-items:center; margin-top:6px;">
           <span class="label">키</span>
           <select id="scaleKeySelect">
             <option>C</option><option>C#</option><option>Db</option>
@@ -661,10 +660,8 @@
             <option>Ab</option><option>A</option><option>A#</option>
             <option>Bb</option><option>B</option>
           </select>
-        </div>
-        <div class="row">
-          <span class="label">스케일</span>
-          <select id="scaleTypeSelect">
+          <span class="label" style="margin-left:8px;">스케일</span>
+          <select id="scaleTypeSelect" style="flex:1; min-width:160px;">
             <optgroup label="기본 모드 (메이저)">
               <option value="major">메이저 (이오니안)</option>
               <option value="dorian">도리안</option>
@@ -726,9 +723,9 @@
       </div>
 
       <!-- 프렛보드 -->
-      <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+      <div class="card" id="card-fretboard" style="display:flex; flex-direction:column;">
         <div class="card-title">프렛보드</div>
-        <div id="fretboardContainer" class="fretboard" style="flex:1; min-height:120px;"></div>
+        <div id="fretboardContainer" class="fretboard"></div>
       </div>
     </section>
 
@@ -1913,14 +1910,9 @@
       const numStrings = tuning.length;
 
       const FRET_W = 56;
+      const STR_GAP = 22;
       const TOP_PAD = 16;
       const BOT_PAD = 38;
-      // Stretch string spacing to fill the container's available height so the
-      // fretboard card never shows a big empty area below the lowest string.
-      const availH = container.clientHeight || 0;
-      const usable = Math.max(0, availH - TOP_PAD - BOT_PAD);
-      const dynGap = numStrings > 1 ? Math.floor(usable / (numStrings - 1)) : 0;
-      const STR_GAP = Math.max(22, Math.min(64, dynGap || 22));
       const innerWidth = FRET_W * (NUM_FRETS + 1) + 30;
       const innerHeight = TOP_PAD + (numStrings - 1) * STR_GAP + BOT_PAD;
 
