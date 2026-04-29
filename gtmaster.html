@@ -205,6 +205,7 @@
 
     /* Desktop / tablet: 2-column grid, no vertical scroll */
     @media (min-width: 900px) {
+      body { overflow: hidden; }
       .app-main {
         max-width: 1280px;
         margin: 0 auto;
@@ -218,7 +219,8 @@
           "suggest   backing"
           "fretboard fretboard";
         gap: 12px;
-        align-content: start;
+        height: calc(100vh - 56px);
+        align-content: stretch;
       }
       /* Flatten tab-content wrappers so individual cards become grid items.
          Override the mobile [data-active="false"] display:none rule. */
@@ -226,10 +228,10 @@
       .tab-content[data-active="false"] { display: contents; }
       #card-metronome   { grid-area: metronome; }
       #card-chords      { grid-area: chords; }
-      #card-suggest     { grid-area: suggest; }
+      #card-suggest     { grid-area: suggest; min-height: 0; overflow-y: auto; }
       #card-instr-scale { grid-area: instr-scale; }
-      #backingCard      { grid-area: backing; }
-      #card-fretboard   { grid-area: fretboard; }
+      #backingCard      { grid-area: backing; min-height: 0; overflow-y: auto; }
+      #card-fretboard   { grid-area: fretboard; min-height: 0; overflow: hidden; }
       .tab-bar { display: none; }
       .section-header { display: none; }
       .card { margin-bottom: 0; }
