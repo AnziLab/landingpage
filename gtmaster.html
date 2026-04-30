@@ -2176,23 +2176,93 @@
     }
 
     // ── Click-to-play fretboard note ───────────────────────────────────────────
+    // ── Karplus-Strong physical-modeling synthesis ─────────────────────────────
+    // Simulates a vibrating string by storing a band-limited noise excitation
+    // in a delay line and looping it through a low-pass feedback filter. Pure
+    // code, zero audio files; sounds like a plucked string. Buffers are cached
+    // by rounded frequency with an LRU cap to keep memory bounded.
+    const KS_CACHE = new Map();
+    const KS_BUFFER_LEN_SEC = 2.5;
+    const KS_DECAY = 0.996;
+    const KS_CACHE_LIMIT = 80;
+
+    function generateKSBuffer(ctx, freq, lenSec, decay) {
+      const sampleRate = ctx.sampleRate;
+      const period = Math.max(2, Math.round(sampleRate / freq));
+      const numSamples = Math.floor(sampleRate * lenSec);
+      const buffer = ctx.createBuffer(1, numSamples, sampleRate);
+      const data = buffer.getChannelData(0);
+      const delay = new Float32Array(period);
+      for (let i = 0; i < period; i++) delay[i] = Math.random() * 2 - 1;
+      // Smooth the noise once for a less abrasive attack
+      for (let i = 0; i < period; i++) {
+        delay[i] = 0.5 * (delay[i] + delay[(i + 1) % period]);
+      }
+      let idx = 0;
+      for (let n = 0; n < numSamples; n++) {
+        data[n] = delay[idx];
+        const cur = delay[idx];
+        const next = delay[(idx + 1) % period];
+        delay[idx] = decay * 0.5 * (cur + next);
+        idx = (idx + 1) % period;
+      }
+      return buffer;
+    }
+
+    function getKSBuffer(ctx, freq) {
+      const key = Math.round(freq * 10);
+      const cached = KS_CACHE.get(key);
+      if (cached) {
+        // Refresh LRU position
+        KS_CACHE.delete(key);
+        KS_CACHE.set(key, cached);
+        return cached;
+      }
+      const buf = generateKSBuffer(ctx, freq, KS_BUFFER_LEN_SEC, KS_DECAY);
+      KS_CACHE.set(key, buf);
+      // Evict oldest entries if the cache outgrew the cap
+      while (KS_CACHE.size > KS_CACHE_LIMIT) {
+        const oldest = KS_CACHE.keys().next().value;
+        KS_CACHE.delete(oldest);
+      }
+      return buf;
+    }
+
+    function pluckString(freq, when, gain, durSec, opts) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      opts = opts || {};
+      const buf = getKSBuffer(ctx, freq);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.Q.value = 0.7;
+      lp.frequency.setValueAtTime(opts.brightness || 4500, when);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(gain, when + 0.004);
+      // Quick fade out at the end of the requested duration so chord changes
+      // don't bleed into the next bar.
+      const len = Math.max(0.15, durSec);
+      const fadeStart = when + Math.max(0.05, len - 0.25);
+      const fadeEnd   = when + len;
+      env.gain.setValueAtTime(gain, fadeStart);
+      env.gain.exponentialRampToValueAtTime(0.0001, fadeEnd);
+      src.connect(lp);
+      lp.connect(env);
+      env.connect(opts.gainNode || audioSystem.gains.chord);
+      src.start(when);
+      src.stop(when + Math.min(KS_BUFFER_LEN_SEC, len + 0.1));
+    }
+
     function playFretboardNote(freq) {
       audioSystem.ensureStarted();
       if (!audioSystem.ctx) return;
-      const ctx = audioSystem.ctx;
-      const when = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const env = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, when);
-      env.gain.setValueAtTime(0, when);
-      env.gain.linearRampToValueAtTime(0.6, when + 0.005);
-      env.gain.exponentialRampToValueAtTime(0.0001, when + 0.9);
-      osc.frequency.setValueAtTime(freq * 1.001, when + 0.05);
-      osc.connect(env);
-      env.connect(audioSystem.gains.fretboard);
-      osc.start(when);
-      osc.stop(when + 1.0);
+      pluckString(freq, audioSystem.ctx.currentTime, 0.55, 1.4, {
+        brightness: 5500,
+        gainNode: audioSystem.gains.fretboard,
+      });
     }
 
     // ── Render fretboard ───────────────────────────────────────────────────────
@@ -2625,19 +2695,18 @@
     function playChordSound(chord, when, durSec) {
       if (!audioSystem.ctx) return;
       const pitches = chordToPitches(chord);
-      // Sustain through the chord's full beat duration. Caller passes durSec
-      // computed from chord.duration × beatSec; fall back to ~1.5 s if absent.
       const dur = (typeof durSec === 'number' && durSec > 0) ? durSec : 1.5;
-      // Slight strum: stagger piano voices by 8 ms each in pitch order; bass on the downbeat.
       const pianoVoices = pitches.filter(p => p.voice === 'piano')
                                   .sort((a, b) => a.freq - b.freq);
       const bassVoices = pitches.filter(p => p.voice === 'bass');
+      // Plucked-string voicing via Karplus-Strong: bass = darker (lower
+      // brightness cutoff) for body, mid voices brighter and strum-staggered.
       for (const p of bassVoices) {
-        bassVoice(p.freq, when, 0.30, dur);
+        pluckString(p.freq, when, 0.40, dur, { brightness: 1600 });
       }
       for (let i = 0; i < pianoVoices.length; i++) {
         const p = pianoVoices[i];
-        pianoVoice(p.freq, when + i * 0.008, 0.14, dur);
+        pluckString(p.freq, when + i * 0.012, 0.20, dur, { brightness: 4500 });
       }
     }
 
