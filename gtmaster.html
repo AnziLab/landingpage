@@ -2196,9 +2196,11 @@
       const data = buffer.getChannelData(0);
       const delay = new Float32Array(period);
       for (let i = 0; i < period; i++) delay[i] = Math.random() * 2 - 1;
-      // Smooth the noise once for a less abrasive attack
-      for (let i = 0; i < period; i++) {
-        delay[i] = 0.5 * (delay[i] + delay[(i + 1) % period]);
+      // Smooth the noise twice for a warmer, less abrasive attack
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < period; i++) {
+          delay[i] = 0.5 * (delay[i] + delay[(i + 1) % period]);
+        }
       }
       let idx = 0;
       let cycleStep = 0;
@@ -2269,7 +2271,7 @@
       audioSystem.ensureStarted();
       if (!audioSystem.ctx) return;
       pluckString(freq, audioSystem.ctx.currentTime, 0.55, 1.4, {
-        brightness: 5500,
+        brightness: 3500,
         gainNode: audioSystem.gains.fretboard,
       });
     }
@@ -2711,11 +2713,11 @@
       // Plucked-string voicing via Karplus-Strong: bass = darker (lower
       // brightness cutoff) for body, mid voices brighter and strum-staggered.
       for (const p of bassVoices) {
-        pluckString(p.freq, when, 0.40, dur, { brightness: 1600 });
+        pluckString(p.freq, when, 0.42, dur, { brightness: 1000 });
       }
       for (let i = 0; i < pianoVoices.length; i++) {
         const p = pianoVoices[i];
-        pluckString(p.freq, when + i * 0.012, 0.20, dur, { brightness: 4500 });
+        pluckString(p.freq, when + i * 0.012, 0.22, dur, { brightness: 2800 });
       }
     }
 
