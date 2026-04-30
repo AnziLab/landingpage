@@ -651,6 +651,19 @@
           <button class="btn btn-sm" id="addBasicBtn">+ 기본</button>
           <button class="btn btn-sm danger" id="resetProgBtn">초기화</button>
         </div>
+        <div class="row" style="flex-wrap:wrap; align-items:center;">
+          <span class="label">컴핑 리듬</span>
+          <select id="chordRhythmSelect">
+            <option value="off">없음 (코드 시작에만)</option>
+            <option value="whole">홀 (1박)</option>
+            <option value="half">하프 (1·3박)</option>
+            <option value="quarter">쿼터 (매 박)</option>
+            <option value="offbeat">오프비트 (and)</option>
+            <option value="charleston">찰스턴</option>
+            <option value="bossa">보사노바</option>
+            <option value="blues">블루스 셔플</option>
+          </select>
+        </div>
         <div id="chordList" class="chord-list"></div>
       </div>
 
@@ -909,6 +922,7 @@
       theme: 'dark',
       activeTab: 'practice',
       syncCode: null,    // when set, state mirrors to Pantry under this 6-char key
+      chordRhythmPreset: 'off',   // comping rhythm pattern key
       backing: {
         videoId: null, loopA: null, loopB: null,
         loopEnabled: false, speed: 1.0, favorites: []
@@ -1073,6 +1087,7 @@
         });
         const ci = document.getElementById('countInBtn'); if (ci) ci.classList.toggle('active', state.countIn);
         const sk = document.getElementById('songKeySelect'); if (sk) sk.value = state.songKey;
+        const cr = document.getElementById('chordRhythmSelect'); if (cr) cr.value = state.chordRhythmPreset || 'off';
         document.querySelectorAll('#instrumentBtns [data-instrument]').forEach(b => {
           b.classList.toggle('active', b.dataset.instrument === state.instrument);
         });
@@ -2533,6 +2548,36 @@
       return false;
     }
 
+    // Comping rhythm patterns — 16-step boolean arrays per bar (4/4, 16ths).
+    // Each "1" retriggers the current chord at that step.
+    const CHORD_RHYTHMS = {
+      off:        null,
+      whole:      [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      half:       [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+      quarter:    [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+      offbeat:    [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
+      charleston: [1,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,0,0],
+      bossa:      [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,0,0],
+      blues:      [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,0,1,0],
+    };
+    function getChordRhythmPattern() {
+      return CHORD_RHYTHMS[state.chordRhythmPreset] || null;
+    }
+    function chordRhythmActive() {
+      const p = getChordRhythmPattern();
+      return Array.isArray(p) && p.some(x => x);
+    }
+    // For a chord-rhythm hit at `fromStep`, find the distance (in 16ths) to
+    // the next hit so each strum lasts until the next strum.
+    function nextChordRhythmHitDistance(fromStep) {
+      const p = getChordRhythmPattern();
+      if (!p) return 16;
+      for (let d = 1; d <= 16; d++) {
+        if (p[(fromStep + d) % 16]) return d;
+      }
+      return 16;
+    }
+
     function applyDrumPreset(name) {
       const p = DRUM_PRESETS[name];
       if (!p) return;
@@ -2762,7 +2807,11 @@
         chordPlayback.currentChordIdx = (chordPlayback.currentChordIdx + 1) % state.chordProgression.length;
         const nextChord = state.chordProgression[chordPlayback.currentChordIdx];
         const beatSec = 60 / state.bpm;
-        playChordSound(nextChord, when, (nextChord.duration || 4) * beatSec);
+        // Skip the auto-strum on chord change when the comping rhythm is
+        // driving playback — its own scheduler hit at this step will do it.
+        if (!chordRhythmActive()) {
+          playChordSound(nextChord, when, (nextChord.duration || 4) * beatSec);
+        }
         const delayMs = Math.max(0, (when - audioSystem.ctx.currentTime) * 1000);
         setTimeout(() => {
           updateCurrentChordLabel();
@@ -2791,10 +2840,11 @@
     function computeMetronomeShape() {
       const [num] = state.timeSignature.split('/').map(Number);
       metronome.beatsPerBar = num;
-      // Drum mode with a non-empty pattern always runs at 16th-note rate so
-      // the 16-step pattern grid lines up with bars regardless of the user's
+      // Drum or comping rhythm pattern → run scheduler at 16th-note rate so
+      // the 16-step grids line up with bars regardless of the user's
       // subdivision setting (which only controls the beep metronome).
-      if (state.metronomeSound === 'drum' && drumPatternHasBeats(state.drumPattern)) {
+      const drumActive = state.metronomeSound === 'drum' && drumPatternHasBeats(state.drumPattern);
+      if (drumActive || chordRhythmActive()) {
         metronome.subdivisionsPerBeat = 4;
       } else {
         switch (state.subdivision) {
@@ -2831,6 +2881,24 @@
         clickBeep(when, accent);
       }
 
+      // Comping rhythm: retrigger the current chord at each pattern hit. Each
+      // strum sustains until the next pattern hit so adjacent strums don't
+      // pile up. When rhythm is active, startMetronome / onBeatFired skip
+      // their own playChordSound so we don't double-trigger.
+      if (chordRhythmActive() && state.chordProgression && state.chordProgression.length > 0
+          && metronome.countInRemaining === 0) {
+        const step = tickIdx % 16;
+        const pattern = getChordRhythmPattern();
+        if (pattern && pattern[step]) {
+          const chord = state.chordProgression[chordPlayback.currentChordIdx];
+          if (chord) {
+            const dist = nextChordRhythmHitDistance(step);
+            const sub16Sec = (60 / state.bpm) / 4;
+            playChordSound(chord, when, dist * sub16Sec);
+          }
+        }
+      }
+
       if (isBeat) {
         const delayMs = Math.max(0, (when - audioSystem.ctx.currentTime) * 1000);
         setTimeout(() => flashBeatDot(beatNum), delayMs);
@@ -2858,7 +2926,9 @@
               resetChordPlayback();
               const firstChord = state.chordProgression[0];
               const beatSec = 60 / state.bpm;
-              playChordSound(firstChord, metronome.nextNoteTime, (firstChord.duration || 4) * beatSec);
+              if (!chordRhythmActive()) {
+                playChordSound(firstChord, metronome.nextNoteTime, (firstChord.duration || 4) * beatSec);
+              }
               const delayMs = Math.max(0, (metronome.nextNoteTime - audioSystem.ctx.currentTime) * 1000);
               setTimeout(() => { updateCurrentChordLabel(); highlightChordCard(); renderSuggestions(); }, delayMs);
             }
@@ -2889,7 +2959,9 @@
         resetChordPlayback();
         const firstChord = state.chordProgression[0];
         const beatSec = 60 / state.bpm;
-        playChordSound(firstChord, metronome.nextNoteTime, (firstChord.duration || 4) * beatSec);
+        if (!chordRhythmActive()) {
+          playChordSound(firstChord, metronome.nextNoteTime, (firstChord.duration || 4) * beatSec);
+        }
         const delayMs = Math.max(0, (metronome.nextNoteTime - audioSystem.ctx.currentTime) * 1000);
         setTimeout(() => { updateCurrentChordLabel(); highlightChordCard(); renderSuggestions(); }, delayMs);
       } else if (!state.countIn) {
@@ -3513,6 +3585,14 @@
       document.getElementById('songKeySelect').addEventListener('change', e => {
         setState({ songKey: e.target.value });
         renderSuggestions();
+      });
+
+      // Comping rhythm preset
+      const chordRhythmSel = document.getElementById('chordRhythmSelect');
+      chordRhythmSel.value = state.chordRhythmPreset || 'off';
+      chordRhythmSel.addEventListener('change', e => {
+        setState({ chordRhythmPreset: e.target.value });
+        if (metronome.isPlaying) computeMetronomeShape();
       });
 
       // Song key auto-detect from first chord
