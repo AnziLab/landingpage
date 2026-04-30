@@ -886,11 +886,13 @@
 
       <div class="card" id="card-drumpattern" style="margin-top:16px;">
         <div class="card-title">🥁 드럼 패턴 (드럼 모드 전용)</div>
-        <div class="btn-row" style="margin-bottom:8px; gap:4px;">
+        <div class="btn-row" style="margin-bottom:8px; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-sm" data-drum-preset="basic">Basic</button>
           <button class="btn btn-sm" data-drum-preset="rock">Rock</button>
           <button class="btn btn-sm" data-drum-preset="pop">Pop</button>
           <button class="btn btn-sm" data-drum-preset="funk">Funk</button>
+          <button class="btn btn-sm" data-drum-preset="bossa">Bossa</button>
+          <button class="btn btn-sm" data-drum-preset="blues">Blues</button>
           <button class="btn btn-sm danger" data-drum-preset="clear">Clear</button>
         </div>
         <div id="drumGrid" class="drum-grid"></div>
@@ -2530,6 +2532,18 @@
         kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
         snare: [0,0,0,0, 1,0,0,0, 0,1,0,0, 1,0,0,1],
         hihat: [1,0,1,1, 1,0,1,0, 1,1,1,0, 1,0,1,1],
+        crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+      bossa: {
+        kick:  [1,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,1,0],
+        snare: [0,0,0,1, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+        hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+      blues: {
+        kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
         crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
       },
       clear: {
