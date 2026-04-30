@@ -1619,21 +1619,25 @@
             return null;
         }
 
+        // Each preset is written in a base key (so the relative roots are
+        // readable). On load we transpose every chord by (songKey − baseKey)
+        // semitones so the progression always lands in the user's chosen key.
+        // Major-key presets use baseKey 'C', minor-key in 'A', or whatever fits.
         const chordPresets = {
-            'pop_1_5_6_4':   { label: 'I-V-vi-IV (Pop)',        chords: ['C', 'G', 'Am', 'F'] },
-            'fifties_1_6_4_5': { label: 'I-vi-IV-V (50s)',      chords: ['C', 'Am', 'F', 'G'] },
-            'pop_6_4_1_5':   { label: 'vi-IV-I-V (감성팝)',     chords: ['Am', 'F', 'C', 'G'] },
-            'andalusian':    { label: 'Andalusian (Am-G-F-E)',  chords: ['Am', 'G', 'F', 'E'] },
-            'jazz_ii_v_i':   { label: 'ii-V-I (C major)',       chords: ['Dm7', 'G7', 'Cmaj7', 'Cmaj7'] },
-            'jazz_minor_ii_v_i': { label: 'ii-V-i (A minor)',   chords: ['Bm7b5', 'E7', 'Am7', 'Am7'] },
-            'rhythm_changes': { label: 'Rhythm Changes A (Bb)', chords: ['Bbmaj7', 'G7', 'Cm7', 'F7'] },
-            'blues_12':      { label: '12-bar Blues (C7)',      chords: ['C7','C7','C7','C7','F7','F7','C7','C7','G7','F7','C7','G7'] },
-            'jazz_blues':    { label: 'Jazz Blues (Bb)',        chords: ['Bb7','Eb7','Bb7','Bb7','Eb7','Eb7','Bb7','G7','Cm7','F7','Bb7','F7'] },
-            'canon':         { label: 'Canon in D',             chords: ['D','A','Bm','F#m','G','D','G','A'] },
-            'autumn_leaves': { label: 'Autumn Leaves (Gm)',     chords: ['Cm7','F7','Bbmaj7','Ebmaj7','Am7b5','D7','Gm','Gm'] },
-            'giant_steps':   { label: 'Giant Steps (일부)',      chords: ['Bmaj7','D7','Gmaj7','Bb7','Ebmaj7','Am7','D7','Gmaj7'] },
-            'modal_dorian':  { label: 'D Dorian Vamp',          chords: ['Dm7','G7','Dm7','G7'] },
-            'bossa_1':       { label: 'Bossa Nova',             chords: ['Fmaj7','Gm7','Am7','Gm7'] }
+            'pop_1_5_6_4':       { label: 'I-V-vi-IV (Pop)',        baseKey: 'C', chords: ['C', 'G', 'Am', 'F'] },
+            'fifties_1_6_4_5':   { label: 'I-vi-IV-V (50s)',        baseKey: 'C', chords: ['C', 'Am', 'F', 'G'] },
+            'pop_6_4_1_5':       { label: 'vi-IV-I-V (감성팝)',      baseKey: 'C', chords: ['Am', 'F', 'C', 'G'] },
+            'andalusian':        { label: 'Andalusian',             baseKey: 'A', chords: ['Am', 'G', 'F', 'E'] },
+            'jazz_ii_v_i':       { label: 'ii-V-I (Major)',         baseKey: 'C', chords: ['Dm7', 'G7', 'Cmaj7', 'Cmaj7'] },
+            'jazz_minor_ii_v_i': { label: 'ii-V-i (Minor)',         baseKey: 'A', chords: ['Bm7b5', 'E7', 'Am7', 'Am7'] },
+            'rhythm_changes':    { label: 'Rhythm Changes A',       baseKey: 'A#',chords: ['Bbmaj7', 'G7', 'Cm7', 'F7'] },
+            'blues_12':          { label: '12-bar Blues',           baseKey: 'C', chords: ['C7','C7','C7','C7','F7','F7','C7','C7','G7','F7','C7','G7'] },
+            'jazz_blues':        { label: 'Jazz Blues',             baseKey: 'A#',chords: ['Bb7','Eb7','Bb7','Bb7','Eb7','Eb7','Bb7','G7','Cm7','F7','Bb7','F7'] },
+            'canon':             { label: 'Canon (Pachelbel)',      baseKey: 'D', chords: ['D','A','Bm','F#m','G','D','G','A'] },
+            'autumn_leaves':     { label: 'Autumn Leaves',          baseKey: 'G', chords: ['Cm7','F7','Bbmaj7','Ebmaj7','Am7b5','D7','Gm','Gm'] },
+            'giant_steps':       { label: 'Giant Steps (일부)',      baseKey: 'B', chords: ['Bmaj7','D7','Gmaj7','Bb7','Ebmaj7','Am7','D7','Gmaj7'] },
+            'modal_dorian':      { label: 'Dorian Vamp',            baseKey: 'D', chords: ['Dm7','G7','Dm7','G7'] },
+            'bossa_1':           { label: 'Bossa Nova',             baseKey: 'F', chords: ['Fmaj7','Gm7','Am7','Gm7'] }
         };
 
     // ── Chord parser ───────────────────────────────────────────────────────────
@@ -3595,9 +3599,36 @@
       // Play / Stop
       document.getElementById('playBtn').addEventListener('click', togglePlay);
 
-      // Song key
+      // Helper: shift every chord root in a parsed-chord array by `delta` semitones.
+      function transposeProgression(prog, delta) {
+        if (!prog || delta === 0) return prog;
+        return prog.map(c => {
+          const idx = NOTE_TO_SEMITONE[c.root];
+          if (idx === undefined) return c;
+          const newIdx = ((idx + delta) % 12 + 12) % 12;
+          return { ...c, root: NOTE_NAMES_FRETBOARD[newIdx] };
+        });
+      }
+
+      // Song key — changing it transposes the whole progression so a preset
+      // (or any chord set) follows the user's chosen key in real time.
       document.getElementById('songKeySelect').addEventListener('change', e => {
-        setState({ songKey: e.target.value });
+        const oldKey = state.songKey;
+        const newKey = e.target.value;
+        const oldIdx = NOTE_TO_SEMITONE[oldKey];
+        const newIdx = NOTE_TO_SEMITONE[newKey];
+        if (oldIdx !== undefined && newIdx !== undefined) {
+          const delta = ((newIdx - oldIdx) % 12 + 12) % 12;
+          if (delta !== 0 && state.chordProgression.length > 0) {
+            const transposed = transposeProgression(state.chordProgression, delta);
+            setState({ chordProgression: transposed, songKey: newKey });
+            renderChordList();
+          } else {
+            setState({ songKey: newKey });
+          }
+        } else {
+          setState({ songKey: newKey });
+        }
         renderSuggestions();
       });
 
@@ -3633,9 +3664,17 @@
       document.getElementById('presetSelect').addEventListener('change', e => {
         const key = e.target.value;
         if (key && chordPresets[key]) {
-          const prog = chordPresets[key].chords.map(parseChord).filter(Boolean);
+          const preset = chordPresets[key];
+          let prog = preset.chords.map(parseChord).filter(Boolean);
+          // Transpose preset from its baseKey to the user's current songKey
+          // so loading a preset always lands in the chosen key.
+          const baseIdx = NOTE_TO_SEMITONE[preset.baseKey];
+          const targetIdx = NOTE_TO_SEMITONE[state.songKey];
+          if (baseIdx !== undefined && targetIdx !== undefined) {
+            const delta = ((targetIdx - baseIdx) % 12 + 12) % 12;
+            if (delta !== 0) prog = transposeProgression(prog, delta);
+          }
           setState({ chordProgression: prog });
-          // songKey is NOT auto-set — user picks via the dropdown or 자동 button.
           renderChordList();
           renderSuggestions();
         }
