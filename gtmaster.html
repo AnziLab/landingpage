@@ -534,6 +534,34 @@
     /* Bpm input */
     #bpmInput { width: 72px; text-align: center; font-size: 16px; font-weight: 700; }
 
+    /* Drum pattern grid */
+    .drum-grid {
+      display: grid;
+      grid-template-columns: 56px repeat(16, 1fr);
+      gap: 2px;
+      font-size: 10px;
+    }
+    .drum-grid .drum-label {
+      align-self: center;
+      color: var(--text-dim);
+      padding-right: 6px;
+      text-align: right;
+      font-weight: 600;
+    }
+    .drum-grid .drum-cell {
+      aspect-ratio: 1;
+      min-width: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.1s;
+    }
+    .drum-grid .drum-cell.on { background: var(--accent); border-color: var(--accent); }
+    .drum-grid .drum-cell.beat-mark { border-left: 1px solid var(--accent-soft); }
+    .drum-grid .drum-cell.playing { box-shadow: 0 0 0 2px var(--success); }
+
     /* Theme toggle row */
     .theme-row {
       display: flex;
@@ -843,9 +871,16 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div class="card-title">드럼 패턴</div>
-        <div class="empty" style="padding:8px 0;">Phase 2에서 구현</div>
+      <div class="card" id="card-drumpattern" style="margin-top:16px;">
+        <div class="card-title">🥁 드럼 패턴 (드럼 모드 전용)</div>
+        <div class="btn-row" style="margin-bottom:8px; gap:4px;">
+          <button class="btn btn-sm" data-drum-preset="basic">Basic</button>
+          <button class="btn btn-sm" data-drum-preset="rock">Rock</button>
+          <button class="btn btn-sm" data-drum-preset="pop">Pop</button>
+          <button class="btn btn-sm" data-drum-preset="funk">Funk</button>
+          <button class="btn btn-sm danger" data-drum-preset="clear">Clear</button>
+        </div>
+        <div id="drumGrid" class="drum-grid"></div>
       </div>
 
       <div class="theme-row">
@@ -1051,6 +1086,7 @@
       try { renderChordList && renderChordList(); } catch (e) {}
       try { renderSuggestions && renderSuggestions(); } catch (e) {}
       try { renderVolumes && renderVolumes(); } catch (e) {}
+      try { renderDrumGrid && renderDrumGrid(); } catch (e) {}
       try { renderFretboard && renderFretboard(); } catch (e) {}
       try { renderFavorites && renderFavorites(); } catch (e) {}
       try { updateLoopStatus && updateLoopStatus(); } catch (e) {}
@@ -1980,6 +2016,50 @@
       document.getElementById('volFretboardVal').textContent = fmtPct(state.volumes.fretboard);
     }
 
+    // ── Drum pattern grid ──────────────────────────────────────────────────────
+    function ensureDrumPatternShape() {
+      const p = state.drumPattern || {};
+      for (const v of ['kick','snare','hihat','crash']) {
+        if (!Array.isArray(p[v]) || p[v].length !== 16) {
+          p[v] = new Array(16).fill(0);
+        }
+      }
+      state.drumPattern = p;
+    }
+
+    function renderDrumGrid() {
+      ensureDrumPatternShape();
+      const grid = document.getElementById('drumGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      const voices = [
+        { key: 'kick',  label: '킥' },
+        { key: 'snare', label: '스네어' },
+        { key: 'hihat', label: '하이햇' },
+        { key: 'crash', label: '크래쉬' },
+      ];
+      for (const voice of voices) {
+        const lbl = document.createElement('div');
+        lbl.className = 'drum-label';
+        lbl.textContent = voice.label;
+        grid.appendChild(lbl);
+        for (let step = 0; step < 16; step++) {
+          const cell = document.createElement('button');
+          cell.className = 'drum-cell' + (step % 4 === 0 ? ' beat-mark' : '');
+          if (state.drumPattern[voice.key][step]) cell.classList.add('on');
+          cell.addEventListener('click', () => {
+            state.drumPattern[voice.key][step] = state.drumPattern[voice.key][step] ? 0 : 1;
+            cell.classList.toggle('on');
+            saveState();
+            scheduleSyncUpload();
+            // Re-evaluate scheduler shape if metronome is currently running
+            if (metronome.isPlaying) computeMetronomeShape();
+          });
+          grid.appendChild(cell);
+        }
+      }
+    }
+
     // ── Theme ──────────────────────────────────────────────────────────────────
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
@@ -2290,6 +2370,101 @@
       else clickHat(when);
     }
 
+    function clickSnare(when) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      // Pitched body
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(200, when);
+      osc.frequency.exponentialRampToValueAtTime(80, when + 0.1);
+      const oscGain = ctx.createGain();
+      oscGain.gain.setValueAtTime(0.45, when);
+      oscGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.13);
+      osc.connect(oscGain);
+      oscGain.connect(audioSystem.gains.metronome);
+      osc.start(when); osc.stop(when + 0.15);
+      // Noise
+      const bufSize = Math.floor(0.18 * ctx.sampleRate);
+      const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufSize, 1.4);
+      const src = ctx.createBufferSource(); src.buffer = buffer;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500;
+      const noiseGain = ctx.createGain(); noiseGain.gain.value = 0.5;
+      src.connect(hp); hp.connect(noiseGain); noiseGain.connect(audioSystem.gains.metronome);
+      src.start(when);
+    }
+
+    function clickCrash(when) {
+      if (!audioSystem.ctx) return;
+      const ctx = audioSystem.ctx;
+      const bufSize = Math.floor(1.4 * ctx.sampleRate);
+      const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufSize, 0.9);
+      const src = ctx.createBufferSource(); src.buffer = buffer;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4500;
+      const env = ctx.createGain(); env.gain.value = 0.35;
+      src.connect(hp); hp.connect(env); env.connect(audioSystem.gains.metronome);
+      src.start(when);
+    }
+
+    // 16-step drum patterns (kick / snare / hihat / crash). Step 0 = beat 1.
+    const DRUM_PRESETS = {
+      basic: {
+        kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        hihat: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+        crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+      rock: {
+        kick:  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        crash: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+      pop: {
+        kick:  [1,0,0,0, 0,0,0,0, 1,0,1,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hihat: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+        crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+      funk: {
+        kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,1,0,0, 1,0,0,1],
+        hihat: [1,0,1,1, 1,0,1,0, 1,1,1,0, 1,0,1,1],
+        crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+      clear: {
+        kick:  [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        crash: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      },
+    };
+
+    function drumPatternHasBeats(p) {
+      if (!p) return false;
+      for (const v of ['kick','snare','hihat','crash']) {
+        if (Array.isArray(p[v]) && p[v].some(x => x)) return true;
+      }
+      return false;
+    }
+
+    function applyDrumPreset(name) {
+      const p = DRUM_PRESETS[name];
+      if (!p) return;
+      const copy = {
+        kick:  p.kick.slice(),
+        snare: p.snare.slice(),
+        hihat: p.hihat.slice(),
+        crash: p.crash.slice(),
+      };
+      setState({ drumPattern: copy });
+      renderDrumGrid();
+    }
+
     // ── Chord audio synthesis ──────────────────────────────────────────────────
     function chordToPitches(chord) {
       if (!chord || !chord.root) return [];
@@ -2536,12 +2711,19 @@
     function computeMetronomeShape() {
       const [num] = state.timeSignature.split('/').map(Number);
       metronome.beatsPerBar = num;
-      switch (state.subdivision) {
-        case 'eighth':    metronome.subdivisionsPerBeat = 2; break;
-        case 'sixteenth': metronome.subdivisionsPerBeat = 4; break;
-        case 'triplet':   metronome.subdivisionsPerBeat = 3; break;
-        case 'quarter':
-        default:          metronome.subdivisionsPerBeat = 1; break;
+      // Drum mode with a non-empty pattern always runs at 16th-note rate so
+      // the 16-step pattern grid lines up with bars regardless of the user's
+      // subdivision setting (which only controls the beep metronome).
+      if (state.metronomeSound === 'drum' && drumPatternHasBeats(state.drumPattern)) {
+        metronome.subdivisionsPerBeat = 4;
+      } else {
+        switch (state.subdivision) {
+          case 'eighth':    metronome.subdivisionsPerBeat = 2; break;
+          case 'sixteenth': metronome.subdivisionsPerBeat = 4; break;
+          case 'triplet':   metronome.subdivisionsPerBeat = 3; break;
+          case 'quarter':
+          default:          metronome.subdivisionsPerBeat = 1; break;
+        }
       }
       metronome.ticksPerBar = metronome.beatsPerBar * metronome.subdivisionsPerBeat;
     }
@@ -2554,7 +2736,17 @@
       const accent     = isDownbeat ? 'down' : (isBeat ? 'weak' : 'sub');
 
       if (state.metronomeSound === 'drum') {
-        clickDrumSound(when, accent);
+        const p = state.drumPattern;
+        if (drumPatternHasBeats(p)) {
+          // Pattern is 16 steps. tickIdx is 16th-note index within the bar.
+          const step = tickIdx % 16;
+          if (p.kick  && p.kick[step])  clickKick(when);
+          if (p.snare && p.snare[step]) clickSnare(when);
+          if (p.hihat && p.hihat[step]) clickHat(when);
+          if (p.crash && p.crash[step]) clickCrash(when);
+        } else {
+          clickDrumSound(when, accent);
+        }
       } else {
         clickBeep(when, accent);
       }
@@ -3093,8 +3285,17 @@
       renderChordList();
       renderSuggestions();
       renderVolumes();
+      renderDrumGrid();
       renderFretboard();
       renderFavorites();
+
+      // Drum preset buttons
+      document.querySelectorAll('[data-drum-preset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          applyDrumPreset(btn.dataset.drumPreset);
+          if (metronome.isPlaying) computeMetronomeShape();
+        });
+      });
       updateLoopStatus();
       // Re-render fretboard on viewport / orientation changes so the dynamic
       // string spacing follows the available card height.
