@@ -1767,16 +1767,32 @@
     }
 
     const ROOTS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const QUALITIES = [
-      { value: 'major', label: 'maj' },
-      { value: 'minor', label: 'min' },
-      { value: 'diminished', label: 'dim' },
-      { value: 'augmented', label: 'aug' },
-      { value: 'halfDiminished', label: 'm7b5' },
-      { value: 'diminished7', label: 'dim7' },
-      { value: 'major7', label: 'maj7' },
-      { value: 'dominant', label: '7' },
+    // Chord-quality dropdown options. The chord data model has TWO fields —
+    // `quality` (triad/dim/aug shape) and `seventh` (added 7th flavor) — so a
+    // single readable label like "maj7" maps to a (quality, seventh) PAIR.
+    // Selecting an option writes both fields; matching a chord back to an
+    // option compares both. The option index (not its label) is used as the
+    // <option value> so labels stay free-form.
+    const QUALITY_OPTIONS = [
+      { label: 'maj',    quality: 'major',          seventh: ''         },
+      { label: 'maj7',   quality: 'major',          seventh: 'major7'   },
+      { label: '7',      quality: 'major',          seventh: 'dominant' },
+      { label: 'min',    quality: 'minor',          seventh: ''         },
+      { label: 'm7',     quality: 'minor',          seventh: 'dominant' },
+      { label: 'mMaj7',  quality: 'minor',          seventh: 'major7'   },
+      { label: 'm7b5',   quality: 'halfDiminished', seventh: 'dominant' },
+      { label: 'dim',    quality: 'diminished',     seventh: ''         },
+      { label: 'dim7',   quality: 'diminished7',    seventh: ''         },
+      { label: 'aug',    quality: 'augmented',      seventh: ''         },
     ];
+    function chordQualityOptionIndex(chord) {
+      const s = chord.seventh || '';
+      for (let i = 0; i < QUALITY_OPTIONS.length; i++) {
+        const o = QUALITY_OPTIONS[i];
+        if (o.quality === chord.quality && o.seventh === s) return i;
+      }
+      return 0;
+    }
 
     // ── Render: Beat Indicator ─────────────────────────────────────────────────
     function renderBeatIndicator() {
@@ -1845,15 +1861,22 @@
         // Quality select
         const qualSel = document.createElement('select');
         qualSel.className = 'qual-sel';
-        QUALITIES.forEach(q => {
+        const selectedOptIdx = chordQualityOptionIndex(chord);
+        QUALITY_OPTIONS.forEach((o, i) => {
           const opt = document.createElement('option');
-          opt.value = q.value;
-          opt.textContent = q.label;
-          if (q.value === chord.quality) opt.selected = true;
+          opt.value = String(i);
+          opt.textContent = o.label;
+          if (i === selectedOptIdx) opt.selected = true;
           qualSel.appendChild(opt);
         });
         qualSel.addEventListener('change', () => {
-          state.chordProgression[idx].quality = qualSel.value;
+          const i = parseInt(qualSel.value, 10);
+          const o = QUALITY_OPTIONS[i];
+          if (!o) return;
+          // Write BOTH fields so the chord type is fully consistent. Existing
+          // tensions are preserved (user managed those via the text input).
+          state.chordProgression[idx].quality = o.quality;
+          state.chordProgression[idx].seventh = o.seventh;
           setState({ chordProgression: [...state.chordProgression] });
           nameDiv.textContent = chordDisplayName(state.chordProgression[idx]);
           if (idx === chordPlayback.currentChordIdx) renderSuggestions();
