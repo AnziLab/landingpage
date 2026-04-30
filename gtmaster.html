@@ -819,6 +819,31 @@
       </div>
 
       <div class="card" style="margin-top:16px;">
+        <div class="card-title">🔄 동기화</div>
+        <div id="syncOff" style="display:flex; flex-direction:column; gap:6px;">
+          <div class="empty" style="font-size:11px;">기기 간 설정·코드 진행·즐겨찾기를 자동 동기화합니다.</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-sm primary" id="syncStartBtn">동기화 시작</button>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="text" id="syncCodeInput" placeholder="다른 기기 코드" maxlength="6" style="text-transform:uppercase; width:110px; letter-spacing:2px;">
+            <button class="btn btn-sm" id="syncLinkBtn">연결</button>
+          </div>
+        </div>
+        <div id="syncOn" style="display:none; flex-direction:column; gap:6px;">
+          <div style="font-size:13px;">
+            동기화 코드:
+            <span id="syncCodeDisplay" style="font-family:monospace; font-weight:700; letter-spacing:2px; margin-left:6px; padding:2px 8px; background:var(--accent-soft); border-radius:6px;"></span>
+          </div>
+          <div id="syncStatus" class="empty" style="font-size:11px;">대기 중</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-sm" id="syncCopyBtn">코드 복사</button>
+            <button class="btn btn-sm danger" id="syncStopBtn">끄기</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
         <div class="card-title">드럼 패턴</div>
         <div class="empty" style="padding:8px 0;">Phase 2에서 구현</div>
       </div>
@@ -848,6 +873,7 @@
       volumes: { metronome: 0.5, chord: 0.5, drum: 0.7, fretboard: 0.7 },
       theme: 'dark',
       activeTab: 'practice',
+      syncCode: null,    // when set, state mirrors to Pantry under this 6-char key
       backing: {
         videoId: null, loopA: null, loopB: null,
         loopEnabled: false, speed: 1.0, favorites: []
@@ -898,7 +924,194 @@
     function setState(patch) {
       Object.assign(state, patch);
       saveState();
+      scheduleSyncUpload();
     }
+
+    // ── Cloud sync via Pantry ─────────────────────────────────────────────────
+    // Pantry: free anonymous JSON store. Each sync code is a separate basket.
+    // Anyone with the code (and our pantry id) can read/write that basket, so
+    // codes must be hard-to-guess. We use 6 alphanumeric chars from a 32-symbol
+    // alphabet → 32^6 ≈ 1 billion combinations, fine for a personal app.
+    const PANTRY_ID = 'a4ee7bd7-9ce5-41eb-9ecc-5c4b6adc6ae3';
+    const PANTRY_BASE = 'https://getpantry.cloud/apiv1/pantry/' + PANTRY_ID + '/basket/';
+    const SYNC_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I confusion
+    let syncUploadTimer = null;
+    let lastSyncedAt = 0;
+
+    function generateSyncCode() {
+      let s = '';
+      for (let i = 0; i < 6; i++) {
+        s += SYNC_ALPHABET[Math.floor(Math.random() * SYNC_ALPHABET.length)];
+      }
+      return s;
+    }
+
+    function setSyncStatus(text) {
+      const el = document.getElementById('syncStatus');
+      if (el) el.textContent = text;
+    }
+
+    function updateSyncUI() {
+      const off = document.getElementById('syncOff');
+      const on  = document.getElementById('syncOn');
+      const display = document.getElementById('syncCodeDisplay');
+      if (!off || !on || !display) return;
+      if (state.syncCode) {
+        off.style.display = 'none';
+        on.style.display = 'flex';
+        display.textContent = state.syncCode;
+      } else {
+        off.style.display = 'flex';
+        on.style.display = 'none';
+        display.textContent = '';
+      }
+    }
+
+    async function syncUpload() {
+      if (!state.syncCode) return;
+      const updatedAt = Date.now();
+      const cleanState = { ...state };
+      delete cleanState.syncCode;       // don't roundtrip the code itself
+      delete cleanState.activeTab;      // tab is per-device
+      const payload = { state: cleanState, updatedAt };
+      try {
+        setSyncStatus('업로드 중...');
+        const res = await fetch(PANTRY_BASE + state.syncCode, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        lastSyncedAt = updatedAt;
+        setSyncStatus('동기화됨 · ' + new Date().toLocaleTimeString());
+      } catch (e) {
+        setSyncStatus('업로드 실패 (재시도됩니다)');
+        console.warn('sync upload failed', e);
+      }
+    }
+
+    function scheduleSyncUpload() {
+      if (!state.syncCode) return;
+      clearTimeout(syncUploadTimer);
+      syncUploadTimer = setTimeout(syncUpload, 1500);
+    }
+
+    async function syncDownload() {
+      if (!state.syncCode) return;
+      try {
+        const res = await fetch(PANTRY_BASE + state.syncCode);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !data.state || !data.updatedAt) return;
+        if (data.updatedAt <= lastSyncedAt) return; // we have the latest
+        // Merge cloud state into local, preserving syncCode and activeTab
+        const code = state.syncCode;
+        const tab  = state.activeTab;
+        Object.keys(defaultState).forEach(k => {
+          if (data.state[k] !== undefined && k !== 'syncCode' && k !== 'activeTab') {
+            state[k] = data.state[k];
+          }
+        });
+        state.syncCode = code;
+        state.activeTab = tab;
+        lastSyncedAt = data.updatedAt;
+        flushSaveState();
+        reapplySyncedUI();
+        setSyncStatus('가져옴 · ' + new Date().toLocaleTimeString());
+      } catch (e) {
+        console.warn('sync download failed', e);
+      }
+    }
+
+    function reapplySyncedUI() {
+      // After a remote state is applied, refresh every UI surface.
+      // These functions are defined later in the script; guard with typeof.
+      try { applyTheme && applyTheme(state.theme); } catch (e) {}
+      try {
+        const bpm = document.getElementById('bpmInput'); if (bpm) bpm.value = state.bpm;
+        const ts = document.getElementById('timeSigSelect'); if (ts) ts.value = state.timeSignature;
+        document.querySelectorAll('#subdivisionBtns [data-subdivision]').forEach(b => {
+          b.classList.toggle('active', b.dataset.subdivision === state.subdivision);
+        });
+        document.querySelectorAll('#soundBtns [data-sound]').forEach(b => {
+          b.classList.toggle('active', b.dataset.sound === state.metronomeSound);
+        });
+        const ci = document.getElementById('countInBtn'); if (ci) ci.classList.toggle('active', state.countIn);
+        const sk = document.getElementById('songKeySelect'); if (sk) sk.value = state.songKey;
+        document.querySelectorAll('#instrumentBtns [data-instrument]').forEach(b => {
+          b.classList.toggle('active', b.dataset.instrument === state.instrument);
+        });
+        const lh = document.getElementById('leftHandedBtn'); if (lh) lh.classList.toggle('active', state.leftHanded);
+        const ks = document.getElementById('scaleKeySelect'); if (ks) ks.value = state.scaleKeyCenter;
+        const st = document.getElementById('scaleTypeSelect'); if (st) st.value = state.scaleType;
+        const sp = document.getElementById('speedSlider'); if (sp) sp.value = state.backing.speed;
+        const spv = document.getElementById('speedVal'); if (spv) spv.textContent = Number(state.backing.speed).toFixed(1) + 'x';
+      } catch (e) {}
+      try { renderBeatIndicator && renderBeatIndicator(); } catch (e) {}
+      try { renderChordList && renderChordList(); } catch (e) {}
+      try { renderSuggestions && renderSuggestions(); } catch (e) {}
+      try { renderVolumes && renderVolumes(); } catch (e) {}
+      try { renderFretboard && renderFretboard(); } catch (e) {}
+      try { renderFavorites && renderFavorites(); } catch (e) {}
+      try { updateLoopStatus && updateLoopStatus(); } catch (e) {}
+    }
+
+    async function startSync() {
+      const code = generateSyncCode();
+      state.syncCode = code;
+      flushSaveState();
+      updateSyncUI();
+      await syncUpload();
+    }
+
+    async function linkSync(rawCode) {
+      const code = (rawCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      if (code.length !== 6) {
+        alert('6자리 코드를 입력해주세요.');
+        return;
+      }
+      try {
+        setSyncStatus('연결 중...');
+        const res = await fetch(PANTRY_BASE + code);
+        if (!res.ok) {
+          alert('해당 코드의 동기화 정보가 없습니다.');
+          return;
+        }
+        const data = await res.json();
+        if (!data || !data.state) {
+          alert('동기화 데이터가 비어있습니다.');
+          return;
+        }
+        const tab = state.activeTab;
+        Object.keys(defaultState).forEach(k => {
+          if (data.state[k] !== undefined && k !== 'syncCode' && k !== 'activeTab') {
+            state[k] = data.state[k];
+          }
+        });
+        state.syncCode = code;
+        state.activeTab = tab;
+        lastSyncedAt = data.updatedAt || 0;
+        flushSaveState();
+        reapplySyncedUI();
+        updateSyncUI();
+        setSyncStatus('연결됨 · ' + new Date().toLocaleTimeString());
+      } catch (e) {
+        alert('연결 실패: ' + (e.message || e));
+      }
+    }
+
+    function stopSync() {
+      state.syncCode = null;
+      lastSyncedAt = 0;
+      flushSaveState();
+      updateSyncUI();
+    }
+
+    // Re-pull on visibility / focus so multi-device edits show up quickly
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncDownload();
+    });
+    window.addEventListener('focus', syncDownload);
 
     // ── Music theory data (copied verbatim from gtpractice.html) ───────────────
         const scalePatterns = {
@@ -2916,6 +3129,39 @@
       document.getElementById('drawerBackdrop').addEventListener('click', () => {
         document.getElementById('settingsDrawer').dataset.open = 'false';
       });
+
+      // Sync controls
+      document.getElementById('syncStartBtn').addEventListener('click', () => {
+        if (state.syncCode) return;
+        startSync();
+      });
+      document.getElementById('syncLinkBtn').addEventListener('click', () => {
+        const v = document.getElementById('syncCodeInput').value;
+        linkSync(v);
+      });
+      document.getElementById('syncCodeInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          linkSync(e.target.value);
+        }
+      });
+      document.getElementById('syncCopyBtn').addEventListener('click', async () => {
+        if (!state.syncCode) return;
+        try {
+          await navigator.clipboard.writeText(state.syncCode);
+          setSyncStatus('코드 복사됨');
+        } catch (e) {
+          setSyncStatus('복사 실패 — 직접 보세요: ' + state.syncCode);
+        }
+      });
+      document.getElementById('syncStopBtn').addEventListener('click', () => {
+        if (!confirm('동기화를 끄면 이 기기에서 더 이상 자동 동기화되지 않습니다. (서버 데이터는 남아있어요)')) return;
+        stopSync();
+      });
+
+      updateSyncUI();
+      // If we already have a sync code, pull latest from cloud on startup.
+      if (state.syncCode) syncDownload();
 
       // Drawer theme button
       document.getElementById('drawerThemeBtn').addEventListener('click', () => {
