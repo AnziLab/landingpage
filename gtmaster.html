@@ -2183,7 +2183,9 @@
     // by rounded frequency with an LRU cap to keep memory bounded.
     const KS_CACHE = new Map();
     const KS_BUFFER_LEN_SEC = 2.5;
-    const KS_DECAY = 0.996;
+    // Decay-per-cycle (NOT per-sample). Applied once each time the delay line
+    // is fully traversed. 0.998 gives a ~2 s natural ring at mid pitches.
+    const KS_DECAY = 0.998;
     const KS_CACHE_LIMIT = 80;
 
     function generateKSBuffer(ctx, freq, lenSec, decay) {
@@ -2199,12 +2201,19 @@
         delay[i] = 0.5 * (delay[i] + delay[(i + 1) % period]);
       }
       let idx = 0;
+      let cycleStep = 0;
       for (let n = 0; n < numSamples; n++) {
         data[n] = delay[idx];
         const cur = delay[idx];
         const next = delay[(idx + 1) % period];
-        delay[idx] = decay * 0.5 * (cur + next);
+        // Low-pass averaging is the core KS damping (per sample).
+        let v = 0.5 * (cur + next);
+        // Tiny extra decay applied ONCE per full cycle of the delay line so
+        // the note doesn't ring forever, regardless of frequency.
+        if (cycleStep === 0) v *= decay;
+        delay[idx] = v;
         idx = (idx + 1) % period;
+        cycleStep = (cycleStep + 1) % period;
       }
       return buffer;
     }
