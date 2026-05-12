@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MixCheck One Screen</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #222222;
+            --primary-color: #007AFF;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --gray-color: #f0f0f0;
+            --safe-area-inset-bottom: env(safe-area-inset-bottom);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color);
+            overflow: hidden; height: 100vh; display: flex; flex-direction: column;
+        }
+
+        /* Layout Structure */
+        header { padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 16px; margin: 0; }
+        .info-text { font-size: 10px; color: #666; text-align: right; }
+
+        main { flex: 1; display: flex; flex-direction: column; padding: 10px 15px; gap: 8px; overflow-y: auto; }
+
+        section { background: var(--gray-color); padding: 10px; border-radius: 12px; }
+
+        /* DB Display */
+        .db-container { text-align: center; padding: 15px 0; background: white; border: 2px solid var(--gray-color); }
+        .db-value { font-size: 56px; font-weight: 800; line-height: 1; margin-bottom: 5px; }
+        .db-label { font-size: 14px; font-weight: bold; color: #555; }
+
+        /* Gauge */
+        .gauge-wrap { height: 12px; background: #ddd; border-radius: 6px; position: relative; margin: 10px 0; overflow: hidden; }
+        .gauge-bar { height: 100%; width: 0%; transition: width 0.1s, background-color 0.2s; background: var(--primary-color); }
+        .target-zone { position: absolute; height: 100%; background: rgba(40, 167, 69, 0.3); border-left: 1px solid var(--success-color); border-right: 1px solid var(--success-color); }
+
+        /* Feedback */
+        .feedback-area { min-height: 50px; text-align: center; font-weight: bold; font-size: 15px; padding: 5px; display: flex; align-items: center; justify-content: center; }
+
+        /* Control Grid */
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 5px; }
+        .grid-5 { grid-template-columns: repeat(5, 1fr); }
+        button {
+            border: none; border-radius: 8px; padding: 10px 5px; font-size: 13px; font-weight: 600;
+            background: white; color: var(--text-color); cursor: pointer; min-height: 44px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        button.active { background: var(--primary-color); color: white; }
+        button:active { opacity: 0.7; }
+
+        .btn-large { grid-column: span 2; font-size: 16px; background: #eee; }
+        .btn-start { background: var(--success-color); color: white; }
+        .btn-danger { background: var(--danger-color); color: white; grid-column: span 4; }
+
+        /* Text Displays */
+        .status-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; font-weight: bold; }
+        .pattern-display { font-size: 16px; text-align: center; font-weight: bold; color: var(--primary-color); margin: 5px 0; }
+        .guide-box { font-size: 11px; color: #555; background: #fff; padding: 8px; border-radius: 6px; margin-top: 5px; border-left: 3px solid var(--primary-color); }
+
+        /* Footer Info */
+        footer { font-size: 9px; padding: 10px; color: #888; background: #f9f9f9; text-align: center; }
+
+        /* Overlay */
+        #danger-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(220, 53, 69, 0.95);
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            color: white; z-index: 100; text-align: center; padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="danger-overlay">
+    <h2 style="font-size: 32px;">⚠️ 중지하세요!</h2>
+    <p id="danger-msg" style="font-size: 18px; margin: 20px 0;">목에 무리가 가고 있습니다.</p>
+    <button onclick="resetToSafety()" style="padding: 15px 30px; font-size: 18px;">리셋 모드로 돌아가기</button>
+</div>
+
+<header>
+    <h1>MixCheck One</h1>
+    <div class="info-text">입에서 30cm 유지<br>기준: <span id="current-target-range">55~65</span> dB</div>
+</header>
+
+<main>
+    <!-- 실시간 피드백 섹션 -->
+    <section class="db-container">
+        <div class="status-row">
+            <span id="display-mode-name">모드: 연결</span>
+            <span id="display-target-db">목표: 55~65 dBA</span>
+        </div>
+        <div class="db-value"><span id="db-num">00</span> <span style="font-size: 20px;">dB</span></div>
+        <div class="gauge-wrap">
+            <div id="target-zone" class="target-zone"></div>
+            <div id="gauge-bar" class="gauge-bar"></div>
+        </div>
+        <div id="feedback-txt" class="feedback-area">마이크 시작 버튼을 눌러주세요.</div>
+    </section>
+
+    <!-- 모드 선택 -->
+    <div class="grid-5 grid">
+        <button onclick="setMode('reset')" id="btn-m-reset">리셋</button>
+        <button onclick="setMode('connect')" id="btn-m-connect" class="active">연결</button>
+        <button onclick="setMode('core')" id="btn-m-core">중심</button>
+        <button onclick="setMode('bright')" id="btn-m-bright">밝게</button>
+        <button onclick="setMode('song')" id="btn-m-song">노래</button>
+    </div>
+
+    <!-- 스케일 및 재생 조절 -->
+    <section>
+        <div class="grid">
+            <button onclick="setScale('fiveNote')" id="btn-s-fiveNote">5음</button>
+            <button onclick="setScale('onePointFive')" id="btn-s-onePointFive">1.5옥</button>
+            <button onclick="setScale('octaveDo')" id="btn-s-octaveDo">옥타브도</button>
+            <button onclick="setScale('siren')" id="btn-s-siren">사이렌</button>
+        </div>
+        <div id="pattern-txt" class="pattern-display">도 레 미 파 솔 파 미 레 도</div>
+        <div class="grid">
+            <button onclick="changeKey(-2)">낮게</button>
+            <button onclick="togglePlay()" id="btn-play" style="grid-column: span 2; background: #444; color: white;">재생</button>
+            <button onclick="changeKey(2)">높게</button>
+        </div>
+        <div style="text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 5px;">현재 키: <span id="current-key-display">C4</span></div>
+    </section>
+
+    <!-- 발음 선택 -->
+    <div class="grid-5 grid">
+        <button onclick="setSyllable('ng')" id="btn-sy-ng">응</button>
+        <button onclick="setSyllable('mum')" id="btn-sy-mum" class="active">멈</button>
+        <button onclick="setSyllable('goog')" id="btn-sy-goog">구그</button>
+        <button onclick="setSyllable('nay')" id="btn-sy-nay">네이</button>
+        <button onclick="setSyllable('noo')" id="btn-sy-noo">누</button>
+    </div>
+
+    <div id="guide-txt" class="guide-box">“작게, 가볍게, 그런데 비지 않게.”</div>
+
+    <!-- 세트 및 시작 -->
+    <section style="background: #eef4ff;">
+        <div class="status-row">
+            <span id="set-counter">세트: 0 / 5회</span>
+            <span>평균 <span id="avg-db">0</span> | 최고 <span id="max-db">0</span></span>
+        </div>
+        <div class="grid">
+            <button onclick="initAudio()" id="btn-mic-start" class="btn-large btn-start">마이크 시작</button>
+            <button onclick="startSet()" id="btn-set-start" class="btn-large">세트 시작</button>
+            <button onclick="triggerPain()" class="btn-danger">목 아픔 (연습 중단)</button>
+        </div>
+    </section>
+</main>
+
+<footer>
+    휴대폰 dB는 연습 기준입니다. 입에서 30cm 정도 떨어뜨리고 사용하세요.
+</footer>
+
+<script>
+/** 1. Data Structures **/
+const modes = {
+    reset: { name: "리셋", min: 45, max: 55, danger: 75, guide: "목을 깨우는 단계입니다. 편하게 지나가세요." },
+    connect: { name: "연결", min: 55, max: 65, danger: 80, guide: "고음을 뚫는 게 아니라 끊기지 않게 지나가는 단계입니다." },
+    core: { name: "중심 만들기", min: 60, max: 70, danger: 82, guide: "작지만 소리의 알맹이를 남기는 단계입니다." },
+    bright: { name: "밝히기", min: 60, max: 72, danger: 82, guide: "작게 또렷하게 만드세요. 크게 밝히지 마세요." },
+    song: { name: "노래 적용", min: 65, max: 78, danger: 85, guide: "한 구절만 반복하세요. 전체를 부르지 마세요." }
+};
+
+const scales = {
+    fiveNote: { korean: "도 레 미 파 솔 파 미 레 도", degrees: [0, 2, 4, 5, 7, 5, 4, 2, 0], guide: "기본 연결 연습입니다. 같은 크기로 지나가세요." },
+    onePointFive: { korean: "도 미 솔 도 미 솔 파 레 시 솔 파 레 도", degrees: [0, 4, 7, 12, 16, 19, 17, 14, 11, 7, 5, 2, 0], guide: "올라갈수록 작게, 내려올수록 풀리지 않게!" },
+    octaveDo: { korean: "도 미 솔 도 도 도 도 도 솔 미 도", degrees: [0, 4, 7, 12, 12, 12, 12, 12, 7, 4, 0], guide: "도를 가볍게 찍으세요. 반복할수록 커지면 안 됩니다." },
+    siren: { korean: "낮은 음 → 높은 음 → 낮은 음", type: "glide", guide: "끊기지 않고 지나가는 연습입니다." }
+};
+
+const syllables = {
+    ng: { name: "응", guide: "연결 연습. 목을 조이지 말고 코앞으로 지나가는 느낌." },
+    mum: { name: "멈", guide: "소리 중심 만들기. 작지만 알맹이를 남기는 연습." },
+    goog: { name: "구그", guide: "소리가 새는 문제 보정. 짧게 붙이는 연습." },
+    nay: { name: "네이", guide: "먹먹한 소리 보정. 살짝 밝게 꺼내는 연습." },
+    noo: { name: "누", guide: "부드러운 연결. 입을 좁게 유지하세요." }
+};
+
+/** 2. State Management **/
+let state = {
+    mode: 'connect', scale: 'fiveNote', syllable: 'mum',
+    rootFreq: 261.63, // C4
+    rootName: "C4",
+    isAudioContextStarted: false,
+    isPlaying: false,
+    isRecording: false,
+    currentDb: 0,
+    maxDbInSet: 0,
+    sumDbInSet: 0,
+    dbCountInSet: 0,
+    currentSet: 0,
+    isDanger: false,
+    dangerTimer: 0
+};
+
+/** 3. Audio Engine **/
+let audioCtx, analyser, microphone, scriptNode, oscillator;
+const calibrationOffset = 90;
+
+async function initAudio() {
+    if (state.isAudioContextStarted) return;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        microphone = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        microphone.connect(analyser);
+
+        state.isAudioContextStarted = true;
+        document.getElementById('btn-mic-start').innerText = "마이크 활성됨";
+        document.getElementById('btn-mic-start').style.background = "#aaa";
+        
+        processAudio();
+    } catch (err) {
+        alert("마이크 권한이 필요합니다: " + err);
+    }
+}
+
+function processAudio() {
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Float32Array(bufferLength);
+
+    function update() {
+        analyser.getFloatTimeDomainData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i] * dataArray[i];
+        }
+        let rms = Math.sqrt(sum / bufferLength);
+        let db = 20 * Math.log10(rms) + calibrationOffset;
+        if (db < 0 || !isFinite(db)) db = 0;
+
+        state.currentDb = Math.round(db);
+        updateUI();
+        checkSafety(state.currentDb);
+        
+        if (state.currentSet > 0) {
+            state.sumDbInSet += state.currentDb;
+            state.dbCountInSet++;
+            if (state.currentDb > state.maxDbInSet) state.maxDbInSet = state.currentDb;
+        }
+
+        requestAnimationFrame(update);
+    }
+    update();
+}
+
+/** 4. UI Functions **/
+function setMode(m) {
+    state.mode = m;
+    const mData = modes[m];
+    document.querySelectorAll('[id^="btn-m-"]').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-m-${m}`).classList.add('active');
+    document.getElementById('display-mode-name').innerText = `모드: ${mData.name}`;
+    document.getElementById('display-target-db').innerText = `목표: ${mData.min}~${mData.max} dBA`;
+    document.getElementById('current-target-range').innerText = `${mData.min}~${mData.max}`;
+    updateGuide();
+    
+    // Draw target zone on gauge
+    const zone = document.getElementById('target-zone');
+    zone.style.left = mData.min + "%";
+    zone.style.width = (mData.max - mData.min) + "%";
+}
+
+function setScale(s) {
+    state.scale = s;
+    document.querySelectorAll('[id^="btn-s-"]').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-s-${s}`).classList.add('active');
+    document.getElementById('pattern-txt').innerText = scales[s].korean;
+    updateGuide();
+}
+
+function setSyllable(sy) {
+    state.syllable = sy;
+    document.querySelectorAll('[id^="btn-sy-"]').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-sy-${sy}`).classList.add('active');
+    updateGuide();
+}
+
+function updateGuide() {
+    const text = `${modes[state.mode].guide} | ${scales[state.scale].guide} | ${syllables[state.syllable].guide}`;
+    document.getElementById('guide-txt').innerText = text;
+}
+
+function changeKey(dir) {
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    let [name, oct] = [state.rootName.slice(0, -1), parseInt(state.rootName.slice(-1))];
+    let idx = notes.indexOf(name);
+    
+    idx += dir;
+    while (idx >= 12) { idx -= 12; oct++; }
+    while (idx < 0) { idx += 12; oct--; }
+    
+    state.rootName = notes[idx] + oct;
+    state.rootFreq = 440 * Math.pow(2, ( (idx + (oct-4)*12) - 9) / 12);
+    document.getElementById('current-key-display').innerText = state.rootName;
+}
+
+function updateUI() {
+    const db = state.currentDb;
+    document.getElementById('db-num').innerText = db.toString().padStart(2, '0');
+    document.getElementById('gauge-bar').style.width = Math.min(db, 100) + "%";
+    
+    const m = modes[state.mode];
+    const ft = document.getElementById('feedback-txt');
+    
+    if (!state.isAudioContextStarted) return;
+
+    if (db < m.min - 5) {
+        ft.innerText = "너무 작아요. 조금 더 붙여보세요.";
+        ft.style.color = "#666";
+        document.getElementById('gauge-bar').style.backgroundColor = "#ccc";
+    } else if (db < m.min) {
+        ft.innerText = "괜찮지만 조금 더 또렷하게!";
+        ft.style.color = varColor('--primary-color');
+        document.getElementById('gauge-bar').style.backgroundColor = varColor('--primary-color');
+    } else if (db <= m.max) {
+        ft.innerText = "좋습니다. 이 크기로 유지하세요.";
+        ft.style.color = varColor('--success-color');
+        document.getElementById('gauge-bar').style.backgroundColor = varColor('--success-color');
+    } else if (db < m.danger) {
+        ft.innerText = "조금 큽니다. 10%만 줄이세요.";
+        ft.style.color = varColor('--warning-color');
+        document.getElementById('gauge-bar').style.backgroundColor = varColor('--warning-color');
+    } else {
+        ft.innerText = "중지! 너무 강하게 밀고 있습니다.";
+        ft.style.color = varColor('--danger-color');
+        document.getElementById('gauge-bar').style.backgroundColor = varColor('--danger-color');
+    }
+}
+
+function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
+
+/** 5. Scale Player **/
+async function playNote(freq, duration, startTime) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+    
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.2, startTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration - 0.05);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+}
+
+function togglePlay() {
+    if (!state.isAudioContextStarted) { initAudio(); return; }
+    if (state.isPlaying) return;
+    
+    state.isPlaying = true;
+    document.getElementById('btn-play').innerText = "연주 중...";
+    
+    const sc = scales[state.scale];
+    const tempo = 88;
+    const beat = 60 / tempo;
+    let now = audioCtx.currentTime;
+
+    if (sc.type === "glide") {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(state.rootFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(state.rootFreq * 2, now + beat * 2);
+        osc.frequency.exponentialRampToValueAtTime(state.rootFreq, now + beat * 4);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + beat * 4);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(now + beat * 4);
+        setTimeout(() => { state.isPlaying = false; document.getElementById('btn-play').innerText = "재생"; }, beat * 4000);
+    } else {
+        sc.degrees.forEach((deg, i) => {
+            const f = state.rootFreq * Math.pow(2, deg/12);
+            playNote(f, beat, now + (i * beat));
+        });
+        setTimeout(() => { state.isPlaying = false; document.getElementById('btn-play').innerText = "재생"; }, sc.degrees.length * beat * 1000);
+    }
+}
+
+/** 6. Set Logic & Safety **/
+function startSet() {
+    if (!state.isAudioContextStarted) { alert("마이크를 먼저 켜주세요."); return; }
+    state.currentSet = 1;
+    state.maxDbInSet = 0;
+    state.sumDbInSet = 0;
+    state.dbCountInSet = 0;
+    runSetLoop();
+}
+
+function runSetLoop() {
+    if (state.currentSet > 5) {
+        const avg = Math.round(state.sumDbInSet / state.dbCountInSet);
+        document.getElementById('set-counter').innerText = "세트 종료";
+        document.getElementById('avg-db').innerText = avg;
+        document.getElementById('max-db').innerText = state.maxDbInSet;
+        state.currentSet = 0;
+        return;
+    }
+    
+    document.getElementById('set-counter').innerText = `세트: ${state.currentSet} / 5회`;
+    togglePlay();
+    
+    setTimeout(() => {
+        state.currentSet++;
+        if (state.currentSet <= 5) setTimeout(runSetLoop, 2000); // 2초 휴식 후 다음 반복
+        else runSetLoop();
+    }, (scales[state.scale].degrees?.length || 4) * (60/88) * 1000 + 1000);
+}
+
+function checkSafety(db) {
+    if (db >= 85) {
+        state.dangerTimer++;
+        if (state.dangerTimer > 120) { // 약 2초 (60fps 기준)
+            triggerDanger("85dB 이상 장시간 노출! 목을 보호하세요.");
+        }
+    } else {
+        state.dangerTimer = 0;
+    }
+    
+    if (db >= modes[state.mode].danger) {
+        // 즉각 경고는 UI에서 표시 (업데이트UI 함수)
+    }
+}
+
+function triggerPain() {
+    triggerDanger("통증이 느껴지면 즉시 중단해야 합니다. 리셋 모드로 유도합니다.");
+}
+
+function triggerDanger(msg) {
+    document.getElementById('danger-msg').innerText = msg;
+    document.getElementById('danger-overlay').style.display = 'flex';
+}
+
+function resetToSafety() {
+    document.getElementById('danger-overlay').style.display = 'none';
+    setMode('reset');
+    setScale('siren');
+    setSyllable('ng');
+    state.dangerTimer = 0;
+}
+
+// Initial UI Setup
+setMode('connect');
+setScale('fiveNote');
+setSyllable('mum');
+
+</script>
+</body>
+</html>
