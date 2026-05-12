@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MixCheck One Screen</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --card: #ffffff;
+      --ink: #17201b;
+      --muted: #6d746f;
+      --line: #dde3dd;
+      --good: #3aa76d;
+      --warn: #f0b429;
+      --bad: #e25555;
+      --soft: #eef4ee;
+      --shadow: 0 10px 30px rgba(20, 30, 24, .08);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100dvh;
+      padding: 10px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 8px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .header-tip {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .top-card {
+      padding: 8px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .row.tight {
+      gap: 5px;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-right: 2px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+      padding: 0 11px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: scale(.98);
+    }
+
+    button.active {
+      background: #173b2a;
+      color: #fff;
+      border-color: #173b2a;
+    }
+
+    button.primary {
+      background: #173b2a;
+      color: #fff;
+      border-color: #173b2a;
+      flex: 1;
+    }
+
+    button.danger {
+      background: #fff2f2;
+      color: #a83232;
+      border-color: #f2c7c7;
+    }
+
+    button.warn {
+      background: #fff8e7;
+      color: #805800;
+      border-color: #f5dda0;
+    }
+
+    button.small {
+      min-height: 36px;
+      font-size: 13px;
+      padding: 0 9px;
+    }
+
+    .meter-card {
+      padding: 10px;
+      display: grid;
+      gap: 7px;
+      text-align: center;
+    }
+
+    .mode-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .target {
+      color: var(--good);
+    }
+
+    .db {
+      font-size: clamp(54px, 18vw, 82px);
+      line-height: .9;
+      letter-spacing: -0.07em;
+      font-weight: 950;
+    }
+
+    .db small {
+      font-size: 18px;
+      letter-spacing: -0.02em;
+      color: var(--muted);
+    }
+
+    .state-pills {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      background: #eef1ee;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 0;
+    }
+
+    .pill.on.good {
+      background: #dff3e8;
+      color: #1f7b4d;
+    }
+
+    .pill.on.low,
+    .pill.on.high {
+      background: #fff2c9;
+      color: #805800;
+    }
+
+    .pill.on.danger {
+      background: #ffe0e0;
+      color: #ad3030;
+    }
+
+    .gauge {
+      position: relative;
+      height: 18px;
+      border-radius: 999px;
+      background: #e8ece8;
+      overflow: hidden;
+      border: 1px solid #d6ded6;
+    }
+
+    .gauge-target {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: var(--target-left, 30%);
+      width: var(--target-width, 20%);
+      background: linear-gradient(90deg, #a9e2bf, #54b97c);
+    }
+
+    .needle {
+      position: absolute;
+      top: -2px;
+      bottom: -2px;
+      left: var(--needle, 0%);
+      width: 4px;
+      border-radius: 999px;
+      background: #15221a;
+      transform: translateX(-2px);
+    }
+
+    .feedback {
+      min-height: 46px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: var(--soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .feedback.warn {
+      background: #fff6dc;
+      color: #7a5500;
+    }
+
+    .feedback.danger {
+      background: #ffe5e5;
+      color: #a83232;
+    }
+
+    .main-card {
+      padding: 9px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .pattern {
+      background: #f3f6f3;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 8px 9px;
+      display: grid;
+      gap: 3px;
+    }
+
+    .pattern-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .pattern-text {
+      font-size: 16px;
+      font-weight: 950;
+      letter-spacing: -0.05em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .guide {
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .stat {
+      background: #f5f7f5;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 7px 4px;
+      text-align: center;
+    }
+
+    .stat b {
+      display: block;
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .stat span {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .bottom {
+      display: grid;
+      gap: 7px;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 86px;
+      gap: 6px;
+    }
+
+    .notice {
+      font-size: 10.5px;
+      line-height: 1.25;
+      color: var(--muted);
+      text-align: center;
+      padding: 0 4px env(safe-area-inset-bottom);
+    }
+
+    .reset-box {
+      display: none;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffe7e7;
+      border: 1px solid #ffc5c5;
+      border-radius: 15px;
+      padding: 7px;
+      color: #9d2b2b;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .reset-box.show {
+      display: flex;
+    }
+
+    @media (max-height: 720px) {
+      .app {
+        gap: 6px;
+        padding: 7px;
+      }
+
+      button {
+        min-height: 38px;
+        font-size: 13px;
+        border-radius: 12px;
+        padding: 0 8px;
+      }
+
+      button.small {
+        min-height: 33px;
+        font-size: 12px;
+      }
+
+      .db {
+        font-size: 58px;
+      }
+
+      .feedback {
+        min-height: 40px;
+        font-size: 14px;
+      }
+
+      .guide,
+      .notice {
+        font-size: 10px;
+      }
+
+      .pattern-text {
+        font-size: 14px;
+      }
+
+      .stat {
+        padding: 5px 3px;
+      }
+
+      .stat b {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>MixCheck</h1>
+      <div class="header-tip">30cm 옆에 두세요</div>
+    </header>
+
+    <section class="card top-card">
+      <div class="row tight" id="modeButtons">
+        <span class="label">모드</span>
+        <button class="small" data-mode="reset">리셋</button>
+        <button class="small" data-mode="connect">연결</button>
+        <button class="small" data-mode="core">중심</button>
+        <button class="small" data-mode="bright">밝히기</button>
+        <button class="small" data-mode="song">노래</button>
+      </div>
+    </section>
+
+    <main class="card meter-card">
+      <div class="mode-line">
+        <span id="modeName">연결</span>
+        <span class="target" id="targetText">목표 55~65 dBA</span>
+      </div>
+
+      <div class="db">
+        <span id="dbValue">--</span><small>dB</small>
+      </div>
+
+      <div class="state-pills">
+        <div class="pill low" id="pillLow">작음</div>
+        <div class="pill good" id="pillGood">좋음</div>
+        <div class="pill high" id="pillHigh">큼</div>
+        <div class="pill danger" id="pillDanger">위험</div>
+      </div>
+
+      <div class="gauge" id="gauge">
+        <div class="gauge-target"></div>
+        <div class="needle"></div>
+      </div>
+
+      <div class="feedback" id="feedback">마이크를 시작하고 가볍게 소리 내세요.</div>
+
+      <div class="reset-box" id="resetBox">
+        <span>리셋 모드로 돌아가 작게 연결하세요.</span>
+        <button class="small danger" id="resetModeBtn">리셋 모드로</button>
+      </div>
+    </main>
+
+    <section class="card main-card">
+      <div class="row tight" id="scaleButtons">
+        <span class="label">스케일</span>
+        <button class="small" data-scale="fiveNote">5음</button>
+        <button class="small" data-scale="onePointFiveOctave">1.5옥타브</button>
+        <button class="small" data-scale="octaveDo">옥타브 도</button>
+        <button class="small" data-scale="siren">사이렌</button>
+      </div>
+
+      <div class="pattern">
+        <div class="pattern-title">
+          <span>현재 패턴</span>
+          <span id="scaleName">5음</span>
+        </div>
+        <div class="pattern-text" id="patternText">도 레 미 파 솔 파 미 레 도</div>
+        <div class="guide" id="scaleGuide">가장 기본 연결 연습입니다. 고음에서 밀지 말고 같은 크기로 지나가세요.</div>
+      </div>
+
+      <div class="row tight">
+        <span class="label">키</span>
+        <button class="small" id="keyDown">낮게</button>
+        <button class="small active" id="playBtn">재생</button>
+        <button class="small" id="stopBtn">정지</button>
+        <button class="small" id="keyUp">높게</button>
+        <strong id="keyText" style="margin-left:auto;font-size:14px;">C4</strong>
+      </div>
+
+      <div class="row tight" id="syllableButtons">
+        <span class="label">발음</span>
+        <button class="small" data-syllable="응">응</button>
+        <button class="small" data-syllable="멈">멈</button>
+        <button class="small" data-syllable="구그">구그</button>
+        <button class="small" data-syllable="네이">네이</button>
+        <button class="small" data-syllable="누">누</button>
+      </div>
+
+      <div class="row tight" id="tempoButtons">
+        <span class="label">템포</span>
+        <button class="small" data-tempo="slow">느리게</button>
+        <button class="small" data-tempo="normal">보통</button>
+        <button class="small" data-tempo="fast">빠르게</button>
+        <span class="guide">처음에는 느리게 또는 보통.</span>
+      </div>
+
+      <div class="guide" id="syllableGuide">
+        작지만 알맹이를 남기세요. 바람만 새면 안 됩니다.
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <b id="setCount">0/5</b>
+          <span>세트</span>
+        </div>
+        <div class="stat">
+          <b id="avgDb">--</b>
+          <span>평균 dB</span>
+        </div>
+        <div class="stat">
+          <b id="peakDb">--</b>
+          <span>최고 dB</span>
+        </div>
+        <div class="stat">
+          <b id="inTarget">--</b>
+          <span>목표 안</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="bottom">
+      <div class="action-row">
+        <button class="primary" id="micBtn">마이크 시작</button>
+        <button class="primary" id="setBtn">세트 시작</button>
+        <button class="danger" id="painBtn">목 아픔</button>
+      </div>
+
+      <div class="notice">
+        휴대폰 dB는 전문 측정값이 아니라 연습 기준입니다. 입에서 30cm 정도 떨어뜨리고 같은 위치에서 비교용으로 사용하세요.
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const modes = {
+      reset: {
+        name: "리셋",
+        minDb: 45,
+        maxDb: 55,
+        dangerDb: 75,
+        guide: "목을 깨우는 단계입니다. 예쁘게 부르지 말고 편하게 지나가세요."
+      },
+      connect: {
+        name: "연결",
+        minDb: 55,
+        maxDb: 65,
+        dangerDb: 80,
+        guide: "고음을 뚫는 단계가 아니라 끊기지 않게 지나가는 단계입니다."
+      },
+      core: {
+        name: "중심 만들기",
+        minDb: 60,
+        maxDb: 70,
+        dangerDb: 82,
+        guide: "작지만 소리의 알맹이를 남기는 단계입니다."
+      },
+      bright: {
+        name: "밝히기",
+        minDb: 60,
+        maxDb: 72,
+        dangerDb: 82,
+        guide: "크게 밝히지 말고, 작게 또렷하게 만드세요."
+      },
+      song: {
+        name: "노래 적용",
+        minDb: 65,
+        maxDb: 78,
+        dangerDb: 85,
+        guide: "노래 전체를 부르지 말고 한 구절만 반복하세요."
+      }
+    };
+
+    const scales = {
+      fiveNote: {
+        name: "5음",
+        fullName: "5-Note Scale",
+        korean: "도 레 미 파 솔 파 미 레 도",
+        degrees: [1, 2, 3, 4, 5, 4, 3, 2, 1],
+        guide: "가장 기본 연결 연습입니다. 고음에서 밀지 말고 같은 크기로 지나가세요."
+      },
+      onePointFiveOctave: {
+        name: "1.5옥타브",
+        fullName: "1.5 Octave Arpeggio",
+        korean: "도 미 솔 도 미 솔 파 레 시 솔 파 레 도",
+        degrees: [1, 3, 5, 8, 10, 12, 11, 9, 7, 5, 4, 2, 1],
+        guide: "1.5옥타브까지 올라가는 핵심 패턴입니다. 올라갈수록 작게, 내려올수록 풀리지 않게 유지하세요."
+      },
+      octaveDo: {
+        name: "옥타브 도",
+        fullName: "Octave Do Pattern",
+        korean: "도 미 솔 도 도 도 도 도 솔 미 도",
+        degrees: [1, 3, 5, 8, 8, 8, 8, 8, 5, 3, 1],
+        guide: "위의 도를 반복하는 패턴입니다. 반복할수록 커지면 안 됩니다. 같은 크기로 가볍게 찍으세요."
+      },
+      siren: {
+        name: "사이렌",
+        fullName: "Siren",
+        korean: "낮은 음 → 높은 음 → 낮은 음",
+        type: "glide",
+        guide: "끊기지 않고 지나가는 연습입니다. 예쁜 소리보다 연결감을 먼저 보세요."
+      }
+    };
+
+    const syllables = {
+      "응": "끊기지 않고 지나가세요. 예쁜 소리보다 연결이 먼저입니다.",
+      "멈": "작지만 알맹이를 남기세요. 바람만 새면 안 됩니다.",
+      "구그": "짧게 붙이세요. 목을 누르지 말고 소리만 모읍니다.",
+      "네이": "먹먹한 소리를 살짝 앞으로 꺼내세요. 크게 하지 마세요.",
+      "누": "좁고 부드럽게 지나가세요. 고음에서 입을 과하게 벌리지 마세요."
+    };
+
+    const tempoMap = {
+      slow: { name: "느리게", bpm: 72 },
+      normal: { name: "보통", bpm: 88 },
+      fast: { name: "빠르게", bpm: 104 }
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    let state = {
+      mode: localStorage.getItem("lastMode") || "connect",
+      scale: localStorage.getItem("lastScale") || "fiveNote",
+      syllable: localStorage.getItem("lastSyllable") || "멈",
+      tempo: localStorage.getItem("lastTempo") || "normal",
+      rootMidi: Number(localStorage.getItem("lastRootMidi") || 60),
+      calibrationOffset: Number(localStorage.getItem("calibrationOffset") || 90),
+      currentDb: 0,
+      micOn: false,
+      safetyLatch: false,
+      painLatch: false,
+      setRunning: false,
+      setCollecting: false,
+      setIndex: 0,
+      setTotal: 5,
+      sumDb: 0,
+      samples: 0,
+      peakDb: 0,
+      targetHits: 0
+    };
+
+    let audioCtx = null;
+    let analyser = null;
+    let micStream = null;
+    let dataArray = null;
+    let rafId = null;
+    let loudStart = null;
+    let playingNodes = [];
+    let stopTimers = [];
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      return audioCtx;
+    }
+
+    function saveState() {
+      localStorage.setItem("lastMode", state.mode);
+      localStorage.setItem("lastScale", state.scale);
+      localStorage.setItem("lastSyllable", state.syllable);
+      localStorage.setItem("lastTempo", state.tempo);
+      localStorage.setItem("lastRootMidi", String(state.rootMidi));
+      localStorage.setItem("calibrationOffset", String(state.calibrationOffset));
+    }
+
+    function noteNameFromMidi(midi) {
+      const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      const name = names[midi % 12];
+      const octave = Math.floor(midi / 12) - 1;
+      return name + octave;
+    }
+
+    function freqFromMidi(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function degreeToSemitone(degree) {
+      const major = [0, 2, 4, 5, 7, 9, 11];
+      const zero = degree - 1;
+      const octave = Math.floor(zero / 7);
+      const index = zero % 7;
+      return octave * 12 + major[index];
+    }
+
+    function rootFrequency() {
+      return freqFromMidi(state.rootMidi);
+    }
+
+    function percentFromDb(db) {
+      const min = 35;
+      const max = 95;
+      return Math.max(0, Math.min(100, ((db - min) / (max - min)) * 100));
+    }
+
+    function setActiveButtons(selector, attr, value) {
+      document.querySelectorAll(selector).forEach((button) => {
+        button.classList.toggle("active", button.dataset[attr] === value);
+      });
+    }
+
+    function updateGauge() {
+      const mode = modes[state.mode];
+      const gauge = $("gauge");
+      const left = percentFromDb(mode.minDb);
+      const right = percentFromDb(mode.maxDb);
+      gauge.style.setProperty("--target-left", left + "%");
+      gauge.style.setProperty("--target-width", Math.max(4, right - left) + "%");
+      gauge.style.setProperty("--needle", percentFromDb(state.currentDb || 0) + "%");
+    }
+
+    function clearPills() {
+      ["pillLow", "pillGood", "pillHigh", "pillDanger"].forEach((id) => {
+        $(id).classList.remove("on");
+      });
+    }
+
+    function setFeedback(kind, text) {
+      const feedback = $("feedback");
+      feedback.className = "feedback";
+      if (kind === "warn") feedback.classList.add("warn");
+      if (kind === "danger") feedback.classList.add("danger");
+      feedback.textContent = text;
+
+      clearPills();
+      if (kind === "low") $("pillLow").classList.add("on");
+      if (kind === "good") $("pillGood").classList.add("on");
+      if (kind === "high" || kind === "warn") $("pillHigh").classList.add("on");
+      if (kind === "danger") $("pillDanger").classList.add("on");
+
+      $("resetBox").classList.toggle("show", kind === "danger" || state.safetyLatch || state.painLatch);
+    }
+
+    function calculateFeedback(db) {
+      const mode = modes[state.mode];
+
+      if (!state.micOn) {
+        return {
+          kind: "low",
+          text: "마이크를 시작하고 가볍게 소리 내세요."
+        };
+      }
+
+      if (state.painLatch) {
+        return {
+          kind: "danger",
+          text: "오늘은 고음 연습을 멈추세요. 허밍이나 작은 응 소리만 하세요."
+        };
+      }
+
+      if (state.safetyLatch || db >= mode.dangerDb) {
+        return {
+          kind: "danger",
+          text: "중지하세요. 지금은 밀고 있을 가능성이 큽니다."
+        };
+      }
+
+      if (db < mode.minDb - 5) {
+        return {
+          kind: "low",
+          text: "너무 작아요. 바람만 새지 않게 조금 붙이세요."
+        };
+      }
+
+      if (db < mode.minDb) {
+        return {
+          kind: "warn",
+          text: "괜찮지만 조금 더 또렷하게 해보세요."
+        };
+      }
+
+      if (db <= mode.maxDb) {
+        return {
+          kind: "good",
+          text: "좋습니다. 이 크기로 유지하세요."
+        };
+      }
+
+      return {
+        kind: "high",
+        text: "조금 큽니다. 10%만 줄이세요."
+      };
+    }
+
+    function updateStats() {
+      const avg = state.samples ? Math.round(state.sumDb / state.samples) : "--";
+      const peak = state.peakDb ? Math.round(state.peakDb) : "--";
+      const inTarget = state.samples ? Math.round((state.targetHits / state.samples) * 100) + "%" : "--";
+
+      $("setCount").textContent = state.setIndex + "/" + state.setTotal;
+      $("avgDb").textContent = avg;
+      $("peakDb").textContent = peak;
+      $("inTarget").textContent = inTarget;
+    }
+
+    function updateUI() {
+      const mode = modes[state.mode];
+      const scale = scales[state.scale];
+
+      $("modeName").textContent = mode.name;
+      $("targetText").textContent = "목표 " + mode.minDb + "~" + mode.maxDb + " dBA";
+      $("scaleName").textContent = scale.name;
+      $("patternText").textContent = scale.korean;
+      $("scaleGuide").textContent = scale.guide;
+      $("syllableGuide").textContent = syllables[state.syllable];
+      $("keyText").textContent = noteNameFromMidi(state.rootMidi);
+
+      const shownDb = state.micOn ? Math.round(state.currentDb) : "--";
+      $("dbValue").textContent = shownDb;
+
+      setActiveButtons("[data-mode]", "mode", state.mode);
+      setActiveButtons("[data-scale]", "scale", state.scale);
+      setActiveButtons("[data-syllable]", "syllable", state.syllable);
+      setActiveButtons("[data-tempo]", "tempo", state.tempo);
+
+      updateGauge();
+
+      const fb = calculateFeedback(state.currentDb);
+      setFeedback(fb.kind, fb.text);
+
+      updateStats();
+    }
+
+    async function startMic() {
+      try {
+        const ctx = getAudioContext();
+        await ctx.resume();
+
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.2;
+
+        const source = ctx.createMediaStreamSource(micStream);
+        source.connect(analyser);
+
+        dataArray = new Uint8Array(analyser.fftSize);
+        state.micOn = true;
+        $("micBtn").textContent = "마이크 켜짐";
+        $("micBtn").classList.add("active");
+
+        if (!rafId) measureLoop();
+      } catch (error) {
+        setFeedback("danger", "마이크 권한이 필요합니다. 브라우저 설정을 확인하세요.");
+        console.error(error);
+      }
+
+      updateUI();
+    }
+
+    function measureLoop() {
+      if (!analyser || !dataArray) {
+        rafId = requestAnimationFrame(measureLoop);
+        return;
+      }
+
+      analyser.getByteTimeDomainData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const v = (dataArray[i] - 128) / 128;
+        sum += v * v;
+      }
+
+      const rms = Math.sqrt(sum / dataArray.length);
+      let db = rms > 0.00001 ? 20 * Math.log10(rms) + state.calibrationOffset : 0;
+      db = Math.max(0, Math.min(100, db));
+
+      if (state.currentDb === 0) {
+        state.currentDb = db;
+      } else {
+        state.currentDb = state.currentDb * 0.75 + db * 0.25;
+      }
+
+      const now = performance.now();
+
+      if (state.currentDb >= 85) {
+        if (!loudStart) loudStart = now;
+        if (now - loudStart >= 2000) {
+          state.safetyLatch = true;
+        }
+      } else {
+        loudStart = null;
+      }
+
+      if (state.setCollecting && state.currentDb > 25) {
+        const mode = modes[state.mode];
+        state.sumDb += state.currentDb;
+        state.samples += 1;
+        state.peakDb = Math.max(state.peakDb, state.currentDb);
+        if (state.currentDb >= mode.minDb && state.currentDb <= mode.maxDb) {
+          state.targetHits += 1;
+        }
+        if (state.peakDb >= 90) {
+          state.safetyLatch = true;
+        }
+      }
+
+      updateUI();
+      rafId = requestAnimationFrame(measureLoop);
+    }
+
+    function stopPlayback() {
+      playingNodes.forEach((node) => {
+        try {
+          node.stop();
+        } catch (e) {}
+      });
+      playingNodes = [];
+      stopTimers.forEach(clearTimeout);
+      stopTimers = [];
+    }
+
+    function playTone(freq, startTime, duration) {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.16, startTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.04);
+
+      playingNodes.push(osc);
+    }
+
+    async function playScale() {
+      const ctx = getAudioContext();
+      await ctx.resume();
+      stopPlayback();
+
+      const scale = scales[state.scale];
+      const bpm = tempoMap[state.tempo].bpm;
+      const beat = 60 / bpm;
+      const now = ctx.currentTime + 0.05;
+
+      if (scale.type === "glide") {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(rootFrequency(), now);
+        osc.frequency.exponentialRampToValueAtTime(rootFrequency() * 2, now + beat * 2);
+        osc.frequency.exponentialRampToValueAtTime(rootFrequency(), now + beat * 4);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.14, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + beat * 4);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + beat * 4 + 0.05);
+        playingNodes.push(osc);
+
+        return beat * 4 * 1000;
+      }
+
+      scale.degrees.forEach((degree, index) => {
+        const semitone = degreeToSemitone(degree);
+        const freq = rootFrequency() * Math.pow(2, semitone / 12);
+        const start = now + index * beat;
+        playTone(freq, start, beat * 0.82);
+      });
+
+      return scale.degrees.length * beat * 1000;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function startSet() {
+      if (state.setRunning) return;
+
+      if (!state.micOn) {
+        await startMic();
+      }
+
+      state.setRunning = true;
+      state.setIndex = 0;
+      state.sumDb = 0;
+      state.samples = 0;
+      state.peakDb = 0;
+      state.targetHits = 0;
+      state.safetyLatch = false;
+      state.painLatch = false;
+
+      $("setBtn").textContent = "세트 중";
+      $("setBtn").classList.add("active");
+
+      for (let i = 1; i <= state.setTotal; i++) {
+        if (!state.setRunning || state.safetyLatch || state.painLatch) break;
+
+        state.setIndex = i;
+        updateUI();
+
+        const duration = await playScale();
+        await sleep(duration + 300);
+
+        if (!state.setRunning || state.safetyLatch || state.painLatch) break;
+
+        state.setCollecting = true;
+        setFeedback("good", "따라 부르세요. 같은 크기로 지나가세요.");
+        await sleep(3500);
+        state.setCollecting = false;
+
+        if (!state.setRunning || state.safetyLatch || state.painLatch) break;
+
+        setFeedback("low", "3초 쉬세요. 목을 풀고 다시 가볍게.");
+        await sleep(3000);
+      }
+
+      state.setCollecting = false;
+      state.setRunning = false;
+      $("setBtn").textContent = "세트 시작";
+      $("setBtn").classList.remove("active");
+
+      const count = Number(localStorage.getItem("dailyPracticeCount") || 0);
+      localStorage.setItem("dailyPracticeCount", String(count + 1));
+
+      updateUI();
+    }
+
+    function applyResetMode() {
+      state.mode = "reset";
+      state.scale = "siren";
+      state.syllable = "응";
+      state.safetyLatch = false;
+      state.painLatch = false;
+      saveState();
+      updateUI();
+    }
+
+    document.querySelectorAll("[data-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.mode = button.dataset.mode;
+        state.safetyLatch = false;
+        state.painLatch = false;
+        saveState();
+        updateUI();
+      });
+    });
+
+    document.querySelectorAll("[data-scale]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.scale = button.dataset.scale;
+        saveState();
+        updateUI();
+      });
+    });
+
+    document.querySelectorAll("[data-syllable]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.syllable = button.dataset.syllable;
+        saveState();
+        updateUI();
+      });
+    });
+
+    document.querySelectorAll("[data-tempo]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.tempo = button.dataset.tempo;
+        saveState();
+        updateUI();
+      });
+    });
+
+    $("micBtn").addEventListener("click", startMic);
+
+    $("playBtn").addEventListener("click", async () => {
+      await playScale();
+    });
+
+    $("stopBtn").addEventListener("click", () => {
+      state.setRunning = false;
+      state.setCollecting = false;
+      stopPlayback();
+      updateUI();
+    });
+
+    $("keyDown").addEventListener("click", () => {
+      state.rootMidi = Math.max(48, state.rootMidi - 2);
+      saveState();
+      updateUI();
+    });
+
+    $("keyUp").addEventListener("click", () => {
+      state.rootMidi = Math.min(72, state.rootMidi + 2);
+      saveState();
+      updateUI();
+    });
+
+    $("setBtn").addEventListener("click", startSet);
+
+    $("painBtn").addEventListener("click", () => {
+      state.painLatch = true;
+      state.setRunning = false;
+      state.setCollecting = false;
+      stopPlayback();
+      updateUI();
+    });
+
+    $("resetModeBtn").addEventListener("click", applyResetMode);
+
+    updateUI();
+  </script>
+</body>
+</html>
